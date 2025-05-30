@@ -1,45 +1,50 @@
-<<<<<<< HEAD
-# Electron Layout App
+# MoFASA
 
-A full-screen Electron application with a custom layout featuring a sidebar and split content area.
+MoFASA is a modern web application featuring user authentication, a responsive layout, and a user-friendly interface. It includes registration and login functionality, a sidebar with user information, and a confirmation prompt for logout actions.
 
 ## Features
 
-- Full-screen display
-- Left sidebar navigation
-- Split content area (left and right panels)
-- Responsive layout
-- Modern UI design
+- User registration with username, email, and password
+- User login and authentication
+- Sidebar displaying user information (including username)
+- Confirmation dialog for logout
+- Responsive and modern UI design
 
 ## Installation
 
-1. Make sure you have Node.js installed on your system
-2. Clone this repository
+1. Make sure you have Node.js installed on your system.
+2. Clone this repository:
+   ```bash
+   git clone https://github.com/RahatulAmin/MoFASA.git
+   cd MoFASA
+   ```
 3. Install dependencies:
-```bash
-npm install
-```
+   ```bash
+   npm install
+   ```
 
 ## Running the Application
 
 To start the application in development mode:
-
 ```bash
 npm run dev
 ```
 
-To start the application in production mode:
-
+To build and start the application in production mode:
 ```bash
+npm run build
 npm start
 ```
 
 ## Project Structure
 
-- `main.js` - Main Electron process file
-- `index.html` - Main application window
-- `package.json` - Project configuration and dependencies 
-=======
-# MoFASA
-MoFASA Tools 
->>>>>>> 4985da8c9cc1769e9364147910fdb2f53818abf5
+- `src/` - Source code (components, services, store, etc.)
+- `public/` - Static assets and HTML
+- `styles.css` - Main stylesheet
+- `package.json` - Project configuration and dependencies
+
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+This project is licensed under the MIT License.
