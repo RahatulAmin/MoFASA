@@ -25,12 +25,12 @@ These insights are crucial for identifying how people perceive and act in robot-
 
 ## Features
 
-- 🔐 User registration, login, and authentication
-- 🧭 Project and participant management interface
-- 📝 Structured data input for scenario-based response collection
-- 🤖 LLM-generated behavior summaries based on MoFASA factors
-- 📊 Easy export and review of participant data
-- 🎨 Responsive, clean, and accessible UI
+-  User registration, login, and authentication
+-  Project and participant management interface
+-  Structured data input for scenario-based response collection
+-  LLM-generated behavior summaries based on MoFASA factors
+-  Easy export and review of participant data
+-  Responsive, clean, and accessible UI
 
 ---
 
