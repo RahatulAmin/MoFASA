@@ -1,8 +1,7 @@
 # MoFASA Tools
 
-![Build](https://img.shields.io/github/actions/workflow/status/RahatulAmin/MoFASA/build.yml)
+
 ![Version](https://img.shields.io/github/package-json/v/RahatulAmin/MoFASA)
-![License](https://img.shields.io/github/license/RahatulAmin/MoFASA)
 ![Last Commit](https://img.shields.io/github/last-commit/RahatulAmin/MoFASA)
 ![Issues](https://img.shields.io/github/issues/RahatulAmin/MoFASA)
 
