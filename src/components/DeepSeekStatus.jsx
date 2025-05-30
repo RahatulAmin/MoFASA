@@ -1,0 +1,72 @@
+import React, { useState, useEffect } from 'react';
+
+const DeepSeekStatus = () => {
+  const [status, setStatus] = useState('checking');
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const result = await window.electronAPI.getDeepSeekStatus();
+        setStatus(result.status);
+      } catch (error) {
+        setStatus('disconnected');
+      }
+    };
+
+    // Check status immediately
+    checkStatus();
+
+    // Check status every 30 seconds
+    const interval = setInterval(checkStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const getStatusColor = () => {
+    switch (status) {
+      case 'connected':
+        return '#27ae60'; // Green
+      case 'disconnected':
+        return '#e74c3c'; // Red
+      default:
+        return '#f1c40f'; // Yellow for checking
+    }
+  };
+
+  const getStatusText = () => {
+    switch (status) {
+      case 'connected':
+        return 'DeepSeek Connected';
+      case 'disconnected':
+        return 'DeepSeek Disconnected';
+      default:
+        return 'Checking DeepSeek...';
+    }
+  };
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '8px 12px',
+      marginTop: 'auto',
+      marginBottom: '12px',
+      borderRadius: '4px',
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      fontSize: '0.9em',
+      fontFamily: 'Lexend, sans-serif'
+    }}>
+      <div style={{
+        width: '8px',
+        height: '8px',
+        borderRadius: '50%',
+        backgroundColor: getStatusColor(),
+        transition: 'background-color 0.3s ease'
+      }} />
+      <span style={{ color: '#fff' }}>{getStatusText()}</span>
+    </div>
+  );
+};
+
+export default DeepSeekStatus; 
