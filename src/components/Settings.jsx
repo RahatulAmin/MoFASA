@@ -185,7 +185,7 @@ Guidelines:
                       }}>
                         {project.participants?.length || 0} Participants
                       </span>
-                      <span style={{ 
+                      {/* <span style={{ 
                         padding: '4px 8px', 
                         backgroundColor: '#e3f2fd', 
                         color: '#1565c0',
@@ -193,7 +193,7 @@ Guidelines:
                         fontSize: '0.9em'
                       }}>
                         {project.sections?.length || 0} Sections
-                      </span>
+                      </span> */}
                     </div>
                   </div>
                   <button

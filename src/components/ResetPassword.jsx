@@ -43,14 +43,14 @@ const ResetPassword = () => {
                 <form onSubmit={handleSubmit}>
                     <div className="login-form-group">
                         <label>Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                             placeholder="Enter your email"
-                            required
-                        />
-                    </div>
+                        required
+                    />
+                </div>
 
                     <button type="submit" className="login-button">
                         Send Reset Link
@@ -58,8 +58,8 @@ const ResetPassword = () => {
 
                     <div className="login-links">
                         <Link to="/login">Remember your password? Login</Link>
-                    </div>
-                </form>
+                </div>
+            </form>
             </div>
 
             <div className="login-footer">

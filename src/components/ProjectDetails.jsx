@@ -67,6 +67,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const frameworkRef = useRef(null);
   const summaryRef = useRef(null);
   const behavioralRef = useRef(null);
+  const [selectedRule, setSelectedRule] = useState(null);
+  const [robotDraft, setRobotDraft] = useState(situationSuggestions.robotChanges || '');
+  const [environmentDraft, setEnvironmentDraft] = useState(situationSuggestions.environmentalChanges || '');
+
 
   if (!project) {
     return <div className="left-panel"><h2>Project Not Found</h2></div>;
@@ -1540,255 +1544,138 @@ Please provide concise, actionable suggestions in these two categories. Each sug
               </div>
             )}
 
-            <div style={{ marginBottom: '24px' }}>
-              <button
-                onClick={handleGenerateSituationDesign}
-                disabled={isGeneratingSuggestions}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: isGeneratingSuggestions ? '#9b59b6' : '#8e44ad',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: isGeneratingSuggestions ? 'wait' : 'pointer',
-                  fontSize: '1em',
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Generated Rules Section */}
+              <div style={{ width: '100%' }}>
+                <h3 style={{
                   fontFamily: 'Lexend, sans-serif',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  marginBottom: '12px'
-                }}
-              >
-                {isGeneratingSuggestions ? 'Generating Suggestions...' : 'Generate Situation Design Suggestions Using LLM'}
-              </button>
+                  fontSize: '1.2em',
+                  color: '#2c3e50',
+                  marginBottom: '16px'
+                }}>
+                  Generated Rules
+                </h3>
+                <div style={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: '8px',
+                  marginBottom: '20px'
+                }}>
+                  {(project.rules || []).map((rule, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedRule(selectedRule === rule ? null : rule)}
+                      style={{
+                        padding: '8px 16px',
+                        background: selectedRule === rule ? '#8e44ad' : '#95a5a6',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.9em',
+                        transition: 'all 0.2s ease',
+                        opacity: selectedRule === rule ? 1 : 0.7
+                      }}
+                      onMouseOver={(e) => {
+                        if (selectedRule !== rule) {
+                          e.target.style.background = '#8e44ad';
+                          e.target.style.opacity = '0.9';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (selectedRule !== rule) {
+                          e.target.style.background = '#95a5a6';
+                          e.target.style.opacity = '0.7';
+                        }
+                      }}
+                    >
+                      {rule}
+                    </button>
+                  ))}
+                </div>
 
-              {isGeneratingSuggestions && (
-                <div style={{ marginTop: '12px' }}>
+                {/* Participant Cards for Selected Rule */}
+                {selectedRule && (
                   <div style={{ 
                     display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    marginBottom: '8px'
+                    flexWrap: 'wrap', 
+                    gap: '16px',
+                    marginBottom: '24px'
                   }}>
-                    <span style={{ 
-                      fontFamily: 'Lexend, sans-serif',
-                      fontSize: '0.9em',
-                      color: '#666'
-                    }}>
-                      Generating suggestions...
-                    </span>
-                    <span style={{ 
-                      fontFamily: 'Lexend, sans-serif',
-                      fontSize: '0.9em',
-                      color: '#666',
-                      fontWeight: 'bold'
-                    }}>
-                      {generationProgress}%
-                    </span>
+                    {participants
+                      .filter(p => p.answers?.['Rule Selection']?.selectedRules?.includes(selectedRule))
+                      .map(participant => (
+                        <div
+                          key={participant.id}
+                          style={{
+                            flex: '0 0 calc(33.333% - 16px)',
+                            background: '#fff',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                            border: '1px solid #dcdde1',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            const tooltip = document.createElement('div');
+                            tooltip.id = `tooltip-${participant.id}`;
+                            tooltip.style.cssText = `
+                              position: absolute;
+                              left: 50%;
+                              transform: translateX(-50%) translateY(10%);
+                              bottom: -10px;
+                              background: #2c3e50;
+                              color: white;
+                              padding: 12px 16px;
+                              border-radius: 6px;
+                              font-family: 'Lexend', sans-serif;
+                              font-size: 0.9em;
+                              line-height: 1.5;
+                              width: 300px;
+                              z-index: 1000;
+                              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                              white-space: pre-wrap;
+                              pointer-events: none;
+                            `;
+                            tooltip.textContent = participant.summary || 'No Summary Available';
+                            e.currentTarget.appendChild(tooltip);
+                          }}
+                          onMouseLeave={(e) => {
+                            const tooltip = document.getElementById(`tooltip-${participant.id}`);
+                            if (tooltip) {
+                              tooltip.remove();
+                            }
+                          }}
+                        >
+                          <h4 style={{ 
+                            margin: '0 0 8px 0',
+                            fontFamily: 'Lexend, sans-serif',
+                            fontSize: '1em',
+                            color: '#2c3e50'
+                          }}>
+                            {participant.name}
+                          </h4>
+                          <div style={{ 
+                            fontSize: '0.9em',
+                            color: '#7f8c8d',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px'
+                          }}>
+                            {participant.answers?.Identity?.age && (
+                              <div>Age: {participant.answers.Identity.age}</div>
+                            )}
+                            {participant.answers?.Identity?.gender && (
+                              <div>Gender: {participant.answers.Identity.gender}</div>
+                            )}
+                            {participant.answers?.Identity?.nationality && (
+                              <div>Nationality: {participant.answers.Identity.nationality}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                   </div>
-                  <div style={{ 
-                    width: '100%', 
-                    height: '4px', 
-                    backgroundColor: '#eee',
-                    borderRadius: '2px',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      width: `${generationProgress}%`,
-                      height: '100%',
-                      backgroundColor: '#8e44ad',
-                      transition: 'width 0.3s ease'
-                    }} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {/* Robot Changes Section */}
-              <div style={{ width: '100%' }}>
-                <h3 style={{
-                  fontFamily: 'Lexend, sans-serif',
-                  fontSize: '1.2em',
-                  color: '#2c3e50',
-                  marginBottom: '16px'
-                }}>
-                  Robot Changes
-                </h3>
-                <div style={{
-                  background: '#fff',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  border: '1px solid #dcdde1'
-                }}>
-                  {editingSection === 'robot' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <textarea
-                        value={manualInput}
-                        onChange={(e) => setManualInput(e.target.value)}
-                        style={{
-                          width: '100%',
-                          minHeight: '120px',
-                          padding: '12px',
-                          borderRadius: '4px',
-                          border: '1px solid #dcdde1',
-                          fontFamily: 'Lexend, sans-serif',
-                          fontSize: '0.95em',
-                          resize: 'vertical'
-                        }}
-                        placeholder="Enter robot changes suggestions..."
-                      />
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => {
-                            setEditingSection(null);
-                            setManualInput('');
-                          }}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#95a5a6',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '0.9em'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleSaveRobotChanges}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#2ecc71',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '0.9em'
-                          }}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div 
-                      onClick={() => {
-                        setEditingSection('robot');
-                        setManualInput(situationSuggestions.robotChanges);
-                      }}
-                      style={{
-                        cursor: 'pointer',
-                        minHeight: '50px'
-                      }}
-                    >
-                      <p style={{
-                        margin: 0,
-                        fontFamily: 'Lexend, sans-serif',
-                        fontSize: '0.95em',
-                        lineHeight: 1.6,
-                        whiteSpace: 'pre-wrap'
-                      }}>
-                        {situationSuggestions.robotChanges || 'Click to add suggestions...'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Environmental Changes Section */}
-              <div style={{ width: '100%' }}>
-                <h3 style={{
-                  fontFamily: 'Lexend, sans-serif',
-                  fontSize: '1.2em',
-                  color: '#2c3e50',
-                  marginBottom: '16px'
-                }}>
-                  Environmental Changes
-                </h3>
-                <div style={{
-                  background: '#fff',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  border: '1px solid #dcdde1'
-                }}>
-                  {editingSection === 'environment' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <textarea
-                        value={manualInput}
-                        onChange={(e) => setManualInput(e.target.value)}
-                        style={{
-                          width: '100%',
-                          minHeight: '120px',
-                          padding: '12px',
-                          borderRadius: '4px',
-                          border: '1px solid #dcdde1',
-                          fontFamily: 'Lexend, sans-serif',
-                          fontSize: '0.95em',
-                          resize: 'vertical'
-                        }}
-                        placeholder="Enter environmental changes suggestions..."
-                      />
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => {
-                            setEditingSection(null);
-                            setManualInput('');
-                          }}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#95a5a6',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '0.9em'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleSaveEnvironmentalChanges}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#2ecc71',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '0.9em'
-                          }}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div 
-                      onClick={() => {
-                        setEditingSection('environment');
-                        setManualInput(situationSuggestions.environmentalChanges);
-                      }}
-                      style={{
-                        cursor: 'pointer',
-                        minHeight: '50px'
-                      }}
-                    >
-                      <p style={{
-                        margin: 0,
-                        fontFamily: 'Lexend, sans-serif',
-                        fontSize: '0.95em',
-                        lineHeight: 1.6,
-                        whiteSpace: 'pre-wrap'
-                      }}>
-                        {situationSuggestions.environmentalChanges || 'Click to add suggestions...'}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -2090,7 +1977,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                       margin: 0,
                       fontFamily: 'Lexend, sans-serif',
                       fontSize: '0.95em',
-                      color: '#34495e',
+                      color: '#737B83',
                       lineHeight: 1.5
                     }}>
                       {participant.summary || 'No summary available.'}
@@ -2099,6 +1986,181 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                 ))}
               </div>
             )
+          )}
+          {currentView === 'situation' && (
+            <div style={{ padding: '24px' }}>
+
+            {/* Robot Changes Section */}
+              <div style={{ width: '100%' }}>
+                <h3 style={{
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '1.2em',
+                  color: '#2c3e50',
+                  marginBottom: '16px'
+                }}>
+                  Robot Changes
+                </h3>
+                <div style={{
+                  background: '#fff',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  border: '1px solid #dcdde1'
+                }}>
+                  <textarea
+                    value={robotDraft}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setRobotDraft(newValue);
+                      const updatedProject = {
+                        ...project,
+                        situationDesign: {
+                          ...project.situationDesign,
+                          robotChanges: newValue
+                        }
+                      };
+                      editProject(idx, updatedProject);
+                    }}
+                    style={{
+                      width: '100%',
+                      minHeight: '120px',
+                      padding: '12px',
+                      borderRadius: '4px',
+                      border: '1px solid #dcdde1',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.95em',
+                      resize: 'vertical'
+                    }}
+                    placeholder="Enter robot changes suggestions..."
+                  />
+                </div>
+              </div>
+              
+              {/* Environmental Changes Section */}
+              <div style={{ width: '100%' }}>
+                <h3 style={{
+                  paddingTop: '20px',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '1.2em',
+                  color: '#2c3e50',
+                  marginBottom: '16px'
+                }}>
+                  Environmental Changes
+                </h3>
+                <div style={{
+                  background: '#fff',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  border: '1px solid #dcdde1'
+                }}>
+                  <textarea
+                    value={environmentDraft}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setEnvironmentDraft(newValue);
+                      const updatedProject = {
+                        ...project,
+                        situationDesign: {
+                          ...project.situationDesign,
+                          environmentalChanges: newValue
+                        }
+                      };
+                      editProject(idx, updatedProject);
+                    }}
+                    style={{
+                      width: '100%',
+                      minHeight: '120px',
+                      padding: '12px',
+                      borderRadius: '4px',
+                      border: '1px solid #dcdde1',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.95em',
+                      resize: 'vertical'
+                    }}
+                    placeholder="Enter environmental changes suggestions..."
+                  />
+                </div>
+              </div>
+
+              {/* Generate Button at bottom */}
+              <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
+                <button
+                  onClick={handleGenerateSituationDesign}
+                  disabled={isGeneratingSuggestions}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: isGeneratingSuggestions ? '#95a5a6' : '#95a5a6',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isGeneratingSuggestions ? 'wait' : 'pointer',
+                    fontSize: '0.9em',
+                    fontFamily: 'Lexend, sans-serif',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s ease',
+                    opacity: isGeneratingSuggestions ? 0.7 : 0.7
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isGeneratingSuggestions) {
+                      e.target.style.backgroundColor = '#8e44ad';
+                      e.target.style.opacity = '1';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (!isGeneratingSuggestions) {
+                      e.target.style.backgroundColor = '#95a5a6';
+                      e.target.style.opacity = '0.7';
+                    }
+                  }}
+                >
+                  {isGeneratingSuggestions ? 'Generating Suggestions...' : 'Generate Situation Design Suggestions Using LLM'}
+                </button>
+
+                {isGeneratingSuggestions && (
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <span style={{ 
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '0.9em',
+                        color: '#666'
+                      }}>
+                        Generating suggestions...
+                      </span>
+                      <span style={{ 
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '0.9em',
+                        color: '#666',
+                        fontWeight: 'bold'
+                      }}>
+                        {generationProgress}%
+                      </span>
+                    </div>
+                    <div style={{ 
+                      width: '100%', 
+                      height: '4px', 
+                      backgroundColor: '#eee',
+                      borderRadius: '2px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: `${generationProgress}%`,
+                        height: '100%',
+                        backgroundColor: '#8e44ad',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>  
           )}
         </div>
       )}

@@ -67,46 +67,46 @@ const Register = () => {
 
                     <div className="login-form-group">
                         <label>Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                             placeholder="Enter your email"
-                            required
-                        />
-                    </div>
+                        required
+                    />
+                </div>
 
                     <div className="login-form-group">
                         <label>Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                             placeholder="Enter your password"
-                            required
-                        />
-                        <div className="password-requirements">
-                            <p>Password must contain:</p>
-                            <ul>
-                                <li className={password.length >= 8 ? 'met' : ''}>At least 8 characters</li>
-                                <li className={/[A-Z]/.test(password) ? 'met' : ''}>One uppercase letter</li>
-                                <li className={/[a-z]/.test(password) ? 'met' : ''}>One lowercase letter</li>
-                                <li className={/\d/.test(password) ? 'met' : ''}>One number</li>
-                                <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'met' : ''}>One special character</li>
-                            </ul>
-                        </div>
+                        required
+                    />
+                    <div className="password-requirements">
+                        <p>Password must contain:</p>
+                        <ul>
+                            <li className={password.length >= 8 ? 'met' : ''}>At least 8 characters</li>
+                            <li className={/[A-Z]/.test(password) ? 'met' : ''}>One uppercase letter</li>
+                            <li className={/[a-z]/.test(password) ? 'met' : ''}>One lowercase letter</li>
+                            <li className={/\d/.test(password) ? 'met' : ''}>One number</li>
+                            <li className={/[!@#$%^&*(),.?":{}|<>]/.test(password) ? 'met' : ''}>One special character</li>
+                        </ul>
                     </div>
+                </div>
 
                     <div className="login-form-group">
                         <label>Confirm Password</label>
-                        <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
+                    <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder="Confirm your password"
-                            required
-                        />
-                    </div>
+                        required
+                    />
+                </div>
 
                     <button type="submit" className="login-button">
                         Register
@@ -114,8 +114,8 @@ const Register = () => {
 
                     <div className="login-links">
                         <Link to="/login">Already have an account? Login</Link>
-                    </div>
-                </form>
+                </div>
+            </form>
             </div>
 
             <div className="login-footer">
