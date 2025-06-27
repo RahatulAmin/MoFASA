@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ProjectQuestionnaireSettings from './ProjectQuestionnaireSettings';
 
 const Settings = ({ projects }) => {
   const [activeTab, setActiveTab] = useState('projects'); // 'projects' or 'tech'
@@ -13,6 +14,7 @@ const Settings = ({ projects }) => {
   const [connectionError, setConnectionError] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
   const [editPrompt, setEditPrompt] = useState('');
+  const [selectedProjectForQuestionnaire, setSelectedProjectForQuestionnaire] = useState(null);
 
   // Function to check connection status
   const checkConnectionStatus = async () => {
@@ -196,20 +198,50 @@ Guidelines:
                       </span> */}
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleEditProject(project)}
-                    style={{
-                      padding: '8px 16px',
-                      backgroundColor: '#3498db',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontSize: '0.9em'
-                    }}
-                  >
-                    Edit Prompt
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => setSelectedProjectForQuestionnaire(project)}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#f39c12',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontSize: '0.9em',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = '#e67e22';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = '#f39c12';
+                      }}
+                    >
+                      Questionnaire
+                    </button>
+                    <button
+                      onClick={() => handleEditProject(project)}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#3498db',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontSize: '0.9em',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = '#2980b9';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = '#3498db';
+                      }}
+                    >
+                      Edit Prompt
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -272,7 +304,14 @@ Guidelines:
                   color: '#fff',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#7f8c8d';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#95a5a6';
                 }}
               >
                 Cancel
@@ -285,11 +324,87 @@ Guidelines:
                   color: '#fff',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#27ae60';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#2ecc71';
                 }}
               >
                 Save Changes
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Project Questionnaire Modal */}
+      {selectedProjectForQuestionnaire && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            width: '1000px',
+            maxWidth: '95%',
+            maxHeight: '95vh',
+            overflow: 'auto',
+            position: 'relative'
+          }}>
+            <div style={{
+              position: 'sticky',
+              top: 0,
+              backgroundColor: 'white',
+              padding: '20px 24px',
+              borderBottom: '1px solid #e0e0e0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              zIndex: 1
+            }}>
+              <h3 style={{ margin: 0, color: '#2c3e50' }}>
+                Questionnaire Settings - {selectedProjectForQuestionnaire.name}
+              </h3>
+              <button
+                onClick={() => setSelectedProjectForQuestionnaire(null)}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: '#95a5a6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.9em',
+                  transition: 'background-color 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#7f8c8d';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#95a5a6';
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div style={{ padding: '0 24px 24px 24px' }}>
+              <ProjectQuestionnaireSettings 
+                projectId={selectedProjectForQuestionnaire.id} 
+                projectName={selectedProjectForQuestionnaire.name} 
+              />
             </div>
           </div>
         </div>
@@ -368,7 +483,18 @@ Guidelines:
               cursor: isSaving ? 'not-allowed' : 'pointer',
               opacity: isSaving ? 0.7 : 1,
               fontSize: '1em',
-              fontFamily: 'Lexend, sans-serif'
+              fontFamily: 'Lexend, sans-serif',
+              transition: 'background-color 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (!isSaving) {
+                e.target.style.backgroundColor = '#2980b9';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSaving) {
+                e.target.style.backgroundColor = '#3498db';
+              }
             }}
           >
             {isSaving ? 'Saving...' : 'Save Settings'}
@@ -384,7 +510,14 @@ Guidelines:
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '1em',
-              fontFamily: 'Lexend, sans-serif'
+              fontFamily: 'Lexend, sans-serif',
+              transition: 'background-color 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#27ae60';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#2ecc71';
             }}
           >
             Test Connection

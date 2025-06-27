@@ -1,12 +1,7 @@
-import { auth } from './utils/firebase';
-
 const getProjects = async () => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
     try {
-        const projects = localStorage.getItem(`projects_${user.uid}`);
-        return projects ? JSON.parse(projects) : [];
+        const projects = await window.electronAPI.getProjects();
+        return projects || [];
     } catch (error) {
         console.error('Error loading projects:', error);
         return [];
@@ -14,11 +9,8 @@ const getProjects = async () => {
 };
 
 const saveProjects = async (projects) => {
-    const user = auth.currentUser;
-    if (!user) return;
-
     try {
-        localStorage.setItem(`projects_${user.uid}`, JSON.stringify(projects));
+        await window.electronAPI.saveProjects(projects);
     } catch (error) {
         console.error('Error saving projects:', error);
     }

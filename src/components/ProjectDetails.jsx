@@ -39,7 +39,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [descDraft, setDescDraft] = useState(project?.description || '');
   const [nameEditMode, setNameEditMode] = useState(false);
   const [nameDraft, setNameDraft] = useState(project?.name || '');
-  const [participants, setParticipants] = useState(project?.participants || []);
+  const [selectedScope, setSelectedScope] = useState(0); // Index of selected scope
+  const [scopeDescEditMode, setScopeDescEditMode] = useState(false);
+  const [scopeDescDraft, setScopeDescDraft] = useState('');
+  const [participants, setParticipants] = useState([]);
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [participantDraft, setParticipantDraft] = useState('');
   const [nameError, setNameError] = useState('');
@@ -54,8 +57,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [selectedAgeRanges, setSelectedAgeRanges] = useState([]);
   const [selectedGenders, setSelectedGenders] = useState([]);
   const [situationSuggestions, setSituationSuggestions] = useState({
-    robotChanges: project?.situationDesign?.robotChanges || '',
-    environmentalChanges: project?.situationDesign?.environmentalChanges || ''
+    robotChanges: '',
+    environmentalChanges: ''
   });
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const [editingSection, setEditingSection] = useState(null); // 'robot' or 'environment' or null
@@ -68,18 +71,33 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const summaryRef = useRef(null);
   const behavioralRef = useRef(null);
   const [selectedRule, setSelectedRule] = useState(null);
-  const [robotDraft, setRobotDraft] = useState(situationSuggestions.robotChanges || '');
-  const [environmentDraft, setEnvironmentDraft] = useState(situationSuggestions.environmentalChanges || '');
-
+  const [robotDraft, setRobotDraft] = useState('');
+  const [environmentDraft, setEnvironmentDraft] = useState('');
 
   if (!project) {
     return <div className="left-panel"><h2>Project Not Found</h2></div>;
   }
 
-  // Keep participants in sync with project
+  // Get current scope
+  const currentScope = project.scopes?.[selectedScope];
+  
+  // Keep participants in sync with current scope
   React.useEffect(() => {
-    setParticipants(project.participants || []);
-  }, [project.participants]);
+    if (currentScope) {
+      setParticipants(currentScope.participants || []);
+      setSituationSuggestions({
+        robotChanges: currentScope.situationDesign?.robotChanges || '',
+        environmentalChanges: currentScope.situationDesign?.environmentalChanges || ''
+      });
+      setRobotDraft(currentScope.situationDesign?.robotChanges || '');
+      setEnvironmentDraft(currentScope.situationDesign?.environmentalChanges || '');
+    }
+  }, [currentScope]);
+
+  // Reset selected scope when project changes
+  React.useEffect(() => {
+    setSelectedScope(0);
+  }, [projectId]);
 
   // Add effect for connection calculations
   useEffect(() => {
@@ -177,8 +195,26 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   };
 
   const handleDescSave = () => {
-    updateProjectDescription(idx, descDraft, participants);
+    updateProjectDescription(idx, descDraft);
     setDescEditMode(false);
+  };
+
+  const handleScopeDescSave = () => {
+    if (currentScope) {
+      const updatedScopes = [...project.scopes];
+      updatedScopes[selectedScope] = {
+        ...updatedScopes[selectedScope],
+        scopeText: scopeDescDraft
+      };
+      
+      const updatedProject = {
+        ...project,
+        scopes: updatedScopes
+      };
+      
+      editProject(idx, updatedProject);
+      setScopeDescEditMode(false);
+    }
   };
 
   const handleNameSave = () => {
@@ -195,56 +231,75 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
 
   // Participants logic
   const handleAddParticipant = () => {
-    // Find the highest participant number
+    // Find the highest participant number in the current scope
     const highestNumber = participants.reduce((max, p) => {
       const match = p.name.match(/^P(\d+)(?:_\d+)?$/);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        return Math.max(max, num);
-      }
-      return max;
+      return match ? Math.max(max, parseInt(match[1])) : max;
     }, 0);
-
-    // Generate new participant name
-    const newName = `P${highestNumber + 1}`;
-
-    const newParticipants = [...participants, { 
-      id: newName, 
-      name: newName,
+    
+    const newParticipantNumber = highestNumber + 1;
+    const newParticipant = {
+      id: `P${newParticipantNumber}`,
+      name: `P${newParticipantNumber}`,
       answers: {},
       summary: ''
-    }];
-    setParticipants(newParticipants);
-    updateProjectDescription(idx, project.description, newParticipants);
+    };
+    
+    // Update the current scope's participants
+    const updatedScopes = [...project.scopes];
+    updatedScopes[selectedScope] = {
+      ...updatedScopes[selectedScope],
+      participants: [...participants, newParticipant]
+    };
+    
+    // Update the project with the new scopes
+    const updatedProject = {
+      ...project,
+      scopes: updatedScopes
+    };
+    
+    editProject(idx, updatedProject);
+    setParticipants([...participants, newParticipant]);
   };
 
   const handleEditParticipant = (id, name) => {
     setEditingParticipant(id);
     setParticipantDraft(name);
-    setNameError('');
   };
 
   const handleSaveParticipant = (id) => {
-    const trimmedName = participantDraft.trim();
-    
-    // Check if name is empty
-    if (!trimmedName) {
-      setNameError('Name cannot be empty');
-      return;
+    if (participantDraft.trim()) {
+      // Check for duplicate names in the current scope
+      const isDuplicate = participants.some(p => p.id !== id && p.name === participantDraft.trim());
+      if (isDuplicate) {
+        setNameError('A participant with this name already exists in this scope.');
+        return;
+      }
+      
+      // Update the participant in the current scope
+      const updatedParticipants = participants.map(p => 
+        p.id === id ? { ...p, name: participantDraft.trim() } : p
+      );
+      
+      // Update the current scope's participants
+      const updatedScopes = [...project.scopes];
+      updatedScopes[selectedScope] = {
+        ...updatedScopes[selectedScope],
+        participants: updatedParticipants
+      };
+      
+      // Update the project with the new scopes
+      const updatedProject = {
+        ...project,
+        scopes: updatedScopes
+      };
+      
+      editProject(idx, updatedProject);
+      setParticipants(updatedParticipants);
+      setEditingParticipant(null);
+      setParticipantDraft('');
+      setNameError('');
     }
-
-    // Check for duplicates, excluding the current participant
-    if (participants.some(p => p.id !== id && p.name === trimmedName)) {
-      setNameError('Duplicate Name');
-      return;
-    }
-
-    const updated = participants.map(p => p.id === id ? { ...p, name: trimmedName } : p);
-    setParticipants(updated);
-    setEditingParticipant(null);
-    setParticipantDraft('');
-    setNameError('');
-    updateProjectDescription(idx, project.description, updated);
   };
 
   const handleCancelEdit = () => {
@@ -254,9 +309,24 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   };
 
   const handleDeleteParticipant = (id) => {
-    const updated = participants.filter(p => p.id !== id);
-    setParticipants(updated);
-    updateProjectDescription(idx, project.description, updated);
+    // Remove participant from the current scope
+    const updatedParticipants = participants.filter(p => p.id !== id);
+    
+    // Update the current scope's participants
+    const updatedScopes = [...project.scopes];
+    updatedScopes[selectedScope] = {
+      ...updatedScopes[selectedScope],
+      participants: updatedParticipants
+    };
+    
+    // Update the project with the new scopes
+    const updatedProject = {
+      ...project,
+      scopes: updatedScopes
+    };
+    
+    editProject(idx, updatedProject);
+    setParticipants(updatedParticipants);
   };
 
   const handleParticipantClick = (id) => {
@@ -426,11 +496,21 @@ Please provide concise, actionable suggestions in these two categories. Each sug
 
   // Add this function to save situation suggestions to project
   const saveSituationSuggestions = (newSuggestions) => {
-    const updatedProject = {
-      ...project,
+    // Update the current scope's situation design
+    const updatedScopes = [...project.scopes];
+    updatedScopes[selectedScope] = {
+      ...updatedScopes[selectedScope],
       situationDesign: newSuggestions
     };
+    
+    // Update the project with the new scopes
+    const updatedProject = {
+      ...project,
+      scopes: updatedScopes
+    };
+    
     editProject(idx, updatedProject);
+    setSituationSuggestions(newSuggestions);
   };
 
   // Update the save handlers to persist data
@@ -792,6 +872,17 @@ Please provide concise, actionable suggestions in these two categories. Each sug
     setRuleToDelete(null);
   };
 
+  const handleScopeSelection = (scopeIndex) => {
+    setSelectedScope(scopeIndex);
+    setScopeDescEditMode(false); // Reset scope description editing when switching scopes
+    // Save selected scope to localStorage for ParticipantPage
+    try {
+      localStorage.setItem(`project_${idx}_selected_scope`, scopeIndex.toString());
+    } catch (error) {
+      console.error('Error saving selected scope:', error);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
       <div className="left-panel" style={{ 
@@ -884,11 +975,11 @@ Please provide concise, actionable suggestions in these two categories. Each sug
               <img 
                 src={editIcon} 
                 alt="Edit" 
-                className="icon-btn"
+                className="edit-icon"
                 onClick={() => { 
                   setDescDraft(project.description); 
                   setDescEditMode(true); 
-                }} 
+                }}
               />
             </div>
           ) : (
@@ -900,6 +991,141 @@ Please provide concise, actionable suggestions in these two categories. Each sug
             </button>
           )}
         </div>
+        
+        {/* Scope Selection */}
+        {project.scopes && project.scopes.length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ 
+              fontFamily: 'Lexend, sans-serif', 
+              fontWeight: 600, 
+              fontSize: '1.1em', 
+              marginBottom: '12px',
+              color: '#2c3e50'
+            }}>
+              Scopes:
+            </h3>
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              flexWrap: 'wrap',
+              alignItems: 'center'
+            }}>
+              {project.scopes.map((scope, index) => (
+                <button
+                  key={scope.id}
+                  onClick={() => handleScopeSelection(index)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: selectedScope === index ? '#3498db' : '#ecf0f1',
+                    color: selectedScope === index ? '#fff' : '#2c3e50',
+                    border: '1px solid',
+                    borderColor: selectedScope === index ? '#3498db' : '#bdc3c7',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: selectedScope === index ? '600' : '500',
+                    fontSize: '0.9em',
+                    fontFamily: 'Lexend, sans-serif',
+                    transition: 'all 0.2s ease',
+                    minWidth: '80px',
+                    textAlign: 'center'
+                  }}
+                  onMouseOver={(e) => {
+                    if (selectedScope !== index) {
+                      e.target.style.backgroundColor = '#d5dbdb';
+                      e.target.style.borderColor = '#95a5a6';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedScope !== index) {
+                      e.target.style.backgroundColor = '#ecf0f1';
+                      e.target.style.borderColor = '#bdc3c7';
+                    }
+                  }}
+                >
+                  Scope {scope.scopeNumber}
+                </button>
+              ))}
+            </div>
+            {currentScope && (
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '6px',
+                border: '1px solid #e9ecef',
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.95em',
+                color: '#495057',
+                position: 'relative'
+              }}>
+                {scopeDescEditMode ? (
+                  <>
+                    <textarea
+                      value={scopeDescDraft}
+                      onChange={e => setScopeDescDraft(e.target.value)}
+                      style={{ 
+                        width: '100%', 
+                        minHeight: 40, 
+                        fontFamily: 'Lexend, sans-serif', 
+                        fontSize: '0.95em', 
+                        borderRadius: 4, 
+                        border: '1px solid #ccc', 
+                        resize: 'vertical',
+                        marginBottom: '8px'
+                      }}
+                      placeholder="Enter scope description..."
+                      autoFocus
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button 
+                        onClick={handleScopeDescSave} 
+                        style={{ 
+                          padding: '4px 14px', 
+                          background: '#27ae60', 
+                          color: '#fff', 
+                          border: 'none', 
+                          borderRadius: 4, 
+                          cursor: 'pointer',
+                          fontSize: '0.9em'
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button 
+                        onClick={() => setScopeDescEditMode(false)} 
+                        style={{ 
+                          padding: '4px 14px', 
+                          background: '#bbb', 
+                          color: '#222', 
+                          border: 'none', 
+                          borderRadius: 4, 
+                          cursor: 'pointer',
+                          fontSize: '0.9em'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    {currentScope.scopeText || 'No description provided'}
+                    <img 
+                      src={editIcon} 
+                      alt="Edit" 
+                      className="edit-icon"
+                      onClick={() => { 
+                        setScopeDescDraft(currentScope.scopeText || ''); 
+                        setScopeDescEditMode(true); 
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
         {/* Thin line */}
         <div style={{ borderBottom: '1px solid #dcdde1', margin: '18px 0 12px 0' }}></div>
         {/* Three buttons */}

@@ -14,6 +14,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const [newProjectParticipants, setNewProjectParticipants] = useState('');
   const [newProjectRobotType, setNewProjectRobotType] = useState('');
   const [newProjectStudyType, setNewProjectStudyType] = useState('');
+  const [scopes, setScopes] = useState([{ scopeNumber: 1, scopeText: '' }]);
   const [editingProject, setEditingProject] = useState(null);
   const [editName, setEditName] = useState('');
   const [importError, setImportError] = useState('');
@@ -21,14 +22,44 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const [importedProjectData, setImportedProjectData] = useState(null);
   const [importProjectName, setImportProjectName] = useState('');
 
+  const handleAddScope = () => {
+    if (scopes.length < 5) {
+      setScopes([...scopes, { scopeNumber: scopes.length + 1, scopeText: '' }]);
+    }
+  };
+
+  const handleRemoveScope = (index) => {
+    if (scopes.length > 1) {
+      const newScopes = scopes.filter((_, i) => i !== index);
+      // Renumber scopes
+      const renumberedScopes = newScopes.map((scope, i) => ({
+        ...scope,
+        scopeNumber: i + 1
+      }));
+      setScopes(renumberedScopes);
+    }
+  };
+
+  const handleScopeChange = (index, value) => {
+    const newScopes = [...scopes];
+    newScopes[index].scopeText = value;
+    setScopes(newScopes);
+  };
+
   const handleAddProject = () => {
     if (newProjectName.trim()) {
       const targetParticipants = parseInt(newProjectParticipants) || 0;
-      const participants = Array.from({ length: targetParticipants }, (_, index) => ({
-        id: `P${index + 1}`,
-        name: `P${index + 1}`,
-        answers: {},
-        summary: ''
+      
+      // Create scopes with participants
+      const projectScopes = scopes.map(scope => ({
+        ...scope,
+        participants: Array.from({ length: targetParticipants }, (_, index) => ({
+          id: `P${index + 1}`,
+          name: `P${index + 1}`,
+          answers: {},
+          summary: ''
+        })),
+        isActive: scope.scopeNumber === 1 // First scope is active by default
       }));
 
       addProject({
@@ -37,7 +68,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
         targetParticipants,
         robotType: newProjectRobotType,
         studyType: newProjectStudyType,
-        participants,
+        scopes: projectScopes,
         rules: []
       });
 
@@ -46,6 +77,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
       setNewProjectParticipants('');
       setNewProjectRobotType('');
       setNewProjectStudyType('');
+      setScopes([{ scopeNumber: 1, scopeText: '' }]);
       setIsAddProjectOpen(false);
     }
   };
@@ -276,6 +308,82 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                 }}
               />
             </div>
+            
+            {/* Scope Fields */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Scopes:</label>
+              {scopes.map((scope, index) => (
+                <div key={index} style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <span style={{ 
+                    minWidth: '60px', 
+                    fontWeight: 'bold', 
+                    color: '#2c3e50',
+                    fontSize: '0.9em'
+                  }}>
+                    Scope {scope.scopeNumber}:
+                  </span>
+                  <input
+                    type="text"
+                    value={scope.scopeText}
+                    onChange={(e) => handleScopeChange(index, e.target.value)}
+                    placeholder="Enter scope description..."
+                    style={{
+                      flex: 1,
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ddd',
+                      fontSize: '0.9em'
+                    }}
+                  />
+                  {scopes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveScope(index)}
+                      style={{
+                        padding: '4px 8px',
+                        backgroundColor: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.8em'
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              {scopes.length < 5 && (
+                <button
+                  type="button"
+                  onClick={handleAddScope}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#3498db',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.9em',
+                    marginTop: '5px'
+                  }}
+                >
+                  + Add New Scope
+                </button>
+              )}
+              {scopes.length >= 5 && (
+                <p style={{ 
+                  color: '#7f8c8d', 
+                  fontSize: '0.8em', 
+                  marginTop: '5px',
+                  fontStyle: 'italic'
+                }}>
+                  Maximum 5 scopes allowed
+                </p>
+              )}
+            </div>
+            
             <div style={{ marginBottom: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px' }}>Number of Participants:</label>
               <input
@@ -736,7 +844,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                 <strong>Study Type:</strong> {project.studyType || 'Not specified'}
               </p>
               <p style={{ color: '#7f8c8d', fontSize: '0.9em' }}>
-                <strong>Participants:</strong> {project.participants?.length || 0}
+                <strong>Scopes:</strong> {project.scopes?.length || 0}
               </p>
             </div>
           </div>

@@ -2,8 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const axios = require('axios');
 const fs = require('fs');
-
-let store;
+const database = require('./src/utils/database');
 
 // Default settings
 const defaultSettings = {
@@ -61,9 +60,6 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  const Store = (await import('electron-store')).default;
-  store = new Store();
-
   createWindow();
 
   app.on('activate', () => {
@@ -77,8 +73,11 @@ app.on('window-all-closed', () => {
 
 // --- IPC HANDLERS ---
 
-ipcMain.handle('get-projects', async () => store.get('projects', []));
-ipcMain.handle('save-projects', async (_e, projects) => store.set('projects', projects));
+ipcMain.handle('get-projects', async () => database.getAllProjects());
+ipcMain.handle('save-projects', async (_e, projects) => database.saveAllProjects(projects));
+ipcMain.handle('update-participant-interview', async (_e, projectId, participantId, interviewText) => {
+  database.updateParticipantInterview(projectId, participantId, interviewText);
+});
 
 ipcMain.handle('get-settings', async () => loadSettings());
 
@@ -162,4 +161,35 @@ ipcMain.handle('test-llm-connection', async (_e, url) => {
         : err.message
     };
   }
+});
+
+// Questionnaire management handlers
+ipcMain.handle('get-all-questions', async () => database.getAllQuestions());
+ipcMain.handle('update-question-status', async (_e, questionId, isEnabled) => {
+  database.updateQuestionStatus(questionId, isEnabled);
+});
+ipcMain.handle('update-question-text', async (_e, questionId, questionText) => {
+  database.updateQuestionText(questionId, questionText);
+});
+ipcMain.handle('add-question', async (_e, section, questionId, questionText, questionType, options, orderIndex) => {
+  database.addQuestion(section, questionId, questionText, questionType, options, orderIndex);
+});
+ipcMain.handle('delete-question', async (_e, questionId) => {
+  database.deleteQuestion(questionId);
+});
+
+// Project-specific question management handlers
+ipcMain.handle('get-project-questions', async (_e, projectId) => {
+  return database.getProjectQuestions(projectId);
+});
+ipcMain.handle('update-project-question-status', async (_e, projectId, questionId, isEnabled) => {
+  try {
+    database.updateProjectQuestionStatus(projectId, questionId, isEnabled);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle('get-enabled-project-questions', async (_e, projectId) => {
+  return database.getEnabledProjectQuestions(projectId);
 });

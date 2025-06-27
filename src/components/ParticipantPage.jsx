@@ -77,7 +77,24 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const navigate = useNavigate();
   const idx = parseInt(projectId, 10);
   const project = projects && projects[idx];
-  const participants = project?.participants || [];
+  
+  // State for dynamic questions from database
+  const [questions, setQuestions] = useState({});
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+  
+  // Get the selected scope from localStorage or default to first scope
+  const getSelectedScopeIndex = () => {
+    try {
+      const stored = localStorage.getItem(`project_${idx}_selected_scope`);
+      return stored ? parseInt(stored, 10) : 0;
+    } catch (error) {
+      return 0;
+    }
+  };
+  
+  const selectedScopeIndex = getSelectedScopeIndex();
+  const currentScope = project?.scopes?.[selectedScopeIndex];
+  const participants = currentScope?.participants || [];
   const participant = participants.find(p => p.id === participantId);
   const currentIndex = participants.findIndex(p => p.id === participantId);
   const [summary, setSummary] = useState(participant?.summary || '');
@@ -100,6 +117,46 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   });
   const [showRuleInput, setShowRuleInput] = useState(false);
   const [ruleToDelete, setRuleToDelete] = useState(null);
+
+  // Manual refresh function for connections
+  const refreshConnections = useRef(() => {});
+
+  // Load questions from database
+  useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        setQuestionsLoading(true);
+        const questionsData = await window.electronAPI.getEnabledProjectQuestions(idx);
+        
+        // Format them for the component
+        const formattedQuestions = {};
+        Object.keys(questionsData).forEach(section => {
+          formattedQuestions[section] = questionsData[section].map(q => {
+            if (q.questionType === 'dropdown') {
+              return {
+                id: q.questionId,
+                text: q.questionText,
+                type: 'dropdown',
+                options: q.options
+              };
+            } else {
+              return q.questionText;
+            }
+          });
+        });
+        
+        setQuestions(formattedQuestions);
+      } catch (error) {
+        console.error('Error loading questions:', error);
+        // Fallback to hardcoded questions if database fails
+        setQuestions(QUESTIONS);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    };
+    
+    loadQuestions();
+  }, [idx]);
 
   // Reset states when participant changes
   useEffect(() => {
@@ -165,6 +222,10 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       if (!rightPanel) return [];
       
       const panelRect = rightPanel.getBoundingClientRect();
+      
+      // Account for the scope header height (60px)
+      const headerHeight = 60;
+      const adjustedTop = panelRect.top + headerHeight;
 
       // First, calculate how many connections go to each box side
       const connectionCounts = {};
@@ -179,13 +240,13 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         const fromBox = boxes[pair.from];
         const toBox = boxes[pair.to];
         
-        // Calculate start point
+        // Calculate start point (adjust for header)
         const startX = pair.fromSide === 'right' 
           ? fromBox.left - panelRect.left + fromBox.width 
           : fromBox.left - panelRect.left;
-        const startY = fromBox.top - panelRect.top + (fromBox.height * 2/3); 
+        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3); 
 
-        // Calculate end point with proper spacing
+        // Calculate end point with proper spacing (adjust for header)
         const toKey = `${pair.to}-${pair.toSide}`;
         const totalConnections = connectionCounts[toKey];
         const connectionIndex = connectionPairs
@@ -193,11 +254,11 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
           .length;
 
         let endX = pair.toSide === 'left'
-          ? toBox.left - panelRect.left + toBox.width
-          : toBox.left - panelRect.left;
+          ? toBox.left - panelRect.left
+          : toBox.left - panelRect.left + toBox.width;
 
         // Calculate vertical offset for multiple connections
-        let endY = toBox.top - panelRect.top + toBox.height / 3;
+        let endY = toBox.top - adjustedTop + toBox.height / 3;
         if (totalConnections > 1) {
           const spacing = 20; // Gap between lines
           const totalHeight = (totalConnections - 1) * spacing;
@@ -209,8 +270,8 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         const verticalDistance = Math.abs(startY - endY);
         const horizontalOffset = pair.horizontalOffset || 20; // Default to 20 if not specified
 
-        // Create path with proper offsets and arrow
-          return {
+        // Create path with proper offsets
+        return {
           path: `
             M ${startX} ${startY}
             ${pair.fromSide === 'right' ? 'h' : 'h -'}${horizontalOffset}
@@ -224,26 +285,85 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
             `V ${endY}`}
             ${pair.toSide === 'right' ? 'h' : 'h -'}${horizontalOffset}
           `,
-          arrow: {
-            x: endX + (pair.toSide === 'right' ? -1 : 1),
-            y: endY,
-            direction: pair.toSide === 'right' ? 'left' : 'right'
-          }
+          startPoint: { x: startX, y: startY },
+          endPoint: { x: endX, y: endY },
+          direction: pair.toSide === 'right' ? 'right' : 'left'
         };
       });
       
       setConnections(paths);
     };
 
+    // Assign the refresh function
+    refreshConnections.current = calculateConnections;
+
+    // Initial calculation
     calculateConnections();
+    
+    // Recalculate after a short delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(calculateConnections, 100);
     
     // Recalculate on scroll
     const scrollContainer = document.querySelector('.right-panel > div');
     if (scrollContainer) {
       scrollContainer.addEventListener('scroll', calculateConnections);
-      return () => scrollContainer.removeEventListener('scroll', calculateConnections);
     }
-  }, [projects, participantId]);
+
+    // Recalculate on window resize
+    const handleResize = () => {
+      setTimeout(calculateConnections, 50);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Use ResizeObserver to detect content changes
+    let resizeObserver;
+    if (window.ResizeObserver) {
+      resizeObserver = new ResizeObserver(() => {
+        setTimeout(calculateConnections, 50);
+      });
+      
+      // Observe the right panel and its scrollable content
+      const rightPanel = document.querySelector('.right-panel');
+      if (rightPanel) {
+        resizeObserver.observe(rightPanel);
+      }
+      
+      const scrollContainer = document.querySelector('.right-panel > div');
+      if (scrollContainer) {
+        resizeObserver.observe(scrollContainer);
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      clearTimeout(timeoutId);
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', calculateConnections);
+      }
+      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, [
+    projects, 
+    participantId, 
+    participant?.answers, 
+    selectedRules, 
+    showInterview, 
+    showSummary,
+    currentScope
+  ]);
+
+  // Additional effect to handle content changes that might affect box heights
+  useEffect(() => {
+    // Refresh connections when answers change
+    const timeoutId = setTimeout(() => {
+      refreshConnections.current();
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [participant?.answers, selectedRules]);
 
   const generateSummary = async () => {
     if (!participant) return;
@@ -255,7 +375,10 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     try {
       // Check if there are any answers to summarize
       const hasAnswers = SECTIONS.some(section => 
-        QUESTIONS[section.name].some(q => participant.answers?.[section.name]?.[q])
+        questions[section.name]?.some(q => {
+          const questionText = typeof q === 'object' ? q.text : q;
+          return participant.answers?.[section.name]?.[questionText];
+        })
       );
 
       if (!hasAnswers) {
@@ -276,10 +399,11 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
 
       // Collect all answers from all sections
       const allAnswers = SECTIONS.map(section => {
-        const sectionAnswers = QUESTIONS[section.name].map(q => {
-          const answer = participant.answers?.[section.name]?.[q];
-          return answer ? `${q}: ${answer}` : null;
-        }).filter(Boolean);
+        const sectionAnswers = questions[section.name]?.map(q => {
+          const questionText = typeof q === 'object' ? q.text : q;
+          const answer = participant.answers?.[section.name]?.[questionText];
+          return answer ? `${questionText}: ${answer}` : null;
+        }).filter(Boolean) || [];
         
         return sectionAnswers.length > 0 
           ? `${section.name}:\n${sectionAnswers.join('\n')}`
@@ -312,9 +436,6 @@ Participant Responses:
 ${allAnswers.join('\n\n')}
 `;
 
-
-
-
       const generatedSummary = await window.electronAPI.generateWithDeepSeek(prompt);
       clearInterval(progressInterval);
       setProgress(100);
@@ -322,6 +443,11 @@ ${allAnswers.join('\n\n')}
       
       // Update the participant's summary using the new function
       updateParticipantSummary(idx, participantId, generatedSummary);
+      
+      // Refresh connections after summary generation
+      setTimeout(() => {
+        refreshConnections.current();
+      }, 200);
     } catch (error) {
       console.error('Failed to generate summary:', error);
       setError('Failed to generate summary. Please check if LLM is running and try again.');
@@ -379,7 +505,7 @@ Answer:`;
     const processedAnswers = {};
     const sectionsToProcess = ['Situation', 'Identity', 'Definition of Situation'];
     const totalQuestions = sectionsToProcess.reduce((acc, section) => 
-      acc + QUESTIONS[section].length, 0);
+      acc + (questions[section]?.length || 0), 0);
     let processedCount = 0;
 
     try {
@@ -388,9 +514,9 @@ Answer:`;
         processedAnswers[section] = {};
         
         // Process questions in groups of 3
-        const questions = QUESTIONS[section];
-        for (let i = 0; i < questions.length; i += 3) {
-          const batch = questions.slice(i, i + 3);
+        const sectionQuestions = questions[section] || [];
+        for (let i = 0; i < sectionQuestions.length; i += 3) {
+          const batch = sectionQuestions.slice(i, i + 3);
           const batchPromises = batch.map(async (question) => {
             const questionText = typeof question === 'object' ? question.text : question;
             const questionId = typeof question === 'object' ? question.id : questionText;
@@ -423,6 +549,11 @@ Answer:`;
           )
         ).flat()
       );
+
+      // Refresh connections after processing
+      setTimeout(() => {
+        refreshConnections.current();
+      }, 200);
 
       alert('Interview processed successfully!');
     } catch (error) {
@@ -491,10 +622,31 @@ Answer:`;
     
     setSelectedRules(updatedRules);
     updateParticipantAnswers(idx, participantId, 'Rule Selection', 'selectedRules', updatedRules);
+    
+    // Refresh connections after rule selection
+    setTimeout(() => {
+      refreshConnections.current();
+    }, 100);
   };
 
   if (!participant || !project) {
     return <div className="left-panel"><h2>Participant Not Found</h2></div>;
+  }
+
+  if (questionsLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontFamily: 'Lexend, sans-serif',
+        fontSize: '1.1em',
+        color: '#2c3e50'
+      }}>
+        Loading questionnaire...
+      </div>
+    );
   }
 
   const handleAnswerChange = (section, question, value) => {
@@ -647,6 +799,86 @@ Answer:`;
         {/* Participant Title */}
           <div style={{ marginBottom: '24px', marginTop: '36px' }}>
           <h2 style={{ fontFamily: 'Lexend, sans-serif', fontWeight: 700, fontSize: '1.3em', marginBottom: 18 }}>{participant.name}</h2>
+          
+          {/* Scope Selection */}
+          {project.scopes && project.scopes.length > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ 
+                fontFamily: 'Lexend, sans-serif', 
+                fontWeight: 600, 
+                fontSize: '1.0em', 
+                marginBottom: '12px',
+                color: '#2c3e50'
+              }}>
+                Scopes:
+              </h3>
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                flexWrap: 'wrap',
+                alignItems: 'center'
+              }}>
+                {project.scopes.map((scope, index) => (
+                  <button
+                    key={scope.id}
+                    onClick={() => {
+                      // Update localStorage and navigate to the same participant in the new scope
+                      try {
+                        localStorage.setItem(`project_${idx}_selected_scope`, index.toString());
+                      } catch (error) {
+                        console.error('Error saving selected scope:', error);
+                      }
+                      // Navigate to the same participant in the new scope
+                      navigate(`/projects/${idx}/participants/${participantId}`);
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: selectedScopeIndex === index ? '#3498db' : '#ecf0f1',
+                      color: selectedScopeIndex === index ? '#fff' : '#2c3e50',
+                      border: '1px solid',
+                      borderColor: selectedScopeIndex === index ? '#3498db' : '#bdc3c7',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: selectedScopeIndex === index ? '600' : '500',
+                      fontSize: '0.85em',
+                      fontFamily: 'Lexend, sans-serif',
+                      transition: 'all 0.2s ease',
+                      minWidth: '70px',
+                      textAlign: 'center'
+                    }}
+                    onMouseOver={(e) => {
+                      if (selectedScopeIndex !== index) {
+                        e.target.style.backgroundColor = '#d5dbdb';
+                        e.target.style.borderColor = '#95a5a6';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (selectedScopeIndex !== index) {
+                        e.target.style.backgroundColor = '#ecf0f1';
+                        e.target.style.borderColor = '#bdc3c7';
+                      }
+                    }}
+                  >
+                    Scope {scope.scopeNumber}
+                  </button>
+                ))}
+              </div>
+              {currentScope && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '4px',
+                  border: '1px solid #e9ecef',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.9em',
+                  color: '#495057'
+                }}>
+                  {currentScope.scopeText || 'No description provided'}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
           {/* Toggle Switches */}
@@ -669,7 +901,13 @@ Answer:`;
                 <input
                   type="checkbox"
                   checked={showInterview}
-                  onChange={() => setShowInterview(!showInterview)}
+                  onChange={() => {
+                    setShowInterview(!showInterview);
+                    // Refresh connections after toggle
+                    setTimeout(() => {
+                      refreshConnections.current();
+                    }, 100);
+                  }}
                   style={{ opacity: 0, width: 0, height: 0 }}
                 />
                 <span style={{
@@ -710,7 +948,13 @@ Answer:`;
                 <input
                   type="checkbox"
                   checked={showSummary}
-                  onChange={() => setShowSummary(!showSummary)}
+                  onChange={() => {
+                    setShowSummary(!showSummary);
+                    // Refresh connections after toggle
+                    setTimeout(() => {
+                      refreshConnections.current();
+                    }, 100);
+                  }}
                   style={{ opacity: 0, width: 0, height: 0 }}
                 />
                 <span style={{
@@ -1049,7 +1293,7 @@ Answer:`;
                       )}
                     </>
                   ) : (
-                    QUESTIONS[section.name].map((question, i) => {
+                    questions[section.name]?.map((question, i) => {
                       const isDropdown = typeof question === 'object' && question.type === 'dropdown';
                       const questionText = isDropdown ? question.text : question;
                       const questionId = isDropdown ? question.id : question;
@@ -1102,7 +1346,7 @@ Answer:`;
                           )}
                         </div>
                       );
-                    })
+                    }) || []
                   )}
                 </div>
               </div>
@@ -1119,32 +1363,87 @@ Answer:`;
         height: '100%',
         position: 'relative'
       }}>
+        {/* Current Scope Header */}
+        {currentScope && (
+          <div style={{
+            padding: '16px 24px',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+            color: 'white',
+            fontFamily: 'Lexend, sans-serif',
+            fontSize: '1.1em',
+            fontWeight: '600',
+            textAlign: 'center'
+          }}>
+            Current Scope: {currentScope.scopeNumber || 'No description'}
+          </div>
+        )}
+        
         {/* SVG Container for Lines */}
         <svg 
           style={{ 
             position: 'absolute',
-            top: 0,
+            top: currentScope ? '60px' : '0',
             left: 0,
-            width: '100%',
-            height: '100%',
+            right: '16px', // Leave space for scrollbar
+            height: currentScope ? 'calc(100% - 60px)' : '100%',
             pointerEvents: 'none',
-            overflow: 'visible'
+            overflow: 'visible',
+            zIndex: 100
           }}
         >
+          {/* Definitions for gradients and filters */}
+          <defs>
+            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style={{stopColor: 'rgba(255, 255, 255, 0.8)', stopOpacity: 1}} />
+              <stop offset="100%" style={{stopColor: 'rgba(255, 255, 255, 0.4)', stopOpacity: 1}} />
+            </linearGradient>
+            <filter id="dotGlow">
+              <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+              <feMerge> 
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+              refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 8 3.5, 0 7" fill="rgba(255, 255, 255, 0.8)" />
+            </marker>
+          </defs>
+          
           {connections.map((connection, index) => (
             <g key={index}>
+              {/* Connection line */}
               <path
                 d={connection.path}
-                stroke="rgba(255, 255, 255, 0.6)"
-                strokeWidth="2"
+                stroke="url(#lineGradient)"
+                strokeWidth="1"
                 fill="none"
+                opacity="2"
+                markerEnd="url(#arrowhead)"
               />
-              <path
-                d={`M ${connection.arrow.x} ${connection.arrow.y} 
-                   l ${connection.arrow.direction === 'right' ? '8' : '-8'} -4 
-                   l 0 8 z`}
-                fill="rgba(255, 255, 255, 0.6)"
+              
+              {/* Start point dot */}
+              <circle
+                cx={connection.startPoint.x}
+                cy={connection.startPoint.y}
+                r="4"
+                fill="rgba(210, 233, 255, 0.9)"
+                stroke="rgba(124, 193, 240, 0.8)"
+                strokeWidth="1"
+                filter="url(#dotGlow)"
               />
+              
+              {/* End point dot */}
+              {/*<circle
+                cx={connection.endPoint.x}
+                cy={connection.endPoint.y}
+                r="4"
+                fill="rgba(52, 152, 219, 0.9)"
+                stroke="rgba(255, 255, 255, 0.8)"
+                strokeWidth="2"
+                filter="url(#dotGlow)"
+              />*/}
             </g>
           ))}
         </svg>
@@ -1153,10 +1452,12 @@ Answer:`;
         <div style={{ 
           flex: 1,
           overflowY: 'auto', 
-          padding: '32px 0',
+          padding: '32px 16px 32px 0', // Add right padding to account for scrollbar
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center'
+          alignItems: 'center',
+          position: 'relative',
+          zIndex: 1
         }}>
         {SECTIONS.map((section, i) => (
           <div
@@ -1253,7 +1554,7 @@ Answer:`;
                     )}
                   </div>
                 ) : (
-                  QUESTIONS[section.name].map((question) => {
+                  questions[section.name]?.map((question, i) => {
                     const questionId = typeof question === 'object' ? question.id : question;
                     const answer = participant.answers?.[section.name]?.[questionId];
                     return answer ? (
@@ -1261,7 +1562,7 @@ Answer:`;
                         {answer}
                       </div>
                     ) : null;
-                  })
+                  }) || []
                 )}
               </div>
             </div>

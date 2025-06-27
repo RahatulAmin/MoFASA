@@ -122,104 +122,38 @@ const Home = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="left-panel-container">
           <button
             onClick={() => setSelectedSection('getting-started')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: selectedSection === 'getting-started' ? '#3498db' : '#f8f9fa',
-              color: selectedSection === 'getting-started' ? 'white' : '#2c3e50',
-              border: '1px solid #e9ecef',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: '1em',
-              transition: 'all 0.2s',
-              ':hover': {
-                backgroundColor: selectedSection === 'getting-started' ? '#2980b9' : '#e9ecef'
-              }
-            }}
+            className={`left-panel-button ${selectedSection === 'getting-started' ? 'selected' : ''}`}
           >
             Getting Started with MoFASA
           </button>
 
           <button
             onClick={() => setSelectedSection('MoFASA Tools tutorial')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: selectedSection === 'MoFASA Tools tutorial' ? '#3498db' : '#f8f9fa',
-              color: selectedSection === 'MoFASA Tools tutorial' ? 'white' : '#2c3e50',
-              border: '1px solid #e9ecef',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: '1em',
-              transition: 'all 0.2s',
-              ':hover': {
-                backgroundColor: selectedSection === 'research-paper' ? '#2980b9' : '#e9ecef'
-              }
-            }}
+            className={`left-panel-button ${selectedSection === 'MoFASA Tools tutorial' ? 'selected' : ''}`}
           >
             MoFASA Tools Tutorial
           </button>
 
-
           <button
             onClick={() => setSelectedSection('quick-tips')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: selectedSection === 'quick-tips' ? '#3498db' : '#f8f9fa',
-              color: selectedSection === 'quick-tips' ? 'white' : '#2c3e50',
-              border: '1px solid #e9ecef',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: '1em',
-              transition: 'all 0.2s',
-              ':hover': {
-                backgroundColor: selectedSection === 'quick-tips' ? '#2980b9' : '#e9ecef'
-              }
-            }}
+            className={`left-panel-button ${selectedSection === 'quick-tips' ? 'selected' : ''}`}
           >
             Quick Tips
           </button>
 
           <button
             onClick={() => setSelectedSection('research-paper')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: selectedSection === 'research-paper' ? '#3498db' : '#f8f9fa',
-              color: selectedSection === 'research-paper' ? 'white' : '#2c3e50',
-              border: '1px solid #e9ecef',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: '1em',
-              transition: 'all 0.2s',
-              ':hover': {
-                backgroundColor: selectedSection === 'research-paper' ? '#2980b9' : '#e9ecef'
-              }
-            }}
+            className={`left-panel-button ${selectedSection === 'research-paper' ? 'selected' : ''}`}
           >
             Research Paper on MoFASA
           </button>
 
           <button
             onClick={() => setSelectedSection('about-us')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: selectedSection === 'about-us' ? '#3498db' : '#f8f9fa',
-              color: selectedSection === 'about-us' ? 'white' : '#2c3e50',
-              border: '1px solid #e9ecef',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontSize: '1em',
-              transition: 'all 0.2s',
-              ':hover': {
-                backgroundColor: selectedSection === 'about-us' ? '#2980b9' : '#e9ecef'
-              }
-            }}
+            className={`left-panel-button ${selectedSection === 'about-us' ? 'selected' : ''}`}
           >
             About Us
           </button>
