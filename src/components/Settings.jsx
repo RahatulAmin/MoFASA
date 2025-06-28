@@ -208,14 +208,7 @@ Guidelines:
                         border: 'none',
                         borderRadius: 4,
                         cursor: 'pointer',
-                        fontSize: '0.9em',
-                        transition: 'background-color 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = '#e67e22';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = '#f39c12';
+                        fontSize: '0.9em'
                       }}
                     >
                       Questionnaire
@@ -229,14 +222,7 @@ Guidelines:
                         border: 'none',
                         borderRadius: 4,
                         cursor: 'pointer',
-                        fontSize: '0.9em',
-                        transition: 'background-color 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = '#2980b9';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = '#3498db';
+                        fontSize: '0.9em'
                       }}
                     >
                       Edit Prompt
@@ -304,14 +290,7 @@ Guidelines:
                   color: '#fff',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#7f8c8d';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#95a5a6';
+                  cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -324,14 +303,7 @@ Guidelines:
                   color: '#fff',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#27ae60';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#2ecc71';
+                  cursor: 'pointer'
                 }}
               >
                 Save Changes
@@ -387,14 +359,7 @@ Guidelines:
                   border: 'none',
                   borderRadius: 4,
                   cursor: 'pointer',
-                  fontSize: '0.9em',
-                  transition: 'background-color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#7f8c8d';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#95a5a6';
+                  fontSize: '0.9em'
                 }}
               >
                 Close
@@ -483,18 +448,7 @@ Guidelines:
               cursor: isSaving ? 'not-allowed' : 'pointer',
               opacity: isSaving ? 0.7 : 1,
               fontSize: '1em',
-              fontFamily: 'Lexend, sans-serif',
-              transition: 'background-color 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              if (!isSaving) {
-                e.target.style.backgroundColor = '#2980b9';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isSaving) {
-                e.target.style.backgroundColor = '#3498db';
-              }
+              fontFamily: 'Lexend, sans-serif'
             }}
           >
             {isSaving ? 'Saving...' : 'Save Settings'}
@@ -510,14 +464,7 @@ Guidelines:
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '1em',
-              fontFamily: 'Lexend, sans-serif',
-              transition: 'background-color 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#27ae60';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#2ecc71';
+              fontFamily: 'Lexend, sans-serif'
             }}
           >
             Test Connection

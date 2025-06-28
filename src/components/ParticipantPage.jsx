@@ -107,9 +107,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const [showSummary, setShowSummary] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [newRule, setNewRule] = useState('');
-  const [selectedRules, setSelectedRules] = useState(
-    participant?.answers?.['Rule Selection']?.selectedRules || []
-  );
+  const [selectedRules, setSelectedRules] = useState([]);
   const [extractionConfig, setExtractionConfig] = useState({
     confidenceThreshold: 0.7,
     contextWindow: 3,
@@ -164,7 +162,9 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     setError(null);
     setProgress(0);
     setInterviewText(participant?.interviewText || '');
-    setSelectedRules(participant?.answers?.['Rule Selection']?.selectedRules || []);
+    // Ensure selectedRules is always an array
+    const participantSelectedRules = participant?.answers?.['Rule Selection']?.selectedRules;
+    setSelectedRules(Array.isArray(participantSelectedRules) ? participantSelectedRules : []);
   }, [participantId, participant?.summary, participant?.interviewText, participant?.answers]);
 
   // Save interview text immediately when participant changes
@@ -573,21 +573,25 @@ Answer:`;
   };
 
   const handleAddRule = () => {
-    if (!project || !newRule.trim()) return;
-    if (!(project.rules || []).includes(newRule.trim())) {
-      const updatedRules = [...(project.rules || []), newRule.trim()];
-      updateProjectRules(idx, updatedRules);
+    if (!currentScope || !newRule.trim()) return;
+    if (!(currentScope.rules || []).includes(newRule.trim())) {
+      // Create a new scopes array with updated rules for the current scope
+      const updatedScopes = project.scopes.map((scope, i) =>
+        i === selectedScopeIndex
+          ? { ...scope, rules: [...(scope.rules || []), newRule.trim()] }
+          : scope
+      );
+      updateProjectRules(idx, updatedScopes);
       setNewRule('');
       setShowRuleInput(false);
     }
   };
 
   const handleDeleteRule = (rule) => {
-    if (!project) return;
-    const updatedRules = (project.rules || []).filter(r => r !== rule);
-    
-    // Update all participants to remove this rule from their selections
-    const updatedParticipants = participants.map(p => {
+    if (!currentScope) return;
+    const updatedRules = (currentScope.rules || []).filter(r => r !== rule);
+    // Remove this rule from all participants in this scope
+    const updatedParticipants = (currentScope.participants || []).map(p => {
       const currentRules = p.answers?.['Rule Selection']?.selectedRules || [];
       if (currentRules.includes(rule)) {
         const newSelectedRules = currentRules.filter(r => r !== rule);
@@ -604,14 +608,14 @@ Answer:`;
       }
       return p;
     });
-
-    // Update project with new rules and updated participants
-    updateProjectRules(idx, updatedRules);
-    
-    // Update selected rules for current participant
+    // Create a new scopes array with updated rules and participants for the current scope
+    const updatedScopes = project.scopes.map((scope, i) =>
+      i === selectedScopeIndex
+        ? { ...scope, rules: updatedRules, participants: updatedParticipants }
+        : scope
+    );
+    updateProjectRules(idx, updatedScopes);
     setSelectedRules(prev => prev.filter(r => r !== rule));
-    
-    // Close the dialog
     setRuleToDelete(null);
   };
 
@@ -1148,7 +1152,7 @@ Answer:`;
                         gap: '8px',
                         marginBottom: '16px'
                       }}>
-                        {(project?.rules || []).map((rule, index) => (
+                        {(currentScope?.rules || []).map((rule, index) => (
                           <div
                             key={index}
                             style={{
@@ -1253,7 +1257,7 @@ Answer:`;
                     </>
                   ) : section.name === 'Decision' ? (
                     <>
-                      {selectedRules.length > 0 ? (
+                      {Array.isArray(selectedRules) && selectedRules.length > 0 ? (
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ 
                             display: 'flex',
@@ -1494,7 +1498,7 @@ Answer:`;
               }}>
                 {section.name === 'Rule Selection' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {(project?.rules || []).map((rule, index) => (
+                    {(currentScope?.rules || []).map((rule, index) => (
                       <div
                         key={index}
                         onClick={() => handleRuleSelection(rule)}
@@ -1513,15 +1517,8 @@ Answer:`;
                   </div>
                 ) : section.name === 'Decision' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {selectedRules.length > 0 ? (
+                    {Array.isArray(selectedRules) && selectedRules.length > 0 ? (
                       <div style={{ marginBottom: 12 }}>
-                        {/* <strong style={{ 
-                          display: 'block',
-                          marginBottom: '8px',
-                          color: '#2c3e50'
-                        }}>
-                          Selected Rules for Decision:
-                        </strong> */}
                         {selectedRules.map((rule, index) => (
                           <div
                             key={index}

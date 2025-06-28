@@ -68,11 +68,11 @@ const App = () => {
     await saveProjects(newProjects);
   };
 
-  const updateProjectRules = async (projectIdx, rules) => {
+  const updateProjectRules = async (projectIdx, updatedScopes) => {
     const newProjects = projects.map((p, i) =>
       i === projectIdx ? {
         ...p,
-        rules,
+        scopes: updatedScopes,
         updatedAt: new Date().toISOString()
       } : p
     );

@@ -682,25 +682,13 @@ function updateProjectQuestionStatus(projectId, questionId, isEnabled) {
   if (!isEnabled) {
     const question = db.prepare('SELECT section FROM questionnaire WHERE questionId = ?').get(questionId);
     if (question) {
-      // Count enabled questions in this section, including those without project-specific settings
       const enabledQuestionsInSection = db.prepare(`
-        SELECT COUNT(*) as count FROM questionnaire q
-        WHERE q.section = ? AND q.questionId != ? AND (
-          EXISTS (
-            SELECT 1 FROM project_questions pq 
-            WHERE pq.projectId = ? AND pq.questionId = q.questionId AND pq.isEnabled = 1
-          ) OR (
-            NOT EXISTS (
-              SELECT 1 FROM project_questions pq 
-              WHERE pq.projectId = ? AND pq.questionId = q.questionId
-            ) AND q.isEnabled = 1
-          )
-        )
-      `).get(question.section, questionId, projectId, projectId);
+        SELECT COUNT(*) as count FROM project_questions pq
+        JOIN questionnaire q ON pq.questionId = q.questionId
+        WHERE pq.projectId = ? AND q.section = ? AND pq.isEnabled = 1
+      `).get(projectId, question.section);
       
-      console.log('Database: Found', enabledQuestionsInSection.count, 'enabled questions in section', question.section);
-      
-      if (enabledQuestionsInSection.count <= 0) {
+      if (enabledQuestionsInSection.count <= 1) {
         throw new Error(`Cannot disable the last question in section "${question.section}". At least one question must remain enabled.`);
       }
     }

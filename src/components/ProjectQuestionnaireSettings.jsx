@@ -3,14 +3,15 @@ import React, { useState, useEffect } from 'react';
 const SECTIONS = [
   { name: 'Situation', color: '#f9f3f2' },
   { name: 'Identity', color: '#fcfbf2' },
-  { name: 'Definition of Situation', color: '#f2f6fc' }
+  { name: 'Definition of Situation', color: '#f2f6fc' },
+  { name: 'Rule Selection', color: '#ededed' },
+  { name: 'Decision', color: '#f2fcf2' }
 ];
 
 const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
   const [questions, setQuestions] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [togglingQuestions, setTogglingQuestions] = useState(new Set());
 
   useEffect(() => {
     loadQuestions();
@@ -31,19 +32,10 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
   };
 
   const handleToggleQuestion = async (questionId, currentStatus) => {
-    // Prevent multiple rapid clicks
-    if (togglingQuestions.has(questionId)) {
-      return;
-    }
-
     try {
-      setTogglingQuestions(prev => new Set(prev).add(questionId));
       setError(null);
       const newStatus = !currentStatus;
-      console.log('Toggling question', questionId, 'from', currentStatus, 'to', newStatus);
-      
       const result = await window.electronAPI.updateProjectQuestionStatus(projectId, questionId, newStatus);
-      console.log('Toggle result:', result);
       
       if (result.success) {
         // Update local state
@@ -56,44 +48,12 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
           });
           return updated;
         });
-        console.log('Successfully updated question status to', newStatus);
       } else {
-        console.error('Failed to update question status:', result.error);
-        setError(result.error || 'Failed to update question status');
-        // Revert the toggle if there was an error
-        setTimeout(() => {
-          setQuestions(prevQuestions => {
-            const updated = { ...prevQuestions };
-            Object.keys(updated).forEach(section => {
-              updated[section] = updated[section].map(q => 
-                q.questionId === questionId ? { ...q, isEnabled: currentStatus } : q
-              );
-            });
-            return updated;
-          });
-        }, 100);
+        setError(result.error);
       }
     } catch (error) {
       console.error('Error updating question status:', error);
-      setError('Failed to update question status: ' + error.message);
-      // Revert the toggle if there was an error
-      setTimeout(() => {
-        setQuestions(prevQuestions => {
-          const updated = { ...prevQuestions };
-          Object.keys(updated).forEach(section => {
-            updated[section] = updated[section].map(q => 
-              q.questionId === questionId ? { ...q, isEnabled: currentStatus } : q
-            );
-          });
-          return updated;
-        });
-      }, 100);
-    } finally {
-      setTogglingQuestions(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(questionId);
-        return newSet;
-      });
+      setError('Failed to update question status');
     }
   };
 
@@ -191,24 +151,19 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
                       type="checkbox"
                       checked={question.isEnabled}
                       onChange={() => handleToggleQuestion(question.questionId, question.isEnabled)}
-                      disabled={togglingQuestions.has(question.questionId)}
                       style={{ opacity: 0, width: 0, height: 0 }}
                     />
-                    <span 
-                      onClick={() => !togglingQuestions.has(question.questionId) && handleToggleQuestion(question.questionId, question.isEnabled)}
-                      style={{
-                        position: 'absolute',
-                        cursor: togglingQuestions.has(question.questionId) ? 'not-allowed' : 'pointer',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: question.isEnabled ? '#27ae60' : '#ccc',
-                        transition: '.3s',
-                        borderRadius: '20px',
-                        opacity: togglingQuestions.has(question.questionId) ? 0.6 : 1
-                      }}
-                    >
+                    <span style={{
+                      position: 'absolute',
+                      cursor: 'pointer',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: question.isEnabled ? '#27ae60' : '#ccc',
+                      transition: '.3s',
+                      borderRadius: '20px'
+                    }}>
                       <span style={{
                         position: 'absolute',
                         content: '""',
