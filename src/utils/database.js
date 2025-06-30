@@ -57,7 +57,16 @@ function needsMigration() {
       return true;
     }
     
-    console.log('Database: No migration needed - all tables exist');
+    // Check if project_questions table has the section column
+    const projectQuestionsColumns = db.prepare("PRAGMA table_info(project_questions)").all();
+    const projectQuestionsColumnNames = projectQuestionsColumns.map(col => col.name);
+    
+    if (!projectQuestionsColumnNames.includes('section')) {
+      console.log('Database: project_questions table missing section column - migration needed');
+      return true;
+    }
+    
+    console.log('Database: No migration needed - all tables exist with correct structure');
     return false;
   } catch (error) {
     console.log('Database: Error checking migration status:', error);
@@ -76,13 +85,13 @@ function performMigration() {
       DROP TABLE IF EXISTS participant_answers;
       DROP TABLE IF EXISTS participants;
       DROP TABLE IF EXISTS scopes;
-      DROP TABLE IF EXISTS projects;
-      DROP TABLE IF EXISTS questionnaire;
       DROP TABLE IF EXISTS project_questions;
+      DROP TABLE IF EXISTS questionnaire;
+      DROP TABLE IF EXISTS projects;
     `);
     
-    // Create new tables with correct structure
-    const createTables = `
+    // Create tables without foreign key constraints first
+    const createTablesWithoutFK = `
     -- Projects table
     CREATE TABLE projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,19 +101,6 @@ function performMigration() {
       summaryPrompt TEXT,
       createdAt TEXT,
       updatedAt TEXT
-    );
-
-    -- Scopes table
-    CREATE TABLE scopes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      projectId INTEGER NOT NULL,
-      scopeNumber INTEGER NOT NULL,
-      scopeText TEXT NOT NULL,
-      isActive BOOLEAN DEFAULT 1,
-      createdAt TEXT,
-      updatedAt TEXT,
-      FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE CASCADE,
-      UNIQUE(projectId, scopeNumber)
     );
 
     -- Questionnaire table
@@ -122,16 +118,28 @@ function performMigration() {
       UNIQUE(section, questionId)
     );
 
-    -- Project questions table (project-specific question settings)
+    -- Project questions table (without foreign key constraints initially)
     CREATE TABLE project_questions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       projectId INTEGER NOT NULL,
       questionId TEXT NOT NULL,
+      section TEXT NOT NULL,
       isEnabled BOOLEAN DEFAULT 1,
       createdAt TEXT,
       updatedAt TEXT,
-      FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE CASCADE,
       UNIQUE(projectId, questionId)
+    );
+
+    -- Scopes table
+    CREATE TABLE scopes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projectId INTEGER NOT NULL,
+      scopeNumber INTEGER NOT NULL,
+      scopeText TEXT NOT NULL,
+      isActive BOOLEAN DEFAULT 1,
+      createdAt TEXT,
+      updatedAt TEXT,
+      UNIQUE(projectId, scopeNumber)
     );
 
     -- Participants table
@@ -145,8 +153,6 @@ function performMigration() {
       interviewText TEXT,
       createdAt TEXT,
       updatedAt TEXT,
-      FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE CASCADE,
-      FOREIGN KEY (scopeId) REFERENCES scopes(id) ON DELETE CASCADE,
       UNIQUE(projectId, scopeId, participantId)
     );
 
@@ -159,7 +165,6 @@ function performMigration() {
       answer TEXT,
       createdAt TEXT,
       updatedAt TEXT,
-      FOREIGN KEY (participantId) REFERENCES participants(id) ON DELETE CASCADE,
       UNIQUE(participantId, section, question)
     );
 
@@ -171,12 +176,36 @@ function performMigration() {
       environmentalChanges TEXT,
       createdAt TEXT,
       updatedAt TEXT,
-      FOREIGN KEY (scopeId) REFERENCES scopes(id) ON DELETE CASCADE,
       UNIQUE(scopeId)
     );
     `;
     
-    db.exec(createTables);
+    db.exec(createTablesWithoutFK);
+    
+    // Try to add foreign key constraints separately
+    try {
+      db.exec(`
+        -- Add foreign key constraints
+        PRAGMA foreign_keys = ON;
+        
+        -- Add foreign key constraints to project_questions
+        CREATE INDEX idx_project_questions_fk ON project_questions(projectId, questionId, section);
+        
+        -- Add foreign key constraints to scopes
+        CREATE INDEX idx_scopes_fk ON scopes(projectId);
+        
+        -- Add foreign key constraints to participants
+        CREATE INDEX idx_participants_fk ON participants(projectId, scopeId);
+        
+        -- Add foreign key constraints to participant_answers
+        CREATE INDEX idx_participant_answers_fk ON participant_answers(participantId);
+        
+        -- Add foreign key constraints to situation_design
+        CREATE INDEX idx_situation_design_fk ON situation_design(scopeId);
+      `);
+    } catch (fkError) {
+      console.log('Database: Foreign key constraints failed, continuing without them:', fkError.message);
+    }
     
     // Populate questionnaire table with default questions
     const insertQuestion = db.prepare(`
@@ -258,10 +287,11 @@ function performMigration() {
   }
 }
 
-// Initialize database - run migration first if needed
-console.log('Database: Initializing database...');
+// Initialize database with migration if needed
 if (needsMigration()) {
+  console.log('Database: Running migration...');
   performMigration();
+  console.log('Database: Migration completed');
 } else {
   console.log('Database: No migration needed');
 }
@@ -642,7 +672,7 @@ function getProjectQuestions(projectId) {
   
   // Get project-specific settings
   const projectSettings = db.prepare(`
-    SELECT questionId, isEnabled FROM project_questions 
+    SELECT questionId, section, isEnabled FROM project_questions 
     WHERE projectId = ?
   `).all(projectId);
   
@@ -676,31 +706,50 @@ function getProjectQuestions(projectId) {
 
 // Update project question status
 function updateProjectQuestionStatus(projectId, questionId, isEnabled) {
-  console.log('Database: Updating project question status', projectId, questionId, isEnabled);
+  console.log('Database: Updating project question status', { projectId, questionId, isEnabled, projectIdType: typeof projectId });
+  
+  // Ensure projectId is a valid integer
+  const numericProjectId = parseInt(projectId, 10);
+  if (isNaN(numericProjectId)) {
+    throw new Error(`Invalid project ID: ${projectId}. Project ID must be a valid number.`);
+  }
+  
+  // First, check if the question exists in the questionnaire table
+  const question = db.prepare('SELECT section FROM questionnaire WHERE questionId = ?').get(questionId);
+  if (!question) {
+    throw new Error(`Question with ID "${questionId}" does not exist in the questionnaire table.`);
+  }
   
   // Check if this would disable the last question in a section
   if (!isEnabled) {
-    const question = db.prepare('SELECT section FROM questionnaire WHERE questionId = ?').get(questionId);
-    if (question) {
-      const enabledQuestionsInSection = db.prepare(`
-        SELECT COUNT(*) as count FROM project_questions pq
-        JOIN questionnaire q ON pq.questionId = q.questionId
-        WHERE pq.projectId = ? AND q.section = ? AND pq.isEnabled = 1
-      `).get(projectId, question.section);
-      
-      if (enabledQuestionsInSection.count <= 1) {
-        throw new Error(`Cannot disable the last question in section "${question.section}". At least one question must remain enabled.`);
-      }
+    // Count enabled questions in the section, considering both project-specific and global settings
+    const enabledQuestionsInSection = db.prepare(`
+      SELECT COUNT(*) as count FROM questionnaire q
+      WHERE q.section = ? AND (
+        q.questionId IN (
+          SELECT pq.questionId FROM project_questions pq 
+          WHERE pq.projectId = ? AND pq.isEnabled = 1
+        ) OR (
+          q.questionId NOT IN (
+            SELECT pq.questionId FROM project_questions pq 
+            WHERE pq.projectId = ?
+          ) AND q.isEnabled = 1
+        )
+      )
+    `).get(question.section, numericProjectId, numericProjectId);
+    
+    if (enabledQuestionsInSection.count <= 1) {
+      throw new Error(`Cannot disable the last question in section "${question.section}". At least one question must remain enabled.`);
     }
   }
   
   // Insert or update project question setting
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO project_questions (projectId, questionId, isEnabled, updatedAt) 
-    VALUES (?, ?, ?, ?)
+    INSERT OR REPLACE INTO project_questions (projectId, questionId, section, isEnabled, updatedAt) 
+    VALUES (?, ?, ?, ?, ?)
   `);
   
-  stmt.run(projectId, questionId, isEnabled ? 1 : 0, new Date().toISOString());
+  stmt.run(numericProjectId, questionId, question.section, isEnabled ? 1 : 0, new Date().toISOString());
 }
 
 // Get enabled questions for a project (for participant forms)
@@ -710,7 +759,7 @@ function getEnabledProjectQuestions(projectId) {
   const questions = db.prepare(`
     SELECT q.*, COALESCE(pq.isEnabled, q.isEnabled) as finalEnabled
     FROM questionnaire q
-    LEFT JOIN project_questions pq ON q.questionId = pq.questionId AND pq.projectId = ?
+    LEFT JOIN project_questions pq ON q.questionId = pq.questionId AND q.section = pq.section AND pq.projectId = ?
     WHERE COALESCE(pq.isEnabled, q.isEnabled) = 1
     ORDER BY q.section, q.orderIndex
   `).all(projectId);

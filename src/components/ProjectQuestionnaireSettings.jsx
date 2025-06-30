@@ -13,6 +13,8 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  console.log('ProjectQuestionnaireSettings received projectId:', projectId, 'type:', typeof projectId);
+
   useEffect(() => {
     loadQuestions();
   }, [projectId]);
@@ -35,6 +37,7 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
     try {
       setError(null);
       const newStatus = !currentStatus;
+      console.log('handleToggleQuestion called with projectId:', projectId, 'questionId:', questionId, 'newStatus:', newStatus);
       const result = await window.electronAPI.updateProjectQuestionStatus(projectId, questionId, newStatus);
       
       if (result.success) {

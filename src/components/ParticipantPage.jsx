@@ -78,6 +78,9 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const idx = parseInt(projectId, 10);
   const project = projects && projects[idx];
   
+  // Use the actual project database ID for DB calls
+  const actualProjectId = project?.id;
+  
   // State for dynamic questions from database
   const [questions, setQuestions] = useState({});
   const [questionsLoading, setQuestionsLoading] = useState(true);
@@ -124,7 +127,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     const loadQuestions = async () => {
       try {
         setQuestionsLoading(true);
-        const questionsData = await window.electronAPI.getEnabledProjectQuestions(idx);
+        const questionsData = await window.electronAPI.getEnabledProjectQuestions(actualProjectId);
         
         // Format them for the component
         const formattedQuestions = {};
@@ -154,7 +157,47 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     };
     
     loadQuestions();
-  }, [idx]);
+  }, [actualProjectId]);
+
+  // Add focus event listener to reload questions when returning to the page
+  useEffect(() => {
+    const handleFocus = async () => {
+      // Reload questions when the window gains focus (user returns to the page)
+      try {
+        setQuestionsLoading(true);
+        const questionsData = await window.electronAPI.getEnabledProjectQuestions(actualProjectId);
+        
+        // Format them for the component
+        const formattedQuestions = {};
+        Object.keys(questionsData).forEach(section => {
+          formattedQuestions[section] = questionsData[section].map(q => {
+            if (q.questionType === 'dropdown') {
+              return {
+                id: q.questionId,
+                text: q.questionText,
+                type: 'dropdown',
+                options: q.options
+              };
+            } else {
+              return q.questionText;
+            }
+          });
+        });
+        
+        setQuestions(formattedQuestions);
+      } catch (error) {
+        console.error('Error reloading questions:', error);
+      } finally {
+        setQuestionsLoading(false);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [actualProjectId]);
 
   // Reset states when participant changes
   useEffect(() => {
@@ -172,7 +215,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     const saveInterviewText = async () => {
       if (participant && interviewText) {
         try {
-          await window.electronAPI.updateParticipantInterview(idx, participantId, interviewText);
+          await window.electronAPI.updateParticipantInterview(actualProjectId, participantId, interviewText);
         } catch (error) {
           console.error('Error saving interview text:', error);
         }
@@ -447,7 +490,7 @@ ${allAnswers.join('\n\n')}
       // Refresh connections after summary generation
       setTimeout(() => {
         refreshConnections.current();
-      }, 200);
+      }, 100);
     } catch (error) {
       console.error('Failed to generate summary:', error);
       setError('Failed to generate summary. Please check if LLM is running and try again.');
@@ -460,37 +503,18 @@ ${allAnswers.join('\n\n')}
 
   const processQuestionWithLLM = async (question, interviewText, config) => {
     try {
-      const prompt = `You are analyzing an interview about human-robot interaction. Extract a precise answer to the question from the interview text. If you cannot find a clear answer, respond with an empty string.
-
-Question: "${question}"
+      const prompt = `Based on the following interview text, answer this specific question: "${question}"
 
 Interview Text:
 ${interviewText}
 
-Instructions:
-1. Only extract information that is explicitly stated or can be directly inferred from the interview text
-2. If the answer is not clear or not present, respond with an empty string ("")
-3. Keep the answer very short and precise - one sentence maximum
-4. Do not repeat the question in your answer
-5. Do not add any explanations or assumptions
-6. Do not use phrases like "According to the interview" or "The participant mentioned"
+Please provide a concise, direct answer to the question based on the interview content.`;
 
-Answer:`;
-
-      const result = await window.electronAPI.generateWithDeepSeek(prompt);
-      const answer = result.trim();
-      
-      return {
-        answer: answer || '',  // Convert empty strings to actual empty strings
-        confidence: answer.length > 0 ? 1 : 0
-      };
+      const response = await window.electronAPI.generateWithDeepSeek(prompt);
+      return response.trim();
     } catch (error) {
-      console.error('Error processing question:', error);
-      return {
-        answer: '',
-        confidence: 0,
-        error: error.message
-      };
+      console.error('Error processing question with LLM:', error);
+      throw error;
     }
   };
 
@@ -501,47 +525,29 @@ Answer:`;
     }
 
     setIsProcessing(true);
-    setIsUpdating(true);
-    const processedAnswers = {};
-    const sectionsToProcess = ['Situation', 'Identity', 'Definition of Situation'];
-    const totalQuestions = sectionsToProcess.reduce((acc, section) => 
-      acc + (questions[section]?.length || 0), 0);
-    let processedCount = 0;
+    setError(null);
 
     try {
-      // Process questions in batches to prevent UI freezing
-      for (const section of sectionsToProcess) {
+      // Process each question in the enabled questions
+      const processedAnswers = {};
+      
+      for (const [section, sectionQuestions] of Object.entries(questions)) {
         processedAnswers[section] = {};
         
-        // Process questions in groups of 3
-        const sectionQuestions = questions[section] || [];
-        for (let i = 0; i < sectionQuestions.length; i += 3) {
-          const batch = sectionQuestions.slice(i, i + 3);
-          const batchPromises = batch.map(async (question) => {
-            const questionText = typeof question === 'object' ? question.text : question;
-            const questionId = typeof question === 'object' ? question.id : questionText;
-            
-            // Skip demographic questions that require specific options
-            if (typeof question === 'object' && question.type === 'dropdown') {
-              processedAnswers[section][questionId] = participant?.answers?.[section]?.[questionId] || '';
-              return;
-            }
-
-            const result = await processQuestionWithLLM(questionText, interviewText, extractionConfig);
-            processedAnswers[section][questionId] = result.answer;
-          });
-
-          // Wait for the batch to complete
-          await Promise.all(batchPromises);
-          processedCount += batch.length;
-          setProgress((processedCount / totalQuestions) * 100);
+        for (const question of sectionQuestions) {
+          const questionText = typeof question === 'string' ? question : question.text;
           
-          // Small delay to prevent UI freezing
-          await new Promise(resolve => setTimeout(resolve, 100));
+          try {
+            const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig);
+            processedAnswers[section][questionText] = answer;
+          } catch (error) {
+            console.error(`Error processing question "${questionText}":`, error);
+            processedAnswers[section][questionText] = 'Error processing this question';
+          }
         }
       }
 
-      // Update all answers at once
+      // Save all processed answers
       await Promise.all(
         Object.entries(processedAnswers).map(([section, answers]) =>
           Object.entries(answers).map(([question, answer]) =>
@@ -550,34 +556,24 @@ Answer:`;
         ).flat()
       );
 
-      // Refresh connections after processing
-      setTimeout(() => {
-        refreshConnections.current();
-      }, 200);
-
-      alert('Interview processed successfully!');
+      alert('Interview processing completed! All answers have been saved.');
+      setShowInterview(false);
     } catch (error) {
-      alert('Error processing interview: ' + error.message);
+      console.error('Error processing interview:', error);
+      setError('Failed to process interview. Please try again.');
     } finally {
       setIsProcessing(false);
-      setIsUpdating(false);
-      setProgress(0);
     }
   };
 
   const handleConfigChange = (key, value) => {
-    setExtractionConfig(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setExtractionConfig(prev => ({ ...prev, [key]: value }));
   };
 
   const handleAddRule = () => {
-    if (!currentScope || !newRule.trim()) return;
-    if (!(currentScope.rules || []).includes(newRule.trim())) {
-      // Create a new scopes array with updated rules for the current scope
-      const updatedScopes = project.scopes.map((scope, i) =>
-        i === selectedScopeIndex
+    if (newRule.trim()) {
+      const updatedScopes = project.scopes.map((scope, scopeIndex) =>
+        scopeIndex === selectedScopeIndex
           ? { ...scope, rules: [...(scope.rules || []), newRule.trim()] }
           : scope
       );
@@ -588,35 +584,20 @@ Answer:`;
   };
 
   const handleDeleteRule = (rule) => {
-    if (!currentScope) return;
-    const updatedRules = (currentScope.rules || []).filter(r => r !== rule);
-    // Remove this rule from all participants in this scope
-    const updatedParticipants = (currentScope.participants || []).map(p => {
-      const currentRules = p.answers?.['Rule Selection']?.selectedRules || [];
-      if (currentRules.includes(rule)) {
-        const newSelectedRules = currentRules.filter(r => r !== rule);
-        return {
-          ...p,
-          answers: {
-            ...p.answers,
-            'Rule Selection': {
-              ...p.answers?.['Rule Selection'],
-              selectedRules: newSelectedRules
-            }
-          }
-        };
-      }
-      return p;
-    });
-    // Create a new scopes array with updated rules and participants for the current scope
-    const updatedScopes = project.scopes.map((scope, i) =>
-      i === selectedScopeIndex
-        ? { ...scope, rules: updatedRules, participants: updatedParticipants }
-        : scope
-    );
-    updateProjectRules(idx, updatedScopes);
-    setSelectedRules(prev => prev.filter(r => r !== rule));
-    setRuleToDelete(null);
+    setRuleToDelete(rule);
+  };
+
+  const confirmDeleteRule = () => {
+    if (ruleToDelete) {
+      const updatedScopes = project.scopes.map((scope, scopeIndex) =>
+        scopeIndex === selectedScopeIndex
+          ? { ...scope, rules: (scope.rules || []).filter(r => r !== ruleToDelete) }
+          : scope
+      );
+      updateProjectRules(idx, updatedScopes);
+      setSelectedRules(prev => prev.filter(r => r !== ruleToDelete));
+      setRuleToDelete(null);
+    }
   };
 
   const handleRuleSelection = (rule) => {
@@ -1607,7 +1588,7 @@ Answer:`;
                 Cancel
               </button>
               <button
-                onClick={() => handleDeleteRule(ruleToDelete)}
+                onClick={confirmDeleteRule}
                 style={{
                   padding: '8px 16px',
                   backgroundColor: '#e74c3c',

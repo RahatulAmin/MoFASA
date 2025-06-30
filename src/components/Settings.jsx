@@ -200,7 +200,10 @@ Guidelines:
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
-                      onClick={() => setSelectedProjectForQuestionnaire(project)}
+                      onClick={() => {
+                        console.log('Project for questionnaire:', project);
+                        setSelectedProjectForQuestionnaire(project);
+                      }}
                       style={{
                         padding: '8px 16px',
                         backgroundColor: '#f39c12',
