@@ -141,10 +141,7 @@ const App = () => {
     });
     setProjects(newProjects);
     await saveProjects(newProjects);
-    
-    // Reload projects from database to get proper IDs
-    const updatedProjects = await getProjects();
-    setProjects(updatedProjects);
+    // Do NOT reload projects from the database here!
   };
 
   const updateParticipantSummary = async (projectIdx, participantId, summary) => {
