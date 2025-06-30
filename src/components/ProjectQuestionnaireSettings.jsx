@@ -16,6 +16,12 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
   console.log('ProjectQuestionnaireSettings received projectId:', projectId, 'type:', typeof projectId);
 
   useEffect(() => {
+    if (!projectId) {
+      console.error('ProjectQuestionnaireSettings: No projectId provided');
+      setError('No project ID provided. Please close and reopen the questionnaire settings.');
+      setLoading(false);
+      return;
+    }
     loadQuestions();
   }, [projectId]);
 
@@ -23,11 +29,18 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
     try {
       setLoading(true);
       setError(null);
+      console.log('ProjectQuestionnaireSettings: Loading questions for projectId:', projectId);
+      
+      if (!projectId) {
+        throw new Error('No project ID provided');
+      }
+      
       const questionsData = await window.electronAPI.getProjectQuestions(projectId);
+      console.log('ProjectQuestionnaireSettings: Received questions data:', questionsData);
       setQuestions(questionsData);
     } catch (error) {
       console.error('Error loading questions:', error);
-      setError('Failed to load questions');
+      setError('Failed to load questions: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -38,7 +51,13 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
       setError(null);
       const newStatus = !currentStatus;
       console.log('handleToggleQuestion called with projectId:', projectId, 'questionId:', questionId, 'newStatus:', newStatus);
+      
+      if (!projectId) {
+        throw new Error('No project ID provided');
+      }
+      
       const result = await window.electronAPI.updateProjectQuestionStatus(projectId, questionId, newStatus);
+      console.log('handleToggleQuestion result:', result);
       
       if (result.success) {
         // Update local state
@@ -49,6 +68,7 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
               q.questionId === questionId ? { ...q, isEnabled: newStatus } : q
             );
           });
+          console.log('Updated questions state:', updated);
           return updated;
         });
       } else {
@@ -56,7 +76,7 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
       }
     } catch (error) {
       console.error('Error updating question status:', error);
-      setError('Failed to update question status');
+      setError('Failed to update question status: ' + error.message);
     }
   };
 
@@ -95,6 +115,29 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
         }}>
           Enable or disable questions for <strong>{projectName}</strong>. At least one question per section must remain enabled.
         </p>
+        <button
+          onClick={async () => {
+            console.log('Testing project question settings for projectId:', projectId);
+            if (!projectId) {
+              console.error('No project ID provided for testing');
+              alert('No project ID provided. Please close and reopen the questionnaire settings.');
+              return;
+            }
+            await window.electronAPI.testProjectQuestionSettings(projectId);
+          }}
+          style={{
+            padding: '4px 8px',
+            backgroundColor: '#3498db',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.8em',
+            marginTop: '8px'
+          }}
+        >
+          Test Database State
+        </button>
       </div>
 
       {error && (

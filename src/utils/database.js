@@ -670,11 +670,16 @@ function getProjectQuestions(projectId) {
     ORDER BY section, orderIndex
   `).all();
   
+  console.log('Database: Found', allQuestions.length, 'total questions');
+  
   // Get project-specific settings
   const projectSettings = db.prepare(`
     SELECT questionId, section, isEnabled FROM project_questions 
     WHERE projectId = ?
   `).all(projectId);
+  
+  console.log('Database: Found', projectSettings.length, 'project-specific settings for project', projectId);
+  console.log('Database: Project settings:', projectSettings);
   
   // Create a map of project settings
   const projectSettingsMap = {};
@@ -682,14 +687,21 @@ function getProjectQuestions(projectId) {
     projectSettingsMap[setting.questionId] = setting.isEnabled;
   });
   
+  console.log('Database: Project settings map:', projectSettingsMap);
+  
   // Merge with all questions
-  const questionsWithProjectSettings = allQuestions.map(question => ({
-    ...question,
-    options: question.options ? JSON.parse(question.options) : null,
-    isEnabled: projectSettingsMap.hasOwnProperty(question.questionId) 
-      ? projectSettingsMap[question.questionId] 
-      : question.isEnabled // Default to global setting if no project-specific setting
-  }));
+  const questionsWithProjectSettings = allQuestions.map(question => {
+    const hasProjectSetting = projectSettingsMap.hasOwnProperty(question.questionId);
+    const finalEnabled = hasProjectSetting ? projectSettingsMap[question.questionId] : question.isEnabled;
+    
+    console.log(`Database: Question ${question.questionId} (${question.questionText.substring(0, 30)}...): hasProjectSetting=${hasProjectSetting}, globalEnabled=${question.isEnabled}, finalEnabled=${finalEnabled}`);
+    
+    return {
+      ...question,
+      options: question.options ? JSON.parse(question.options) : null,
+      isEnabled: finalEnabled
+    };
+  });
   
   // Group questions by section
   const groupedQuestions = {};
@@ -701,6 +713,7 @@ function getProjectQuestions(projectId) {
   });
   
   console.log('Database: Found questions for', Object.keys(groupedQuestions).length, 'sections');
+  console.log('Database: Final grouped questions:', groupedQuestions);
   return groupedQuestions;
 }
 
@@ -782,6 +795,31 @@ function getEnabledProjectQuestions(projectId) {
   return groupedQuestions;
 }
 
+// Test function to check project question settings
+function testProjectQuestionSettings(projectId) {
+  console.log('=== TESTING PROJECT QUESTION SETTINGS ===');
+  console.log('Project ID:', projectId);
+  
+  // Check all project_questions entries for this project
+  const allProjectSettings = db.prepare(`
+    SELECT * FROM project_questions 
+    WHERE projectId = ?
+  `).all(projectId);
+  
+  console.log('All project_questions entries for project', projectId, ':', allProjectSettings);
+  
+  // Check specific questions
+  const specificQuestions = db.prepare(`
+    SELECT pq.*, q.questionText 
+    FROM project_questions pq
+    JOIN questionnaire q ON pq.questionId = q.questionId
+    WHERE pq.projectId = ?
+  `).all(projectId);
+  
+  console.log('Project questions with text:', specificQuestions);
+  console.log('=== END TEST ===');
+}
+
 module.exports = {
   getAllProjects,
   saveAllProjects,
@@ -796,5 +834,6 @@ module.exports = {
   deleteQuestion,
   getProjectQuestions,
   updateProjectQuestionStatus,
-  getEnabledProjectQuestions
+  getEnabledProjectQuestions,
+  testProjectQuestionSettings
 };

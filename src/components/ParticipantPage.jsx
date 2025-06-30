@@ -666,6 +666,7 @@ Please provide a concise, direct answer to the question based on the interview c
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
             <button
+              key="back-button"
               onClick={() => navigate(`/projects/${projectId}`)}
               style={{
                 padding: '6px 16px',
@@ -691,6 +692,7 @@ Please provide a concise, direct answer to the question based on the interview c
               &#8592; Back
             </button>
           <button
+            key="prev-button"
             onClick={() => {
               if (start > 0) navigate(`/projects/${projectId}/participants/${participants[start - 1].id}`);
             }}
@@ -709,7 +711,7 @@ Please provide a concise, direct answer to the question based on the interview c
           </button>
           {visibleParticipants.map((p, i) => (
             <span
-              key={p.id}
+              key={`participant-${p.id}-${i}`}
               onClick={() => navigate(`/projects/${projectId}/participants/${p.id}`)}
               style={{
                 padding: '4px 10px',
@@ -728,6 +730,7 @@ Please provide a concise, direct answer to the question based on the interview c
             </span>
           ))}
           <button
+            key="next-button"
             onClick={() => {
               if (end < participants.length) navigate(`/projects/${projectId}/participants/${participants[end].id}`);
             }}
@@ -805,7 +808,7 @@ Please provide a concise, direct answer to the question based on the interview c
               }}>
                 {project.scopes.map((scope, index) => (
                   <button
-                    key={scope.id}
+                    key={`scope-${scope.scopeNumber}-${index}`}
                     onClick={() => {
                       // Update localStorage and navigate to the same participant in the new scope
                       try {
@@ -1204,6 +1207,7 @@ Please provide a concise, direct answer to the question based on the interview c
                             autoFocus
                           />
                           <button
+                            key="add-rule"
                             onClick={handleAddRule}
                             disabled={!newRule.trim()}
                             style={{
@@ -1218,6 +1222,7 @@ Please provide a concise, direct answer to the question based on the interview c
                             Add
                           </button>
                           <button
+                            key="cancel-rule"
                             onClick={() => {
                               setShowRuleInput(false);
                               setNewRule('');
@@ -1575,6 +1580,7 @@ Please provide a concise, direct answer to the question based on the interview c
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button
+                key="cancel-delete"
                 onClick={() => setRuleToDelete(null)}
                 style={{
                   padding: '8px 16px',
@@ -1588,6 +1594,7 @@ Please provide a concise, direct answer to the question based on the interview c
                 Cancel
               </button>
               <button
+                key="confirm-delete"
                 onClick={confirmDeleteRule}
                 style={{
                   padding: '8px 16px',

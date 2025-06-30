@@ -557,6 +557,11 @@ button:disabled {
   }
   
   .left-panel-button.selected:hover {
-    background-color: #2980b9;
+    background-color: #34495e;
   }
+  
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
   

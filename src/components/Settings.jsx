@@ -16,6 +16,16 @@ const Settings = ({ projects }) => {
   const [editPrompt, setEditPrompt] = useState('');
   const [selectedProjectForQuestionnaire, setSelectedProjectForQuestionnaire] = useState(null);
 
+  // Debug: Log when projects change
+  useEffect(() => {
+    console.log('Settings: Projects updated:', projects);
+    console.log('Settings: Projects length:', projects.length);
+    console.log('Settings: First project:', projects[0]);
+    if (projects.length > 0) {
+      console.log('Settings: First project keys:', Object.keys(projects[0]));
+    }
+  }, [projects]);
+
   // Function to check connection status
   const checkConnectionStatus = async () => {
     try {
@@ -157,7 +167,7 @@ Guidelines:
     <div>
       <h2>Projects</h2>
       <div style={{ marginTop: 20 }}>
-        {projects.length === 0 ? (
+        {!projects || projects.length === 0 ? (
           <p style={{ color: '#666' }}>No projects available.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -202,6 +212,10 @@ Guidelines:
                     <button
                       onClick={() => {
                         console.log('Project for questionnaire:', project);
+                        console.log('Project name:', project.name);
+                        console.log('Project object keys:', Object.keys(project));
+                        console.log('Project type:', typeof project);
+                        
                         setSelectedProjectForQuestionnaire(project);
                       }}
                       style={{

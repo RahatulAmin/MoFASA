@@ -37,6 +37,10 @@ const App = () => {
     const newProjects = [...projects, newProject];
     setProjects(newProjects);
     await saveProjects(newProjects);
+    
+    // Reload projects from database to get proper IDs
+    const updatedProjects = await getProjects();
+    setProjects(updatedProjects);
   };
 
   const editProject = async (index, projectData) => {
@@ -48,12 +52,20 @@ const App = () => {
     };
     setProjects(newProjects);
     await saveProjects(newProjects);
+    
+    // Reload projects from database to get proper IDs
+    const updatedProjects = await getProjects();
+    setProjects(updatedProjects);
   };
 
   const deleteProject = async (index) => {
     const newProjects = projects.filter((_, i) => i !== index);
     setProjects(newProjects);
     await saveProjects(newProjects);
+    
+    // Reload projects from database to get proper IDs
+    const updatedProjects = await getProjects();
+    setProjects(updatedProjects);
   };
 
   const updateProjectDescription = async (index, description) => {
@@ -66,6 +78,10 @@ const App = () => {
     );
     setProjects(newProjects);
     await saveProjects(newProjects);
+    
+    // Reload projects from database to get proper IDs
+    const updatedProjects = await getProjects();
+    setProjects(updatedProjects);
   };
 
   const updateProjectRules = async (projectIdx, updatedScopes) => {
@@ -78,6 +94,10 @@ const App = () => {
     );
     setProjects(newProjects);
     await saveProjects(newProjects);
+    
+    // Reload projects from database to get proper IDs
+    const updatedProjects = await getProjects();
+    setProjects(updatedProjects);
   };
 
   const updateParticipantAnswers = async (projectIdx, participantId, section, question, value) => {
@@ -121,6 +141,10 @@ const App = () => {
     });
     setProjects(newProjects);
     await saveProjects(newProjects);
+    
+    // Reload projects from database to get proper IDs
+    const updatedProjects = await getProjects();
+    setProjects(updatedProjects);
   };
 
   const updateParticipantSummary = async (projectIdx, participantId, summary) => {
@@ -161,6 +185,10 @@ const App = () => {
     });
     setProjects(newProjects);
     await saveProjects(newProjects);
+    
+    // Reload projects from database to get proper IDs
+    const updatedProjects = await getProjects();
+    setProjects(updatedProjects);
   };
 
   function SidebarLinks() {

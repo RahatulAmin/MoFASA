@@ -22,5 +22,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getProjectQuestions: (projectId) => ipcRenderer.invoke('get-project-questions', projectId),
   updateProjectQuestionStatus: (projectId, questionId, isEnabled) => 
     ipcRenderer.invoke('update-project-question-status', projectId, questionId, isEnabled),
-  getEnabledProjectQuestions: (projectId) => ipcRenderer.invoke('get-enabled-project-questions', projectId)
+  getEnabledProjectQuestions: (projectId) => ipcRenderer.invoke('get-enabled-project-questions', projectId),
+  testProjectQuestionSettings: (projectId) => ipcRenderer.invoke('test-project-question-settings', projectId)
 });

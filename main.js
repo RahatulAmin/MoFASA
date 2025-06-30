@@ -193,3 +193,7 @@ ipcMain.handle('update-project-question-status', async (_e, projectId, questionI
 ipcMain.handle('get-enabled-project-questions', async (_e, projectId) => {
   return database.getEnabledProjectQuestions(projectId);
 });
+
+ipcMain.handle('test-project-question-settings', async (_e, projectId) => {
+  return database.testProjectQuestionSettings(projectId);
+});

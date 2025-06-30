@@ -21,6 +21,13 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importedProjectData, setImportedProjectData] = useState(null);
   const [importProjectName, setImportProjectName] = useState('');
+  
+  // Questionnaire configuration state
+  const [showQuestionnaireStep, setShowQuestionnaireStep] = useState(false);
+  const [questions, setQuestions] = useState({});
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [questionnaireError, setQuestionnaireError] = useState(null);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const handleAddScope = () => {
     if (scopes.length < 5) {
@@ -219,6 +226,182 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
     setImportError('');
   };
 
+  // Load questions for questionnaire configuration
+  const loadQuestionsForConfiguration = async () => {
+    try {
+      setQuestionsLoading(true);
+      setQuestionnaireError(null);
+      const questionsData = await window.electronAPI.getAllQuestions();
+      setQuestions(questionsData);
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      setQuestionnaireError('Failed to load questions');
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
+
+  // Handle next button click to show questionnaire step
+  const handleNextToQuestionnaire = () => {
+    if (newProjectName.trim()) {
+      setShowQuestionnaireStep(true);
+      loadQuestionsForConfiguration();
+    }
+  };
+
+  // Handle back button click to return to project details
+  const handleBackToProjectDetails = () => {
+    setShowQuestionnaireStep(false);
+    setQuestions({});
+    setQuestionnaireError(null);
+  };
+
+  // Handle questionnaire toggle
+  const handleQuestionnaireToggle = (questionId, currentStatus) => {
+    console.log('Toggling question:', questionId, 'from', currentStatus, 'to', !currentStatus);
+    
+    // Clear any validation errors when user makes changes
+    setQuestionnaireError(null);
+    
+    // Check if this would disable the last question in a section
+    if (currentStatus) { // If we're about to disable a question
+      const questionSection = Object.keys(questions).find(section => 
+        questions[section].some(q => q.questionId === questionId)
+      );
+      
+      if (questionSection) {
+        const enabledQuestionsInSection = questions[questionSection].filter(q => 
+          q.questionId !== questionId && q.isEnabled !== false
+        );
+        
+        console.log(`Section ${questionSection}: ${enabledQuestionsInSection.length} questions would remain enabled`);
+        
+        if (enabledQuestionsInSection.length === 0) {
+          const errorMsg = `Cannot disable the last question in ${questionSection} section. At least one question must remain enabled.`;
+          console.log('Validation error:', errorMsg);
+          setQuestionnaireError(errorMsg);
+          return;
+        }
+      }
+    }
+    
+    setQuestions(prevQuestions => {
+      const updated = { ...prevQuestions };
+      Object.keys(updated).forEach(section => {
+        updated[section] = updated[section].map(q => 
+          q.questionId === questionId ? { ...q, isEnabled: !currentStatus } : q
+        );
+      });
+      console.log('Updated questions state:', updated);
+      return updated;
+    });
+  };
+
+  // Handle final project creation with questionnaire settings
+  const handleCreateProjectWithQuestionnaire = async () => {
+    if (newProjectName.trim()) {
+      console.log('Starting project creation with questionnaire settings...');
+      console.log('Questions state:', questions);
+      
+      // Validate that at least one question per section is enabled
+      const validationErrors = [];
+      for (const [sectionName, sectionQuestions] of Object.entries(questions)) {
+        const enabledQuestions = sectionQuestions.filter(q => q.isEnabled !== false);
+        console.log(`Section ${sectionName}: ${enabledQuestions.length} enabled questions out of ${sectionQuestions.length} total`);
+        if (enabledQuestions.length === 0) {
+          validationErrors.push(`${sectionName} section must have at least one enabled question`);
+        }
+      }
+      
+      if (validationErrors.length > 0) {
+        console.log('Validation errors:', validationErrors);
+        setQuestionnaireError(validationErrors.join('. '));
+        return;
+      }
+
+      setIsCreatingProject(true);
+      setQuestionnaireError(null);
+
+      try {
+        const targetParticipants = parseInt(newProjectParticipants) || 0;
+        
+        // Create scopes with participants
+        const projectScopes = scopes.map(scope => ({
+          ...scope,
+          participants: Array.from({ length: targetParticipants }, (_, index) => ({
+            id: `P${index + 1}`,
+            name: `P${index + 1}`,
+            answers: {},
+            summary: ''
+          })),
+          isActive: scope.scopeNumber === 1 // First scope is active by default
+        }));
+
+        // Create the project first
+        const newProject = {
+          name: newProjectName,
+          description: newProjectDescription,
+          targetParticipants,
+          robotType: newProjectRobotType,
+          studyType: newProjectStudyType,
+          scopes: projectScopes,
+          rules: []
+        };
+
+        console.log('Creating project:', newProject.name);
+        
+        // Add the project and wait for it to complete
+        await addProject(newProject);
+        
+        console.log('Project created, now getting updated projects list...');
+        
+        // Now get the updated projects list to find the new project
+        const updatedProjects = await window.electronAPI.getProjects();
+        const newProjectData = updatedProjects.find(p => p.name === newProjectName);
+        
+        if (newProjectData && newProjectData.id) {
+          console.log('Found new project with ID:', newProjectData.id);
+          
+          // Save questionnaire settings for the new project
+          let disabledCount = 0;
+          for (const [section, sectionQuestions] of Object.entries(questions)) {
+            for (const question of sectionQuestions) {
+              if (question.isEnabled === false) {
+                console.log('Disabling question:', question.questionId, 'for project:', newProjectData.id);
+                await window.electronAPI.updateProjectQuestionStatus(
+                  newProjectData.id, 
+                  question.questionId, 
+                  false
+                );
+                disabledCount++;
+              }
+            }
+          }
+          console.log(`Questionnaire settings saved successfully. Disabled ${disabledCount} questions.`);
+        } else {
+          console.error('Could not find new project after creation');
+        }
+
+        // Reset form
+        setNewProjectName('');
+        setNewProjectDescription('');
+        setNewProjectParticipants('');
+        setNewProjectRobotType('');
+        setNewProjectStudyType('');
+        setScopes([{ scopeNumber: 1, scopeText: '' }]);
+        setShowQuestionnaireStep(false);
+        setQuestions({});
+        setQuestionnaireError(null);
+        setIsAddProjectOpen(false);
+      } catch (error) {
+        console.error('Error during project creation:', error);
+        setQuestionnaireError('Failed to create project. Please try again.');
+      } finally {
+        setIsCreatingProject(false);
+      }
+    }
+  };
+
   return (
     <div style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: '20px' }}>
@@ -275,191 +458,491 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
             backgroundColor: 'white',
             padding: '20px',
             borderRadius: '8px',
-            width: '500px',
-            maxWidth: '90%'
+            width: showQuestionnaireStep ? '800px' : '500px',
+            maxWidth: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto'
           }}>
-            <h3 style={{ marginBottom: '20px' }}>Add New Project</h3>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>Project Name:</label>
-              <input
-                type="text"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #ddd'
-                }}
-              />
-            </div>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>Brief Description of Situation:</label>
-              <textarea
-                value={newProjectDescription}
-                onChange={(e) => setNewProjectDescription(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #ddd',
-                  minHeight: '100px',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-            
-            {/* Scope Fields */}
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Scopes:</label>
-              {scopes.map((scope, index) => (
-                <div key={index} style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <span style={{ 
-                    minWidth: '60px', 
-                    fontWeight: 'bold', 
-                    color: '#2c3e50',
-                    fontSize: '0.9em'
-                  }}>
-                    Scope {scope.scopeNumber}:
-                  </span>
+            {!showQuestionnaireStep ? (
+              // Project Details Step
+              <>
+                <h3 style={{ marginBottom: '20px' }}>Add New Project</h3>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Project Name:</label>
                   <input
                     type="text"
-                    value={scope.scopeText}
-                    onChange={(e) => handleScopeChange(index, e.target.value)}
-                    placeholder="Enter scope description..."
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
                     style={{
-                      flex: 1,
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ddd'
+                    }}
+                  />
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Brief Description of Situation:</label>
+                  <textarea
+                    value={newProjectDescription}
+                    onChange={(e) => setNewProjectDescription(e.target.value)}
+                    style={{
+                      width: '100%',
                       padding: '8px',
                       borderRadius: '4px',
                       border: '1px solid #ddd',
-                      fontSize: '0.9em'
+                      minHeight: '100px',
+                      resize: 'vertical'
                     }}
                   />
-                  {scopes.length > 1 && (
+                </div>
+                
+                {/* Scope Fields */}
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Scopes:</label>
+                  {scopes.map((scope, index) => (
+                    <div key={index} style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <span style={{ 
+                        minWidth: '60px', 
+                        fontWeight: 'bold', 
+                        color: '#2c3e50',
+                        fontSize: '0.9em'
+                      }}>
+                        Scope {scope.scopeNumber}:
+                      </span>
+                      <input
+                        type="text"
+                        value={scope.scopeText}
+                        onChange={(e) => handleScopeChange(index, e.target.value)}
+                        placeholder="Enter scope description..."
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          borderRadius: '4px',
+                          border: '1px solid #ddd',
+                          fontSize: '0.9em'
+                        }}
+                      />
+                      {scopes.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveScope(index)}
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#e74c3c',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.8em'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {scopes.length < 5 && (
                     <button
                       type="button"
-                      onClick={() => handleRemoveScope(index)}
+                      onClick={handleAddScope}
                       style={{
-                        padding: '4px 8px',
-                        backgroundColor: '#e74c3c',
+                        padding: '6px 12px',
+                        backgroundColor: '#3498db',
                         color: 'white',
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
-                        fontSize: '0.8em'
+                        fontSize: '0.9em',
+                        marginTop: '5px'
                       }}
                     >
-                      Remove
+                      + Add New Scope
                     </button>
                   )}
+                  {scopes.length >= 5 && (
+                    <p style={{ 
+                      color: '#7f8c8d', 
+                      fontSize: '0.8em', 
+                      marginTop: '5px',
+                      fontStyle: 'italic'
+                    }}>
+                      Maximum 5 scopes allowed
+                    </p>
+                  )}
                 </div>
-              ))}
-              {scopes.length < 5 && (
-                <button
-                  type="button"
-                  onClick={handleAddScope}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#3498db',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
+                
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Number of Participants:</label>
+                  <input
+                    type="number"
+                    value={newProjectParticipants}
+                    onChange={(e) => setNewProjectParticipants(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ddd'
+                    }}
+                  />
+                </div>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Type of Robot:</label>
+                  <input
+                    type="text"
+                    value={newProjectRobotType}
+                    onChange={(e) => setNewProjectRobotType(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ddd'
+                    }}
+                  />
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Type of Study:</label>
+                  <select
+                    value={newProjectStudyType}
+                    onChange={(e) => setNewProjectStudyType(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ddd'
+                    }}
+                  >
+                    <option value="">Select Study Type</option>
+                    <option value="In-lab controlled">In-lab controlled</option>
+                    <option value="In-the-wild">In-the-wild</option>
+                    <option value="Mixed-method">Mixed-method</option>
+                    <option value="Longitudinal">Longitudinal</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button
+                    onClick={() => setIsAddProjectOpen(false)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#e74c3c',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleNextToQuestionnaire}
+                    disabled={!newProjectName.trim()}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#3498db',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: newProjectName.trim() ? 'pointer' : 'not-allowed',
+                      opacity: newProjectName.trim() ? 1 : 0.6
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            ) : (
+              // Questionnaire Configuration Step
+              <>
+                <div style={{ marginBottom: '20px' }}>
+                  <h3 style={{ marginBottom: '8px' }}>Configure Questionnaire</h3>
+                  <p style={{ color: '#7f8c8d', fontSize: '0.9em', margin: 0 }}>
+                    Enable or disable questions for <strong>{newProjectName}</strong>. At least one question per section must remain enabled.
+                  </p>
+                </div>
+
+                {questionnaireError && (
+                  <div style={{
+                    marginBottom: '16px',
+                    padding: '12px 16px',
+                    backgroundColor: '#fee',
+                    color: '#e74c3c',
+                    borderRadius: '6px',
+                    border: '1px solid #fcc',
+                    fontSize: '0.9em'
+                  }}>
+                    {questionnaireError}
+                  </div>
+                )}
+
+                {isCreatingProject && (
+                  <div style={{
+                    marginBottom: '16px',
+                    padding: '12px 16px',
+                    backgroundColor: '#e8f5e8',
+                    color: '#27ae60',
+                    borderRadius: '6px',
+                    border: '1px solid #c3e6cb',
                     fontSize: '0.9em',
-                    marginTop: '5px'
-                  }}
-                >
-                  + Add New Scope
-                </button>
-              )}
-              {scopes.length >= 5 && (
-                <p style={{ 
-                  color: '#7f8c8d', 
-                  fontSize: '0.8em', 
-                  marginTop: '5px',
-                  fontStyle: 'italic'
-                }}>
-                  Maximum 5 scopes allowed
-                </p>
-              )}
-            </div>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>Number of Participants:</label>
-              <input
-                type="number"
-                value={newProjectParticipants}
-                onChange={(e) => setNewProjectParticipants(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #ddd'
-                }}
-              />
-            </div>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>Type of Robot:</label>
-              <input
-                type="text"
-                value={newProjectRobotType}
-                onChange={(e) => setNewProjectRobotType(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #ddd'
-                }}
-              />
-            </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '5px' }}>Type of Study:</label>
-              <select
-                value={newProjectStudyType}
-                onChange={(e) => setNewProjectStudyType(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #ddd'
-                }}
-              >
-                <option value="">Select Study Type</option>
-                <option value="In-lab controlled">In-lab controlled</option>
-                <option value="In-the-wild">In-the-wild</option>
-                <option value="Mixed-method">Mixed-method</option>
-                <option value="Longitudinal">Longitudinal</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                onClick={() => setIsAddProjectOpen(false)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#e74c3c',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddProject}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#2ecc71',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Add Project
-              </button>
-            </div>
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid #27ae60',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    Creating project and saving questionnaire settings...
+                  </div>
+                )}
+
+                {questionsLoading ? (
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    height: '200px',
+                    fontFamily: 'Lexend, sans-serif'
+                  }}>
+                    Loading questions...
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '20px' }}>
+                    {Object.entries(questions).map(([sectionName, sectionQuestions]) => {
+                      const enabledQuestions = sectionQuestions.filter(q => q.isEnabled !== false);
+                      const hasValidationError = enabledQuestions.length === 0;
+                      
+                      return (
+                        <div key={sectionName} style={{ marginBottom: '20px' }}>
+                          <h4 style={{ 
+                            fontSize: '1.1em', 
+                            color: hasValidationError ? '#e74c3c' : '#2c3e50', 
+                            marginBottom: '10px',
+                            fontWeight: '600',
+                            padding: '6px 10px',
+                            backgroundColor: hasValidationError ? '#fee' : '#f8f9fa',
+                            borderRadius: '4px',
+                            border: `1px solid ${hasValidationError ? '#fcc' : '#e9ecef'}`
+                          }}>
+                            {sectionName}
+                            {hasValidationError && (
+                              <span style={{ 
+                                fontSize: '0.8em', 
+                                color: '#e74c3c', 
+                                marginLeft: '8px',
+                                fontWeight: 'normal'
+                              }}>
+                                (At least one question must be enabled)
+                              </span>
+                            )}
+                          </h4>
+                          
+                          <div style={{ 
+                            backgroundColor: '#fff', 
+                            borderRadius: '4px', 
+                            border: `1px solid ${hasValidationError ? '#fcc' : '#e0e0e0'}`,
+                            overflow: 'hidden'
+                          }}>
+                            {sectionQuestions.map((question, index) => (
+                              <div key={question.questionId} style={{
+                                padding: '10px 14px',
+                                borderBottom: index < sectionQuestions.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                backgroundColor: question.isEnabled !== false ? '#fff' : '#f8f9fa',
+                                opacity: question.isEnabled !== false ? 1 : 0.7,
+                                transition: 'all 0.2s ease'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                  {/* Toggle Switch */}
+                                  <label style={{ 
+                                    position: 'relative',
+                                    display: 'inline-block',
+                                    width: '40px',
+                                    height: '18px',
+                                    flexShrink: 0,
+                                    marginTop: '2px'
+                                  }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={question.isEnabled !== false}
+                                      onChange={() => handleQuestionnaireToggle(question.questionId, question.isEnabled !== false)}
+                                      style={{ opacity: 0, width: 0, height: 0 }}
+                                    />
+                                    <span style={{
+                                      position: 'absolute',
+                                      cursor: 'pointer',
+                                      top: 0,
+                                      left: 0,
+                                      right: 0,
+                                      bottom: 0,
+                                      backgroundColor: question.isEnabled !== false ? '#27ae60' : '#ccc',
+                                      transition: '.3s',
+                                      borderRadius: '18px'
+                                    }}>
+                                      <span style={{
+                                        position: 'absolute',
+                                        content: '""',
+                                        height: '14px',
+                                        width: '14px',
+                                        left: '2px',
+                                        bottom: '2px',
+                                        backgroundColor: 'white',
+                                        transition: '.3s',
+                                        borderRadius: '50%',
+                                        transform: question.isEnabled !== false ? 'translateX(22px)' : 'translateX(0)'
+                                      }} />
+                                    </span>
+                                  </label>
+
+                                  {/* Question Content */}
+                                  <div style={{ flex: 1 }}>
+                                    <p style={{ 
+                                      fontSize: '0.85em', 
+                                      color: '#2c3e50', 
+                                      lineHeight: '1.4',
+                                      margin: '0 0 4px 0'
+                                    }}>
+                                      {question.questionText}
+                                    </p>
+                                    
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span style={{ 
+                                        fontSize: '0.7em', 
+                                        color: '#7f8c8d',
+                                        backgroundColor: '#ecf0f1',
+                                        padding: '1px 4px',
+                                        borderRadius: '8px'
+                                      }}>
+                                        {question.questionType}
+                                      </span>
+                                      
+                                      {question.options && (
+                                        <span style={{ 
+                                          fontSize: '0.7em', 
+                                          color: '#7f8c8d',
+                                          backgroundColor: '#e8f5e8',
+                                          padding: '1px 4px',
+                                          borderRadius: '8px'
+                                        }}>
+                                          {question.options.length} options
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Summary of enabled/disabled questions */}
+                {!questionsLoading && Object.keys(questions).length > 0 && (
+                  <div style={{ 
+                    marginBottom: '20px', 
+                    padding: '12px 16px', 
+                    backgroundColor: '#f8f9fa', 
+                    borderRadius: '6px',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <h5 style={{ 
+                      fontSize: '0.9em', 
+                      color: '#2c3e50', 
+                      marginBottom: '8px',
+                      fontWeight: '600'
+                    }}>
+                      Question Summary
+                    </h5>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                      {Object.entries(questions).map(([sectionName, sectionQuestions]) => {
+                        const enabledCount = sectionQuestions.filter(q => q.isEnabled !== false).length;
+                        const totalCount = sectionQuestions.length;
+                        const disabledCount = totalCount - enabledCount;
+                        
+                        return (
+                          <div key={sectionName} style={{
+                            padding: '6px 10px',
+                            backgroundColor: enabledCount === 0 ? '#fee' : '#e8f5e8',
+                            borderRadius: '4px',
+                            border: `1px solid ${enabledCount === 0 ? '#fcc' : '#c3e6cb'}`
+                          }}>
+                            <span style={{ 
+                              fontSize: '0.8em', 
+                              fontWeight: '600',
+                              color: enabledCount === 0 ? '#e74c3c' : '#27ae60'
+                            }}>
+                              {sectionName}:
+                            </span>
+                            <span style={{ 
+                              fontSize: '0.8em', 
+                              color: '#7f8c8d',
+                              marginLeft: '4px'
+                            }}>
+                              {enabledCount} enabled, {disabledCount} disabled
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button
+                    onClick={handleBackToProjectDetails}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#95a5a6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Back
+                  </button>
+                  
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => setIsAddProjectOpen(false)}
+                      disabled={isCreatingProject}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: isCreatingProject ? 'not-allowed' : 'pointer',
+                        opacity: isCreatingProject ? 0.6 : 1
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateProjectWithQuestionnaire}
+                      disabled={isCreatingProject}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#2ecc71',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: isCreatingProject ? 'not-allowed' : 'pointer',
+                        opacity: isCreatingProject ? 0.6 : 1
+                      }}
+                    >
+                      {isCreatingProject ? 'Creating Project...' : 'Create Project'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

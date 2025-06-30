@@ -933,8 +933,8 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                 style={{ fontSize: '1.2em', fontFamily: 'Lexend, sans-serif', borderRadius: 4, border: '1px solid #ccc', padding: 4 }}
                 autoFocus
               />
-              <button onClick={handleNameSave} style={{ padding: '2px 8px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-              <button onClick={() => setNameEditMode(false)} style={{ padding: '2px 8px', background: '#bbb', color: '#222', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button key="save-name" onClick={handleNameSave} style={{ padding: '2px 8px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
+              <button key="cancel-name" onClick={() => setNameEditMode(false)} style={{ padding: '2px 8px', background: '#bbb', color: '#222', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             </>
           ) : (
             <>
@@ -965,8 +965,8 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                 autoFocus
               />
               <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <button onClick={handleDescSave} style={{ padding: '4px 14px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-                <button onClick={() => setDescEditMode(false)} style={{ padding: '4px 14px', background: '#bbb', color: '#222', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                <button key="save-desc" onClick={handleDescSave} style={{ padding: '4px 14px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
+                <button key="cancel-desc" onClick={() => setDescEditMode(false)} style={{ padding: '4px 14px', background: '#bbb', color: '#222', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               </div>
             </>
           ) : project.description ? (
@@ -1012,7 +1012,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
             }}>
               {project.scopes.map((scope, index) => (
                 <button
-                  key={scope.id}
+                  key={`scope-${scope.scopeNumber}-${index}`}
                   onClick={() => handleScopeSelection(index)}
                   style={{
                     padding: '8px 16px',
@@ -1078,6 +1078,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                     />
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button 
+                        key="save-scope-desc"
                         onClick={handleScopeDescSave} 
                         style={{ 
                           padding: '4px 14px', 
@@ -1092,6 +1093,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                         Save
                       </button>
                       <button 
+                        key="cancel-scope-desc"
                         onClick={() => setScopeDescEditMode(false)} 
                         style={{ 
                           padding: '4px 14px', 
@@ -1131,6 +1133,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
         {/* Three buttons */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
           <button 
+            key="personae-mapping"
             onClick={() => setCurrentView(currentView === 'personae' ? 'details' : 'personae')}
             style={{ 
               padding: '8px 16px', 
@@ -1158,6 +1161,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
             Personae Mapping
           </button>
           <button 
+            key="behavioral-diversity"
             onClick={() => setCurrentView(currentView === 'behavioral' ? 'details' : 'behavioral')}
             style={{ 
               padding: '8px 16px', 
@@ -1185,6 +1189,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
             Behavioral Diversity
           </button>
           <button 
+            key="situation-design"
             onClick={() => setCurrentView(currentView === 'situation' ? 'details' : 'situation')}
             style={{ 
               padding: '8px 16px', 
@@ -1462,6 +1467,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
             {/* View selection buttons and PDF download */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
               <button
+                key="framework-view"
                 onClick={() => setPersonaeView('framework')}
                 style={{
                   padding: '8px 16px',
@@ -1476,6 +1482,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                 Framework View
               </button>
               <button
+                key="summary-view"
                 onClick={() => setPersonaeView('summary')}
                 style={{
                   padding: '8px 16px',
@@ -1492,6 +1499,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
 
               {/* PDF Download Button */}
               <button
+                key="pdf-download"
                 onClick={generatePDF}
                 disabled={isPdfGenerating}
                 style={{
@@ -1954,6 +1962,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                     autoFocus
                   />
                   <button 
+                    key="save-participant"
                     onClick={() => handleSaveParticipant(p.id)} 
                     style={{ 
                       padding: '2px 6px', 
@@ -1977,6 +1986,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                     Save
                   </button>
                   <button 
+                    key="cancel-participant"
                     onClick={handleCancelEdit} 
                     style={{ 
                       padding: '2px 6px', 
