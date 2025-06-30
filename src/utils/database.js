@@ -47,6 +47,17 @@ function needsMigration() {
       return true; // Migration needed - scopes table doesn't exist
     }
     
+    // Check if scope_rules table exists
+    const scopeRulesTableExists = db.prepare(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='scope_rules'
+    `).get();
+    
+    if (!scopeRulesTableExists) {
+      console.log('Database: scope_rules table missing - migration needed');
+      return true; // Migration needed - scope_rules table doesn't exist
+    }
+    
     // Check if projects table has the new structure
     const columns = db.prepare("PRAGMA table_info(projects)").all();
     const columnNames = columns.map(col => col.name);
@@ -84,6 +95,7 @@ function performMigration() {
       DROP TABLE IF EXISTS situation_design;
       DROP TABLE IF EXISTS participant_answers;
       DROP TABLE IF EXISTS participants;
+      DROP TABLE IF EXISTS scope_rules;
       DROP TABLE IF EXISTS scopes;
       DROP TABLE IF EXISTS project_questions;
       DROP TABLE IF EXISTS questionnaire;
@@ -142,6 +154,16 @@ function performMigration() {
       UNIQUE(projectId, scopeNumber)
     );
 
+    -- Scope rules table
+    CREATE TABLE scope_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      scopeId INTEGER NOT NULL,
+      rule TEXT NOT NULL,
+      orderIndex INTEGER DEFAULT 0,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+
     -- Participants table
     CREATE TABLE participants (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -193,6 +215,9 @@ function performMigration() {
         
         -- Add foreign key constraints to scopes
         CREATE INDEX idx_scopes_fk ON scopes(projectId);
+        
+        -- Add foreign key constraints to scope_rules
+        CREATE INDEX idx_scope_rules_fk ON scope_rules(scopeId);
         
         -- Add foreign key constraints to participants
         CREATE INDEX idx_participants_fk ON participants(projectId, scopeId);
@@ -333,7 +358,19 @@ function getAllProjects() {
           if (!organizedAnswers[row.section]) {
             organizedAnswers[row.section] = {};
           }
-          organizedAnswers[row.section][row.question] = row.answer;
+          
+          // Try to parse JSON values, especially for selectedRules
+          let parsedValue = row.answer;
+          if (row.answer && (row.question === 'selectedRules' || row.answer.startsWith('[') || row.answer.startsWith('{'))) {
+            try {
+              parsedValue = JSON.parse(row.answer);
+            } catch (e) {
+              // If parsing fails, keep the original value
+              parsedValue = row.answer;
+            }
+          }
+          
+          organizedAnswers[row.section][row.question] = parsedValue;
         });
         
         return {
@@ -344,6 +381,16 @@ function getAllProjects() {
           answers: organizedAnswers
         };
       });
+      
+      // Get rules for this scope
+      const scopeRules = db.prepare(`
+        SELECT rule, orderIndex 
+        FROM scope_rules 
+        WHERE scopeId = ? 
+        ORDER BY orderIndex
+      `).all(scope.id);
+      
+      const rules = scopeRules.map(row => row.rule);
       
       // Get situation design for this scope
       const situationDesign = db.prepare(`
@@ -358,6 +405,7 @@ function getAllProjects() {
         scopeText: scope.scopeText,
         isActive: scope.isActive,
         participants: participantsWithAnswers,
+        rules: rules,
         situationDesign: situationDesign ? {
           robotChanges: situationDesign.robotChanges,
           environmentalChanges: situationDesign.environmentalChanges
@@ -365,19 +413,11 @@ function getAllProjects() {
       };
     });
     
-    // Parse rules from JSON
-    let rules = [];
-    try {
-      rules = project.rules ? JSON.parse(project.rules) : [];
-    } catch (e) {
-      console.error('Error parsing rules for project', project.id, e);
-    }
-    
     return {
       id: project.id,
       name: project.name,
       description: project.description,
-      rules: rules,
+      rules: project.rules ? JSON.parse(project.rules) : [],
       summaryPrompt: project.summaryPrompt,
       scopes: scopesWithData,
       createdAt: project.createdAt,
@@ -416,6 +456,7 @@ function saveAllProjects(projects) {
     db.prepare('DELETE FROM situation_design').run();
     db.prepare('DELETE FROM participant_answers').run();
     db.prepare('DELETE FROM participants').run();
+    db.prepare('DELETE FROM scope_rules').run();
     db.prepare('DELETE FROM scopes').run();
     db.prepare('DELETE FROM projects').run();
     
@@ -445,12 +486,17 @@ function saveAllProjects(projects) {
       VALUES (?, ?, ?, ?, ?)
     `);
     
+    const insertScopeRule = db.prepare(`
+      INSERT INTO scope_rules (scopeId, rule, orderIndex, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    
     for (const project of projects) {
       // Insert project with sanitized values
       const projectInfo = insertProject.run(
         sanitizeValue(project.name),
         sanitizeValue(project.description),
-        sanitizeValue(JSON.stringify(project.rules || [])),
+        sanitizeValue(JSON.stringify(project.rules)),
         sanitizeValue(project.summaryPrompt),
         sanitizeValue(project.createdAt || new Date().toISOString()),
         sanitizeValue(project.updatedAt || new Date().toISOString())
@@ -470,6 +516,17 @@ function saveAllProjects(projects) {
         );
         
         const scopeId = scopeInfo.lastInsertRowid;
+        
+        // Insert rules for this scope
+        for (let i = 0; i < (scope.rules || []).length; i++) {
+          insertScopeRule.run(
+            scopeId,
+            sanitizeValue(scope.rules[i]),
+            i,
+            sanitizeValue(new Date().toISOString()),
+            sanitizeValue(new Date().toISOString())
+          );
+        }
         
         // Insert participants for this scope
         for (const participant of (scope.participants || [])) {

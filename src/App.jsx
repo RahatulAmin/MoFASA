@@ -92,12 +92,12 @@ const App = () => {
         updatedAt: new Date().toISOString()
       } : p
     );
+    
     setProjects(newProjects);
     await saveProjects(newProjects);
     
-    // Reload projects from database to get proper IDs
-    const updatedProjects = await getProjects();
-    setProjects(updatedProjects);
+    // Do NOT reload projects from the database here to preserve scope-level rules
+    // The database stores rules at project level, but we want to keep scope-level rules in memory
   };
 
   const updateParticipantAnswers = async (projectIdx, participantId, section, question, value) => {
@@ -193,8 +193,23 @@ const App = () => {
     const location = useLocation();
     return (
       <>
-        <Link to="/" className="sidebar-item">Home</Link>
-        <Link to="/projects" className="sidebar-item" style={{marginTop: 5}}>Projects</Link>
+        <Link 
+          to="/" 
+          className="sidebar-item"
+          style={{ background: location.pathname === "/" ? '#34495e' : undefined }}
+        >
+          Home
+        </Link>
+        <Link 
+          to="/projects" 
+          className="sidebar-item" 
+          style={{
+            marginTop: 5, 
+            background: location.pathname === "/projects" ? '#34495e' : undefined
+          }}
+        >
+          Projects
+        </Link>
         {projects.length === 0 && (
           <div style={{ color: '#aaa', fontSize: '.95em', marginLeft: '10px' }}>No projects</div>
         )}
@@ -209,6 +224,29 @@ const App = () => {
           </div>
         ))}
       </>
+    );
+  }
+
+  function SidebarBottom() {
+    const location = useLocation();
+    return (
+      <div className="sidebar-bottom">
+        <DeepSeekStatus />
+        <Link 
+          to="/settings" 
+          className="sidebar-item"
+          style={{ background: location.pathname === "/settings" ? '#34495e' : undefined }}
+        >
+          Settings
+        </Link>
+        <Link 
+          to="/about" 
+          className="sidebar-item"
+          style={{ background: location.pathname === "/about" ? '#34495e' : undefined }}
+        >
+          About MoFASA
+        </Link>
+      </div>
     );
   }
 
@@ -228,11 +266,7 @@ const App = () => {
           <div className="sidebar-menu">
             <SidebarLinks />
           </div>
-          <div className="sidebar-bottom">
-            <DeepSeekStatus />
-            <Link to="/settings" className="sidebar-item">Settings</Link>
-            <Link to="/about" className="sidebar-item">About MoFASA</Link>
-          </div>
+          <SidebarBottom />
         </div>
         <div className="main-content">
           <Routes>

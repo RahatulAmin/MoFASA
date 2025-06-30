@@ -15,6 +15,7 @@ const Settings = ({ projects }) => {
   const [editingProject, setEditingProject] = useState(null);
   const [editPrompt, setEditPrompt] = useState('');
   const [selectedProjectForQuestionnaire, setSelectedProjectForQuestionnaire] = useState(null);
+  const [apiKey, setApiKey] = useState('');
 
   // Debug: Log when projects change
   useEffect(() => {
@@ -25,6 +26,29 @@ const Settings = ({ projects }) => {
       console.log('Settings: First project keys:', Object.keys(projects[0]));
     }
   }, [projects]);
+
+  // Function to count unique participants across all scopes
+  const countUniqueParticipants = (project) => {
+    if (!project.scopes || !Array.isArray(project.scopes)) {
+      return 0;
+    }
+    
+    const uniqueParticipantIds = new Set();
+    
+    project.scopes.forEach(scope => {
+      if (scope.participants && Array.isArray(scope.participants)) {
+        scope.participants.forEach(participant => {
+          // Use participantId if available, otherwise use id
+          const participantId = participant.participantId || participant.id;
+          if (participantId) {
+            uniqueParticipantIds.add(participantId);
+          }
+        });
+      }
+    });
+    
+    return uniqueParticipantIds.size;
+  };
 
   // Function to check connection status
   const checkConnectionStatus = async () => {
@@ -195,7 +219,7 @@ Guidelines:
                         borderRadius: 4,
                         fontSize: '0.9em'
                       }}>
-                        {project.participants?.length || 0} Participants
+                        {countUniqueParticipants(project)} Participants
                       </span>
                       {/* <span style={{ 
                         padding: '4px 8px', 

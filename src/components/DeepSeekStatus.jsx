@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 
-const DeepSeekStatus = () => {
+const DeepSeekStatus = memo(() => {
   const [status, setStatus] = useState('checking');
 
   useEffect(() => {
@@ -16,8 +16,8 @@ const DeepSeekStatus = () => {
     // Check status immediately
     checkStatus();
 
-    // Check status every 30 seconds
-    const interval = setInterval(checkStatus, 5000);
+    // Check status every 30 seconds instead of 5 seconds
+    const interval = setInterval(checkStatus, 30000);
 
     return () => clearInterval(interval);
   }, []);
@@ -67,6 +67,8 @@ const DeepSeekStatus = () => {
       <span style={{ color: '#fff' }}>{getStatusText()}</span>
     </div>
   );
-};
+});
+
+DeepSeekStatus.displayName = 'DeepSeekStatus';
 
 export default DeepSeekStatus; 

@@ -17,6 +17,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const [scopes, setScopes] = useState([{ scopeNumber: 1, scopeText: '' }]);
   const [editingProject, setEditingProject] = useState(null);
   const [editName, setEditName] = useState('');
+  const [editScopes, setEditScopes] = useState([{ scopeNumber: 1, scopeText: '' }]);
   const [importError, setImportError] = useState('');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importedProjectData, setImportedProjectData] = useState(null);
@@ -53,6 +54,30 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
     setScopes(newScopes);
   };
 
+  const handleEditScopeChange = (index, value) => {
+    const newEditScopes = [...editScopes];
+    newEditScopes[index].scopeText = value;
+    setEditScopes(newEditScopes);
+  };
+
+  const handleEditAddScope = () => {
+    if (editScopes.length < 5) {
+      setEditScopes([...editScopes, { scopeNumber: editScopes.length + 1, scopeText: '' }]);
+    }
+  };
+
+  const handleEditRemoveScope = (index) => {
+    if (editScopes.length > 1) {
+      const newEditScopes = editScopes.filter((_, i) => i !== index);
+      // Renumber scopes
+      const renumberedEditScopes = newEditScopes.map((scope, i) => ({
+        ...scope,
+        scopeNumber: i + 1
+      }));
+      setEditScopes(renumberedEditScopes);
+    }
+  };
+
   const handleAddProject = () => {
     if (newProjectName.trim()) {
       const targetParticipants = parseInt(newProjectParticipants) || 0;
@@ -62,6 +87,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
         ...scope,
         participants: Array.from({ length: targetParticipants }, (_, index) => ({
           id: `P${index + 1}`,
+          participantId: `P${index + 1}`, // Add participantId field for consistency
           name: `P${index + 1}`,
           answers: {},
           summary: ''
@@ -95,22 +121,81 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
     setNewProjectDescription(projects[index].description || '');
     setNewProjectRobotType(projects[index].robotType || '');
     setNewProjectStudyType(projects[index].studyType || '');
+    
+    // Load existing scopes
+    const existingScopes = projects[index].scopes || [];
+    if (existingScopes.length > 0) {
+      setEditScopes(existingScopes.map(scope => ({
+        scopeNumber: scope.scopeNumber,
+        scopeText: scope.scopeText || ''
+      })));
+    } else {
+      setEditScopes([{ scopeNumber: 1, scopeText: '' }]);
+    }
   };
 
   const handleSaveEdit = (index) => {
     if (editName.trim()) {
+      // Get the target participants count from the original project
+      // Try multiple sources to get the participant count
+      let targetParticipants = projects[index].targetParticipants || 0;
+      
+      // If targetParticipants is 0, try to get it from existing scopes
+      if (targetParticipants === 0 && projects[index].scopes && projects[index].scopes.length > 0) {
+        const existingScope = projects[index].scopes[0]; // Use first scope as reference
+        targetParticipants = existingScope.participants ? existingScope.participants.length : 0;
+      }
+      
+      // Create updated scopes with participants preserved or created
+      const updatedScopes = editScopes.map(editScope => {
+        // Find the existing scope with the same scope number
+        const existingScope = projects[index].scopes?.find(s => s.scopeNumber === editScope.scopeNumber);
+        
+        if (existingScope) {
+          // Preserve existing scope with its participants
+          const preservedParticipants = (existingScope.participants || []).map(participant => ({
+            ...participant,
+            id: participant.id || participant.participantId, // Ensure id field exists
+            participantId: participant.participantId || participant.id // Ensure participantId field exists
+          }));
+          
+          return {
+            ...editScope,
+            participants: preservedParticipants,
+            isActive: existingScope.isActive || editScope.scopeNumber === 1
+          };
+        } else {
+          // Create new scope with new participants
+          const newParticipants = Array.from({ length: targetParticipants }, (_, participantIndex) => ({
+            id: `P${participantIndex + 1}`,
+            participantId: `P${participantIndex + 1}`, // Add participantId field for consistency
+            name: `P${participantIndex + 1}`,
+            answers: {},
+            summary: ''
+          }));
+          
+          return {
+            ...editScope,
+            participants: newParticipants,
+            isActive: editScope.scopeNumber === 1 // First scope is active by default
+          };
+        }
+      });
+
       editProject(index, {
         ...projects[index],
         name: editName.trim(),
         description: newProjectDescription,
         robotType: newProjectRobotType,
-        studyType: newProjectStudyType
+        studyType: newProjectStudyType,
+        scopes: updatedScopes
       });
       setEditingProject(null);
       setEditName('');
       setNewProjectDescription('');
       setNewProjectRobotType('');
       setNewProjectStudyType('');
+      setEditScopes([{ scopeNumber: 1, scopeText: '' }]);
     }
   };
 
@@ -330,6 +415,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
           ...scope,
           participants: Array.from({ length: targetParticipants }, (_, index) => ({
             id: `P${index + 1}`,
+            participantId: `P${index + 1}`, // Add participantId field for consistency
             name: `P${index + 1}`,
             answers: {},
             summary: ''
@@ -997,6 +1083,82 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                 }}
               />
             </div>
+            
+            {/* Scope Fields */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Scopes:</label>
+              {editScopes.map((scope, index) => (
+                <div key={index} style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <span style={{ 
+                    minWidth: '60px', 
+                    fontWeight: 'bold', 
+                    color: '#2c3e50',
+                    fontSize: '0.9em'
+                  }}>
+                    Scope {scope.scopeNumber}:
+                  </span>
+                  <input
+                    type="text"
+                    value={scope.scopeText}
+                    onChange={(e) => handleEditScopeChange(index, e.target.value)}
+                    placeholder="Enter scope description..."
+                    style={{
+                      flex: 1,
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #ddd',
+                      fontSize: '0.9em'
+                    }}
+                  />
+                  {editScopes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleEditRemoveScope(index)}
+                      style={{
+                        padding: '4px 8px',
+                        backgroundColor: '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.8em'
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              {editScopes.length < 5 && (
+                <button
+                  type="button"
+                  onClick={handleEditAddScope}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#3498db',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.9em',
+                    marginTop: '5px'
+                  }}
+                >
+                  + Add New Scope
+                </button>
+              )}
+              {editScopes.length >= 5 && (
+                <p style={{ 
+                  color: '#7f8c8d', 
+                  fontSize: '0.8em', 
+                  marginTop: '5px',
+                  fontStyle: 'italic'
+                }}>
+                  Maximum 5 scopes allowed
+                </p>
+              )}
+            </div>
+            
             <div style={{ marginBottom: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px' }}>Type of Robot:</label>
               <input
@@ -1039,7 +1201,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
               border: '1px solid #e9ecef'
             }}>
               <p style={{ color: '#7f8c8d', margin: 0 }}>
-                Note: Participant count cannot be changed from here.
+                Note: Participant count cannot be changed from here. You can modify scopes and their descriptions.
               </p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>

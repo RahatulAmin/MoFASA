@@ -5,9 +5,26 @@ const PersonaeBoxes = ({
   selectedParticipant, 
   onConnectionsCalculated,
   showConnections = false,  // Optional prop to determine if connections should be shown
-  project  // Add project prop to access all rules
+  project,  // Add project prop to access all rules
+  projectIndex  // Add projectIndex prop to get the correct localStorage key
 }) => {
   const boxRefs = useRef(SECTIONS.map(() => React.createRef()));
+
+  // Get the selected scope from localStorage or default to first scope
+  const getSelectedScopeIndex = () => {
+    try {
+      const stored = localStorage.getItem(`project_${projectIndex}_selected_scope`);
+      return stored ? parseInt(stored, 10) : 0;
+    } catch (error) {
+      return 0;
+    }
+  };
+  
+  const selectedScopeIndex = getSelectedScopeIndex();
+  const currentScope = project?.scopes?.[selectedScopeIndex];
+
+  // Check if the selected participant exists in the current scope
+  const participantExistsInCurrentScope = selectedParticipant && currentScope?.participants?.some(p => p.id === selectedParticipant.id);
 
   useEffect(() => {
     if (selectedParticipant && showConnections) {
@@ -24,7 +41,7 @@ const PersonaeBoxes = ({
         window.removeEventListener('resize', handleResize);
       };
     }
-  }, [selectedParticipant, showConnections]);
+  }, [selectedParticipant, showConnections, currentScope]);
 
   const calculateConnections = () => {
     const boxes = boxRefs.current.map(ref => ref.current?.getBoundingClientRect());
@@ -99,6 +116,28 @@ const PersonaeBoxes = ({
 
   return (
     <>
+      {/* Visual indicator if participant is from a different scope */}
+      {selectedParticipant && !participantExistsInCurrentScope && (
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'rgba(255, 193, 7, 0.9)',
+          color: '#856404',
+          padding: '8px 16px',
+          borderRadius: '6px',
+          fontSize: '0.9em',
+          fontFamily: 'Lexend, sans-serif',
+          fontWeight: '500',
+          zIndex: 10,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          border: '1px solid rgba(255, 193, 7, 0.3)'
+        }}>
+          ⚠️ Showing {selectedParticipant.name} from a different scope
+        </div>
+      )}
+
       {/* Frame Analysis Boxes */}
       <div style={{ 
         display: 'flex',
@@ -138,8 +177,9 @@ const PersonaeBoxes = ({
             }}>
               {section.name === 'Rule Selection' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {(project?.rules || []).map((rule, index) => {
-                    const isSelected = selectedParticipant.answers?.['Rule Selection']?.selectedRules?.includes(rule);
+                  {(currentScope?.rules || project?.rules || []).map((rule, index) => {
+                    const selectedRules = selectedParticipant.answers?.['Rule Selection']?.selectedRules;
+                    const isSelected = Array.isArray(selectedRules) && selectedRules.includes(rule);
                     return (
                       <div
                         key={index}
@@ -156,10 +196,24 @@ const PersonaeBoxes = ({
                       </div>
                     );
                   })}
+                  {(currentScope?.rules || project?.rules || []).length === 0 && (
+                    <div style={{
+                      padding: '12px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '4px',
+                      textAlign: 'center',
+                      color: '#7f8c8d',
+                      fontSize: '0.95em',
+                      border: '1px dashed #bdc3c7'
+                    }}>
+                      No rules defined for this scope
+                    </div>
+                  )}
                 </div>
               ) : section.name === 'Decision' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {selectedParticipant.answers?.['Rule Selection']?.selectedRules?.length > 0 && (
+                  {Array.isArray(selectedParticipant.answers?.['Rule Selection']?.selectedRules) && 
+                   selectedParticipant.answers['Rule Selection'].selectedRules.length > 0 && (
                     <div style={{ marginBottom: 12 }}>
                       <strong style={{ 
                         display: 'block',

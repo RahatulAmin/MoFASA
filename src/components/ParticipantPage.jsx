@@ -121,6 +121,9 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
 
   // Manual refresh function for connections
   const refreshConnections = useRef(() => {});
+  
+  // Debounce timer for answer changes
+  const answerChangeTimer = useRef(null);
 
   // Load questions from database
   useEffect(() => {
@@ -207,6 +210,13 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     setInterviewText(participant?.interviewText || '');
     // Ensure selectedRules is always an array
     const participantSelectedRules = participant?.answers?.['Rule Selection']?.selectedRules;
+    console.log('Loading selected rules:', {
+      participantId,
+      participantAnswers: participant?.answers,
+      ruleSelectionAnswers: participant?.answers?.['Rule Selection'],
+      participantSelectedRules,
+      isArray: Array.isArray(participantSelectedRules)
+    });
     setSelectedRules(Array.isArray(participantSelectedRules) ? participantSelectedRules : []);
   }, [participantId, participant?.summary, participant?.interviewText, participant?.answers]);
 
@@ -231,6 +241,15 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       setInterviewText(loadedText);
     }
   }, [participant]);
+
+  // Cleanup effect for debounce timer
+  useEffect(() => {
+    return () => {
+      if (answerChangeTimer.current) {
+        clearTimeout(answerChangeTimer.current);
+      }
+    };
+  }, []);
 
   // Navigation window logic
   let start = Math.max(0, currentIndex - 1);
@@ -572,11 +591,17 @@ Please provide a concise, direct answer to the question based on the interview c
 
   const handleAddRule = () => {
     if (newRule.trim()) {
-      const updatedScopes = project.scopes.map((scope, scopeIndex) =>
-        scopeIndex === selectedScopeIndex
-          ? { ...scope, rules: [...(scope.rules || []), newRule.trim()] }
-          : scope
-      );
+      const updatedScopes = project.scopes.map((scope, scopeIndex) => {
+        if (scopeIndex === selectedScopeIndex) {
+          const updatedScope = { 
+            ...scope, 
+            rules: [...(scope.rules || []), newRule.trim()] 
+          };
+          return updatedScope;
+        }
+        return scope;
+      });
+      
       updateProjectRules(idx, updatedScopes);
       setNewRule('');
       setShowRuleInput(false);
@@ -604,6 +629,13 @@ Please provide a concise, direct answer to the question based on the interview c
     const updatedRules = selectedRules.includes(rule)
       ? selectedRules.filter(r => r !== rule)
       : [...selectedRules, rule];
+    
+    console.log('Saving selected rules:', {
+      rule,
+      currentSelectedRules: selectedRules,
+      updatedRules,
+      participantId
+    });
     
     setSelectedRules(updatedRules);
     updateParticipantAnswers(idx, participantId, 'Rule Selection', 'selectedRules', updatedRules);
@@ -636,9 +668,19 @@ Please provide a concise, direct answer to the question based on the interview c
 
   const handleAnswerChange = (section, question, value) => {
     if (!isUpdating) {
-      updateParticipantAnswers(idx, participantId, section, question, value);
+      // Clear any existing timer
+      if (answerChangeTimer.current) {
+        clearTimeout(answerChangeTimer.current);
+      }
+      
+      // Set a new timer to debounce the update
+      answerChangeTimer.current = setTimeout(() => {
+        updateParticipantAnswers(idx, participantId, section, question, value);
+      }, 500); // 500ms delay
     }
   };
+
+  // Add effect for connection calculations
 
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>

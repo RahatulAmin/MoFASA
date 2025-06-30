@@ -231,26 +231,33 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
 
   // Participants logic
   const handleAddParticipant = () => {
-    // Find the highest participant number in the current scope
-    const highestNumber = participants.reduce((max, p) => {
-      const match = p.name.match(/^P(\d+)(?:_\d+)?$/);
-      return match ? Math.max(max, parseInt(match[1])) : max;
-    }, 0);
+    // Find the highest participant number across all scopes
+    let highestNumber = 0;
+    project.scopes.forEach(scope => {
+      if (scope.participants) {
+        scope.participants.forEach(p => {
+          const match = p.name.match(/^P(\d+)(?:_\d+)?$/);
+          if (match) {
+            highestNumber = Math.max(highestNumber, parseInt(match[1]));
+          }
+        });
+      }
+    });
     
     const newParticipantNumber = highestNumber + 1;
     const newParticipant = {
       id: `P${newParticipantNumber}`,
+      participantId: `P${newParticipantNumber}`, // Add participantId for consistency
       name: `P${newParticipantNumber}`,
       answers: {},
       summary: ''
     };
     
-    // Update the current scope's participants
-    const updatedScopes = [...project.scopes];
-    updatedScopes[selectedScope] = {
-      ...updatedScopes[selectedScope],
-      participants: [...participants, newParticipant]
-    };
+    // Update all scopes to include the new participant
+    const updatedScopes = project.scopes.map(scope => ({
+      ...scope,
+      participants: [...(scope.participants || []), newParticipant]
+    }));
     
     // Update the project with the new scopes
     const updatedProject = {
@@ -269,24 +276,29 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
 
   const handleSaveParticipant = (id) => {
     if (participantDraft.trim()) {
-      // Check for duplicate names in the current scope
-      const isDuplicate = participants.some(p => p.id !== id && p.name === participantDraft.trim());
+      // Check for duplicate names across all scopes
+      let isDuplicate = false;
+      project.scopes.forEach(scope => {
+        if (scope.participants) {
+          const duplicateInScope = scope.participants.some(p => p.id !== id && p.name === participantDraft.trim());
+          if (duplicateInScope) {
+            isDuplicate = true;
+          }
+        }
+      });
+      
       if (isDuplicate) {
-        setNameError('A participant with this name already exists in this scope.');
+        setNameError('A participant with this name already exists in this project.');
         return;
       }
       
-      // Update the participant in the current scope
-      const updatedParticipants = participants.map(p => 
-        p.id === id ? { ...p, name: participantDraft.trim() } : p
-      );
-      
-      // Update the current scope's participants
-      const updatedScopes = [...project.scopes];
-      updatedScopes[selectedScope] = {
-        ...updatedScopes[selectedScope],
-        participants: updatedParticipants
-      };
+      // Update the participant in all scopes
+      const updatedScopes = project.scopes.map(scope => ({
+        ...scope,
+        participants: (scope.participants || []).map(p => 
+          p.id === id ? { ...p, name: participantDraft.trim() } : p
+        )
+      }));
       
       // Update the project with the new scopes
       const updatedProject = {
@@ -295,7 +307,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
       };
       
       editProject(idx, updatedProject);
-      setParticipants(updatedParticipants);
+      setParticipants(updatedScopes[selectedScope].participants || []);
       setEditingParticipant(null);
       setParticipantDraft('');
       setNameError('');
@@ -309,15 +321,11 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   };
 
   const handleDeleteParticipant = (id) => {
-    // Remove participant from the current scope
-    const updatedParticipants = participants.filter(p => p.id !== id);
-    
-    // Update the current scope's participants
-    const updatedScopes = [...project.scopes];
-    updatedScopes[selectedScope] = {
-      ...updatedScopes[selectedScope],
-      participants: updatedParticipants
-    };
+    // Remove participant from all scopes
+    const updatedScopes = project.scopes.map(scope => ({
+      ...scope,
+      participants: (scope.participants || []).filter(p => p.id !== id)
+    }));
     
     // Update the project with the new scopes
     const updatedProject = {
@@ -326,7 +334,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     };
     
     editProject(idx, updatedProject);
-    setParticipants(updatedParticipants);
+    setParticipants(updatedScopes[selectedScope].participants || []);
   };
 
   const handleParticipantClick = (id) => {
@@ -541,7 +549,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
     if (!sortType) {
       // Simple counting for no sort
       const stats = {};
-      (project.rules || []).forEach(rule => {
+      (currentScope?.rules || []).forEach(rule => {
         stats[rule] = participants.filter(p => 
           p.answers?.['Rule Selection']?.selectedRules?.includes(rule)
         ).length;
@@ -550,7 +558,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
     } else if (sortType === 'gender') {
       // Group by gender for each rule
       const stats = {};
-      (project.rules || []).forEach(rule => {
+      (currentScope?.rules || []).forEach(rule => {
         stats[rule] = {
           Male: participants.filter(p => 
             p.answers?.Identity?.gender === 'Male' && 
@@ -574,7 +582,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
     } else if (sortType === 'age') {
       // Group by age range for each rule
       const stats = {};
-      (project.rules || []).forEach(rule => {
+      (currentScope?.rules || []).forEach(rule => {
         stats[rule] = {};
         AGE_RANGES.forEach(range => {
           stats[rule][range] = participants.filter(p => 
@@ -835,8 +843,8 @@ Please provide concise, actionable suggestions in these two categories. Each sug
   };
 
   const handleDeleteRule = (rule) => {
-    if (!project) return;
-    const updatedRules = (project.rules || []).filter(r => r !== rule);
+    if (!currentScope) return;
+    const updatedRules = (currentScope.rules || []).filter(r => r !== rule);
     
     // Update all participants to remove this rule from their selections and decisions
     const updatedParticipants = participants.map(p => {
@@ -862,11 +870,17 @@ Please provide concise, actionable suggestions in these two categories. Each sug
       return p;
     });
 
-    // Update project with new rules and updated participants
-    updateProjectRules(idx, updatedRules);
+    // Update the current scope with new rules and updated participants
+    const updatedScopes = project.scopes.map((scope, scopeIndex) => 
+      scopeIndex === selectedScope ? {
+        ...scope,
+        rules: updatedRules,
+        participants: updatedParticipants
+      } : scope
+    );
     
-    // Update selected rules for current participant
-    setSelectedRules(prev => prev.filter(r => r !== rule));
+    // Update project with new scopes
+    updateProjectRules(idx, updatedScopes);
     
     // Close the dialog
     setRuleToDelete(null);
@@ -875,6 +889,21 @@ Please provide concise, actionable suggestions in these two categories. Each sug
   const handleScopeSelection = (scopeIndex) => {
     setSelectedScope(scopeIndex);
     setScopeDescEditMode(false); // Reset scope description editing when switching scopes
+    
+    // Check if the currently selected participant exists in the new scope
+    const newScope = project.scopes[scopeIndex];
+    const participantsInNewScope = newScope?.participants || [];
+    
+    if (selectedParticipant) {
+      const participantExistsInNewScope = participantsInNewScope.some(p => p.id === selectedParticipant.id);
+      if (!participantExistsInNewScope) {
+        // Participant doesn't exist in new scope, but we'll keep the selection
+        // The PersonaeBoxes component will handle displaying the participant's data
+        // even if they're from a different scope
+        console.log(`Selected participant ${selectedParticipant.name} is not in scope ${scopeIndex + 1}, but keeping selection`);
+      }
+    }
+    
     // Save selected scope to localStorage for ParticipantPage
     try {
       localStorage.setItem(`project_${idx}_selected_scope`, scopeIndex.toString());
@@ -1355,7 +1384,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                             background: '#f8f9fa',
                             borderRadius: 4
                           }}>
-                            {(project.rules || []).map((rule, index) => {
+                            {(currentScope?.rules || []).map((rule, index) => {
                               const isSelected = participant.answers?.['Rule Selection']?.selectedRules?.includes(rule);
                               return (
                                 <div
@@ -1375,7 +1404,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                                 </div>
                               );
                             })}
-                            {(project.rules || []).length === 0 && (
+                            {(currentScope?.rules || []).length === 0 && (
                               <div style={{
                                 padding: '10px',
                                 color: '#7f8c8d',
@@ -1383,7 +1412,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                                 width: '100%',
                                 textAlign: 'center'
                               }}>
-                                No rules defined for this project
+                                No rules defined for this scope
                               </div>
                             )}
                           </div>
@@ -1795,7 +1824,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                   gap: '8px',
                   marginBottom: '20px'
                 }}>
-                  {(project.rules || []).map((rule, index) => (
+                  {(currentScope?.rules || []).map((rule, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedRule(selectedRule === rule ? null : rule)}
@@ -2115,6 +2144,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                     onConnectionsCalculated={setConnections}
                     showConnections={true}
                     project={project}
+                    projectIndex={idx}
                   />
 
                   {/* SVG Container for Lines */}

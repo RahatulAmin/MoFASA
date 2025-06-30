@@ -115,7 +115,7 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
         }}>
           Enable or disable questions for <strong>{projectName}</strong>. At least one question per section must remain enabled.
         </p>
-        <button
+        {/* <button
           onClick={async () => {
             console.log('Testing project question settings for projectId:', projectId);
             if (!projectId) {
@@ -137,7 +137,7 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
           }}
         >
           Test Database State
-        </button>
+        </button> */}
       </div>
 
       {error && (
