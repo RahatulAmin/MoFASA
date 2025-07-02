@@ -874,91 +874,328 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           Back to Projects
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {nameEditMode ? (
-            <>
-              <input
-                value={nameDraft}
-                onChange={e => setNameDraft(e.target.value)}
-                style={{ fontSize: '1.2em', fontFamily: 'Lexend, sans-serif', borderRadius: 4, border: '1px solid #ccc', padding: 4 }}
-                autoFocus
-              />
-              <button key="save-name" onClick={handleNameSave} style={{ padding: '2px 8px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-              <button key="cancel-name" onClick={() => setNameEditMode(false)} style={{ padding: '2px 8px', background: '#bbb', color: '#222', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-            </>
-          ) : (
-            <>
-              <h2 style={{ fontFamily: 'Lexend, sans-serif', fontWeight: 700, fontSize: '1.3em', marginBottom: 10 }}>{project.name}</h2>
-            </>
-          )}
-        </div>
-        <div
-          style={{
-            border: '1px solid #dcdde1',
-            borderRadius: 6,
-            padding: 14,
-            minHeight: 60,
-            background: '#f8fafb',
-            position: 'relative',
-            fontFamily: 'Lexend, sans-serif',
-            fontSize: '1em',
-            marginBottom: 10,
-            marginTop: 20
-          }}
-        >
-          {descEditMode ? (
-            <>
-              <textarea
-                value={descDraft}
-                onChange={e => setDescDraft(e.target.value)}
-                style={{ width: '100%', minHeight: 40, fontFamily: 'Lexend, sans-serif', fontSize: '1em', borderRadius: 4, border: '1px solid #ccc', resize: 'vertical' }}
-                autoFocus
-              />
-              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <button key="save-desc" onClick={handleDescSave} style={{ padding: '4px 14px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-                <button key="cancel-desc" onClick={() => setDescEditMode(false)} style={{ padding: '4px 14px', background: '#bbb', color: '#222', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+        {/* Project Header Card */}
+        <div style={{
+          background: '#fff',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '24px',
+          border: '1px solid #e9ecef',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+        }}>
+          {/* Project Name */}
+          <div style={{ marginBottom: '20px' }}>
+            {/* <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <div style={{
+                width: '3px',
+                height: '16px',
+                background: '#3498db',
+                borderRadius: '2px'
+              }} />
+              <span style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.8em',
+                color: '#6c757d',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Project Name
+              </span>
+            </div> */}
+            
+            {nameEditMode ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  value={nameDraft}
+                  onChange={e => setNameDraft(e.target.value)}
+                  style={{
+                    fontSize: '1.5em',
+                    fontFamily: 'Lexend, sans-serif',
+                    fontWeight: '600',
+                    color: '#2c3e50',
+                    border: '1px solid #dcdde1',
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    outline: 'none',
+                    minWidth: '250px'
+                  }}
+                  placeholder="Enter project name..."
+                  autoFocus
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#3498db';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#dcdde1';
+                  }}
+                />
+                <button 
+                  key="save-name" 
+                  onClick={handleNameSave}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#27ae60',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontFamily: 'Lexend, sans-serif',
+                    fontWeight: '500',
+                    fontSize: '0.9em'
+                  }}
+                >
+                  Save
+                </button>
+                <button 
+                  key="cancel-name" 
+                  onClick={() => setNameEditMode(false)}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#95a5a6',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontFamily: 'Lexend, sans-serif',
+                    fontWeight: '500',
+                    fontSize: '0.9em'
+                  }}
+                >
+                  Cancel
+                </button>
               </div>
-            </>
-          ) : project.description ? (
-            <div style={{ position: 'relative' }}>
-              <span>{project.description}</span>
-              <img 
-                src={editIcon} 
-                alt="Edit" 
-                className="edit-icon"
-                onClick={() => { 
-                  setDescDraft(project.description); 
-                  setDescEditMode(true); 
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2 style={{
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: '600',
+                  fontSize: '1.5em',
+                  color: '#2c3e50',
+                  margin: 0
+                }}>
+                  {project.name}
+                </h2>
+                <button
+                  onClick={() => setNameEditMode(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '4px',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#f8f9fa';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <img 
+                    src={editIcon} 
+                    alt="Edit" 
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      opacity: '0.6'
+                    }}
+                  />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Project Description */}
+          <div style={{
+            background: '#f8f9fa',
+            borderRadius: '8px',
+            padding: '16px',
+            border: '1px solid #e9ecef'
+          }}>
+            {/* <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{
+                width: '2px',
+                height: '12px',
+                background: '#6c757d',
+                borderRadius: '1px'
+              }} />
+              <span style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.75em',
+                color: '#6c757d',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Description
+              </span>
+            </div> */}
+            
+            {descEditMode ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <textarea
+                  value={descDraft}
+                  onChange={e => setDescDraft(e.target.value)}
+                  style={{
+                    width: '100%',
+                    minHeight: '60px',
+                    fontFamily: 'Lexend, sans-serif',
+                    fontSize: '0.95em',
+                    color: '#2c3e50',
+                    border: '1px solid #dcdde1',
+                    borderRadius: '4px',
+                    padding: '8px 12px',
+                    resize: 'vertical',
+                    outline: 'none'
+                  }}
+                  placeholder="Enter project description..."
+                  autoFocus
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#3498db';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#dcdde1';
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    key="save-desc" 
+                    onClick={handleDescSave}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#27ae60',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontWeight: '500',
+                      fontSize: '0.9em'
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button 
+                    key="cancel-desc" 
+                    onClick={() => setDescEditMode(false)}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#95a5a6',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontWeight: '500',
+                      fontSize: '0.9em'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : project.description ? (
+              <div style={{ position: 'relative' }}>
+                <p style={{
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.95em',
+                  color: '#495057',
+                  margin: 0,
+                  lineHeight: '1.5',
+                  paddingRight: '30px'
+                }}>
+                  {project.description}
+                </p>
+                <button
+                  onClick={() => { 
+                    setDescDraft(project.description); 
+                    setDescEditMode(true); 
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '0',
+                    right: '0',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '4px',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#e9ecef';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <img 
+                    src={editIcon} 
+                    alt="Edit" 
+                    style={{
+                      width: '12px',
+                      height: '12px',
+                      opacity: '0.6'
+                    }}
+                  />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setDescDraft(''); setDescEditMode(true); }}
+                style={{
+                  padding: '8px 16px',
+                  background: '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.9em',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: '500'
                 }}
-              />
-            </div>
-          ) : (
-            <button
-              onClick={() => { setDescDraft(''); setDescEditMode(true); }}
-              style={{ padding: '6px 16px', background: '#3498db', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '.98em' }}
-            >
-              + Add Description
-            </button>
-          )}
+              >
+                + Add Description
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Scope Selection */}
         {project.scopes && project.scopes.length > 0 && (
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ 
-              fontFamily: 'Lexend, sans-serif', 
-              fontWeight: 600, 
-              fontSize: '1.1em', 
-              marginBottom: '12px',
-              color: '#2c3e50'
-            }}>
-              Scopes:
-            </h3>
-            <div style={{ 
-              display: 'flex', 
-              gap: '8px', 
+          <div style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px',
+              border: '1px solid #e9ecef',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+              }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <div style={{
+                width: '3px',
+                height: '16px',
+                background: '#27ae60',
+                borderRadius: '2px'
+              }} />
+              <h3 style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontWeight: '600',
+                fontSize: '1.1em',
+                color: '#2c3e50',
+                margin: 0
+              }}>
+                Project Scopes
+              </h3>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '8px',
               flexWrap: 'wrap',
-              alignItems: 'center'
+              alignItems: 'center',
+              marginBottom: '16px'
             }}>
               {project.scopes.map((scope, index) => (
                 <button
@@ -966,10 +1203,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                   onClick={() => handleScopeSelection(index)}
                   style={{
                     padding: '8px 16px',
-                    backgroundColor: selectedScope === index ? '#3498db' : '#ecf0f1',
+                    backgroundColor: selectedScope === index ? '#27ae60' : '#f8f9fa',
                     color: selectedScope === index ? '#fff' : '#2c3e50',
                     border: '1px solid',
-                    borderColor: selectedScope === index ? '#3498db' : '#bdc3c7',
+                    borderColor: selectedScope === index ? '#27ae60' : '#e9ecef',
                     borderRadius: '6px',
                     cursor: 'pointer',
                     fontWeight: selectedScope === index ? '600' : '500',
@@ -981,14 +1218,14 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                   }}
                   onMouseOver={(e) => {
                     if (selectedScope !== index) {
-                      e.target.style.backgroundColor = '#d5dbdb';
-                      e.target.style.borderColor = '#95a5a6';
+                      e.target.style.backgroundColor = '#e9ecef';
+                      e.target.style.borderColor = '#d1d5db';
                     }
                   }}
                   onMouseOut={(e) => {
                     if (selectedScope !== index) {
-                      e.target.style.backgroundColor = '#ecf0f1';
-                      e.target.style.borderColor = '#bdc3c7';
+                      e.target.style.backgroundColor = '#f8f9fa';
+                      e.target.style.borderColor = '#e9ecef';
                     }
                   }}
                 >
@@ -996,47 +1233,73 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                 </button>
               ))}
             </div>
+            
             {currentScope && (
               <div style={{
-                marginTop: '12px',
-                padding: '12px',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '6px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                padding: '16px',
                 border: '1px solid #e9ecef',
-                fontFamily: 'Lexend, sans-serif',
-                fontSize: '0.95em',
-                color: '#495057',
                 position: 'relative'
-              }}>
+                }}>
+                {/* <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '2px',
+                    height: '12px',
+                    background: '#6c757d',
+                    borderRadius: '1px'
+                  }} />
+                  <span style={{
+                    fontFamily: 'Lexend, sans-serif',
+                    fontSize: '0.75em',
+                    color: '#6c757d',
+                    fontWeight: '500',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Current Scope Description
+                  </span>
+                </div> */}
+                
                 {scopeDescEditMode ? (
-                  <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <textarea
                       value={scopeDescDraft}
                       onChange={e => setScopeDescDraft(e.target.value)}
-                      style={{ 
-                        width: '100%', 
-                        minHeight: 40, 
-                        fontFamily: 'Lexend, sans-serif', 
-                        fontSize: '0.95em', 
-                        borderRadius: 4, 
-                        border: '1px solid #ccc', 
+                      style={{
+                        width: '100%',
+                        minHeight: '50px',
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '0.9em',
+                        color: '#2c3e50',
+                        border: '1px solid #dcdde1',
+                        borderRadius: '4px',
+                        padding: '8px 12px',
                         resize: 'vertical',
-                        marginBottom: '8px'
+                        outline: 'none'
                       }}
                       placeholder="Enter scope description..."
                       autoFocus
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#3498db';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#dcdde1';
+                      }}
                     />
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       <button 
                         key="save-scope-desc"
-                        onClick={handleScopeDescSave} 
-                        style={{ 
-                          padding: '4px 14px', 
-                          background: '#27ae60', 
-                          color: '#fff', 
-                          border: 'none', 
-                          borderRadius: 4, 
+                        onClick={handleScopeDescSave}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#27ae60',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
                           cursor: 'pointer',
+                          fontFamily: 'Lexend, sans-serif',
+                          fontWeight: '500',
                           fontSize: '0.9em'
                         }}
                       >
@@ -1044,33 +1307,68 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                       </button>
                       <button 
                         key="cancel-scope-desc"
-                        onClick={() => setScopeDescEditMode(false)} 
-                        style={{ 
-                          padding: '4px 14px', 
-                          background: '#bbb', 
-                          color: '#222', 
-                          border: 'none', 
-                          borderRadius: 4, 
+                        onClick={() => setScopeDescEditMode(false)}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#95a5a6',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
                           cursor: 'pointer',
+                          fontFamily: 'Lexend, sans-serif',
+                          fontWeight: '500',
                           fontSize: '0.9em'
                         }}
                       >
                         Cancel
                       </button>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <div style={{ position: 'relative' }}>
-                    {currentScope.scopeText || 'No description provided'}
-                    <img 
-                      src={editIcon} 
-                      alt="Edit" 
-                      className="edit-icon"
+                    <p style={{
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.9em',
+                      color: '#495057',
+                      margin: 0,
+                      lineHeight: '1.5',
+                      paddingRight: '30px'
+                    }}>
+                      {currentScope.scopeText || 'No description provided for this scope.'}
+                    </p>
+                    <button
                       onClick={() => { 
                         setScopeDescDraft(currentScope.scopeText || ''); 
                         setScopeDescEditMode(true); 
                       }}
-                    />
+                      style={{
+                        position: 'absolute',
+                        top: '0',
+                        right: '0',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseOver={(e) => {
+                        e.target.style.backgroundColor = '#e9ecef';
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <img 
+                        src={editIcon} 
+                        alt="Edit" 
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          opacity: '0.6'
+                        }}
+                      />
+                    </button>
                   </div>
                 )}
               </div>

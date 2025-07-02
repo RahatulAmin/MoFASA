@@ -1,6 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 
-const DeepSeekStatus = memo(() => {
+const LLMStatus = memo(() => {
   const [status, setStatus] = useState('checking');
 
   useEffect(() => {
@@ -69,6 +69,6 @@ const DeepSeekStatus = memo(() => {
   );
 });
 
-DeepSeekStatus.displayName = 'DeepSeekStatus';
+LLMStatus.displayName = 'LLMStatus';
 
-export default DeepSeekStatus; 
+export default LLMStatus; 
