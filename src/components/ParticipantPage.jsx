@@ -118,6 +118,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   });
   const [showRuleInput, setShowRuleInput] = useState(false);
   const [ruleToDelete, setRuleToDelete] = useState(null);
+  const [localAnswers, setLocalAnswers] = useState({});
 
   // Manual refresh function for connections
   const refreshConnections = useRef(() => {});
@@ -208,6 +209,8 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     setError(null);
     setProgress(0);
     setInterviewText(participant?.interviewText || '');
+    // Initialize local answers with participant's current answers
+    setLocalAnswers(participant?.answers || {});
     // Ensure selectedRules is always an array
     const participantSelectedRules = participant?.answers?.['Rule Selection']?.selectedRules;
     console.log('Loading selected rules:', {
@@ -410,7 +413,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   }, [
     projects, 
     participantId, 
-    participant?.answers, 
+    localAnswers, 
     selectedRules, 
     showInterview, 
     showSummary,
@@ -425,7 +428,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     }, 100);
     
     return () => clearTimeout(timeoutId);
-  }, [participant?.answers, selectedRules]);
+  }, [localAnswers, selectedRules]);
 
   const generateSummary = async () => {
     if (!participant) return;
@@ -667,17 +670,24 @@ Please provide a concise, direct answer to the question based on the interview c
   }
 
   const handleAnswerChange = (section, question, value) => {
-    if (!isUpdating) {
-      // Clear any existing timer
-      if (answerChangeTimer.current) {
-        clearTimeout(answerChangeTimer.current);
+    // Update local state immediately for responsive UI
+    setLocalAnswers(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [question]: value
       }
-      
-      // Set a new timer to debounce the update
-      answerChangeTimer.current = setTimeout(() => {
-        updateParticipantAnswers(idx, participantId, section, question, value);
-      }, 500); // 500ms delay
+    }));
+    
+    // Clear any existing timer
+    if (answerChangeTimer.current) {
+      clearTimeout(answerChangeTimer.current);
     }
+    
+    // Set a new timer to debounce the database update
+    answerChangeTimer.current = setTimeout(() => {
+      updateParticipantAnswers(idx, participantId, section, question, value);
+    }, 500); // 500ms delay
   };
 
   // Add effect for connection calculations
@@ -1341,7 +1351,7 @@ Please provide a concise, direct answer to the question based on the interview c
                           </label>
                           {isDropdown ? (
                             <select
-                              value={participant?.answers?.[section.name]?.[questionId] || ''}
+                              value={localAnswers[section.name]?.[questionId] || ''}
                               onChange={(e) => handleAnswerChange(section.name, questionId, e.target.value)}
                               style={{
                                 padding: '8px 12px',
@@ -1362,7 +1372,7 @@ Please provide a concise, direct answer to the question based on the interview c
                             </select>
                           ) : (
                             <textarea
-                              value={participant?.answers?.[section.name]?.[question] || ''}
+                              value={localAnswers[section.name]?.[question] || ''}
                               onChange={(e) => handleAnswerChange(section.name, question, e.target.value)}
                               style={{
                                 padding: 12,
@@ -1581,7 +1591,7 @@ Please provide a concise, direct answer to the question based on the interview c
                 ) : (
                   questions[section.name]?.map((question, i) => {
                     const questionId = typeof question === 'object' ? question.id : question;
-                    const answer = participant.answers?.[section.name]?.[questionId];
+                    const answer = localAnswers[section.name]?.[questionId];
                     return answer ? (
                       <div key={questionId} style={{ marginBottom: 12 }}>
                         {answer}
