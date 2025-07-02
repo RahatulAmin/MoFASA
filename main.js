@@ -36,6 +36,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     show: false, // 👈 Prevent flicker
+
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

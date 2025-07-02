@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import editIcon from '../images/edit.png';
 import deleteIcon from '../images/trash.png';
-import PersonaeBoxes from './PersonaeBoxes';
+import PersonaeFramework from './PersonaeFramework';
 import { SECTIONS, connectionPairs } from '../constants/frameAnalysis';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -48,8 +48,6 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [nameError, setNameError] = useState('');
   const [currentView, setCurrentView] = useState('details'); // 'details', 'personae', 'behavioral', or 'situation'
   const [selectedParticipant, setSelectedParticipant] = useState(null);
-  const [connections, setConnections] = useState([]);
-  const boxRefs = useRef(SECTIONS.map(() => React.createRef()));
   const [sortBy, setSortBy] = useState("");
   const [sortBehavioralBy, setSortBehavioralBy] = useState("");
   const [statsSort, setStatsSort] = useState(""); // New state for stats sorting
@@ -99,100 +97,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     setSelectedScope(0);
   }, [projectId]);
 
-  // Add effect for connection calculations
-  useEffect(() => {
-    if (selectedParticipant && currentView === 'personae') {
-      calculateConnections();
-
-      // Add resize listener
-      const handleResize = () => {
-        requestAnimationFrame(calculateConnections);
-      };
-      window.addEventListener('resize', handleResize);
-      
-      // Cleanup
-      return () => {
-        window.removeEventListener('resize', handleResize);
-      };
-    }
-  }, [selectedParticipant, currentView]);
-
   // Reset states when project changes
   useEffect(() => {
     setSelectedParticipant(null);
-    setConnections([]);
   }, [projectId]);
-
-  const calculateConnections = () => {
-    const boxes = boxRefs.current.map(ref => ref.current?.getBoundingClientRect());
-    if (!boxes.every(box => box)) return;
-
-    const rightPanel = document.querySelector('.right-panel');
-    if (!rightPanel) return;
-    
-    const panelRect = rightPanel.getBoundingClientRect();
-
-    // First, calculate how many connections go to each box side
-    const connectionCounts = {};
-    connectionPairs.forEach(pair => {
-      const toKey = `${pair.to}-${pair.toSide}`;
-      connectionCounts[toKey] = (connectionCounts[toKey] || 0) + 1;
-    });
-
-    // Calculate paths with proper spacing
-    const paths = connectionPairs.map((pair, index) => {
-      const fromBox = boxes[pair.from];
-      const toBox = boxes[pair.to];
-      
-      const startX = pair.fromSide === 'right' 
-        ? fromBox.left - panelRect.left + fromBox.width 
-        : fromBox.left - panelRect.left;
-      const startY = fromBox.top - panelRect.top + (fromBox.height * 2/3); 
-
-      const toKey = `${pair.to}-${pair.toSide}`;
-      const totalConnections = connectionCounts[toKey];
-      const connectionIndex = connectionPairs
-        .filter((p, i) => i < index && p.to === pair.to && p.toSide === pair.toSide)
-        .length;
-
-      let endX = pair.toSide === 'left'
-        ? toBox.left - panelRect.left
-        : toBox.left - panelRect.left + toBox.width;
-
-      let endY = toBox.top - panelRect.top + toBox.height / 3;
-      if (totalConnections > 1) {
-        const spacing = 20;
-        const totalHeight = (totalConnections - 1) * spacing;
-        const startOffset = -totalHeight / 2;
-        endY += startOffset + (connectionIndex * spacing);
-      }
-
-      const horizontalOffset = pair.horizontalOffset || 20;
-
-      return {
-        path: `
-          M ${startX} ${startY}
-          ${pair.fromSide === 'right' ? 'h' : 'h -'}${horizontalOffset}
-          ${Math.abs(startY - endY) > 20 ? `
-          ${pair.fromSide === pair.toSide ? 
-            `V ${endY}` : 
-            `h ${pair.fromSide === 'right' ? horizontalOffset : -horizontalOffset}
-            V ${endY}
-            h ${pair.fromSide === 'right' ? -horizontalOffset : horizontalOffset}`
-          }` : 
-          `V ${endY}`}
-          ${pair.toSide === 'right' ? 'h' : 'h -'}${horizontalOffset}
-        `,
-        arrow: {
-          x: endX + (pair.toSide === 'right' ? -1 : 1),
-          y: endY,
-          direction: pair.toSide === 'right' ? 'left' : 'right'
-        }
-      };
-    });
-    
-    setConnections(paths);
-  };
 
   const handleDescSave = () => {
     updateProjectDescription(idx, descDraft);
@@ -898,7 +806,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
       const participantExistsInNewScope = participantsInNewScope.some(p => p.id === selectedParticipant.id);
       if (!participantExistsInNewScope) {
         // Participant doesn't exist in new scope, but we'll keep the selection
-        // The PersonaeBoxes component will handle displaying the participant's data
+        // The PersonaeFramework component will handle displaying the participant's data
         // even if they're from a different scope
         console.log(`Selected participant ${selectedParticipant.name} is not in scope ${scopeIndex + 1}, but keeping selection`);
       }
@@ -2139,44 +2047,11 @@ Please provide concise, actionable suggestions in these two categories. Each sug
             personaeView === 'framework' ? (
               selectedParticipant ? (
                 <div ref={frameworkRef}>
-                  <PersonaeBoxes 
+                  <PersonaeFramework 
                     selectedParticipant={selectedParticipant}
-                    onConnectionsCalculated={setConnections}
-                    showConnections={true}
-                    project={project}
-                    projectIndex={idx}
+                    currentScope={currentScope}
+                    selectedRules={selectedParticipant?.answers?.['Rule Selection']?.selectedRules || []}
                   />
-
-                  {/* SVG Container for Lines */}
-                  <svg 
-                    style={{ 
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      pointerEvents: 'none',
-                      overflow: 'visible',
-                      zIndex: 1
-                    }}
-                  >
-                    {connections.map((connection, index) => (
-                      <g key={index}>
-                        <path
-                          d={connection.path}
-                          stroke="rgba(255, 255, 255, 0.6)"
-                          strokeWidth="2"
-                          fill="none"
-                        />
-                        <path
-                          d={`M ${connection.arrow.x} ${connection.arrow.y} 
-                             l ${connection.arrow.direction === 'right' ? '8' : '-8'} -4 
-                             l 0 8 z`}
-                          fill="rgba(255, 255, 255, 0.6)"
-                        />
-                      </g>
-                    ))}
-                  </svg>
                 </div>
               ) : (
                 <div style={{

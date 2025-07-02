@@ -265,6 +265,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
 
   // Add refs for the boxes
   const boxRefs = useRef(SECTIONS.map(() => React.createRef()));
+  const scrollContainerRef = useRef(null);
   const [connections, setConnections] = useState([]);
 
   // Define the connections structure with side specifications
@@ -288,6 +289,10 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       
       const panelRect = rightPanel.getBoundingClientRect();
       
+      // Get the scrollable container
+      const scrollContainer = rightPanel.querySelector('div[style*="overflowY"]');
+      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+      
       // Account for the scope header height (60px)
       const headerHeight = 60;
       const adjustedTop = panelRect.top + headerHeight;
@@ -305,13 +310,13 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         const fromBox = boxes[pair.from];
         const toBox = boxes[pair.to];
         
-        // Calculate start point (adjust for header)
+        // Calculate start point (adjust for header and scroll)
         const startX = pair.fromSide === 'right' 
           ? fromBox.left - panelRect.left + fromBox.width 
           : fromBox.left - panelRect.left;
-        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3); 
+        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3) - scrollTop; 
 
-        // Calculate end point with proper spacing (adjust for header)
+        // Calculate end point with proper spacing (adjust for header and scroll)
         const toKey = `${pair.to}-${pair.toSide}`;
         const totalConnections = connectionCounts[toKey];
         const connectionIndex = connectionPairs
@@ -323,7 +328,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
           : toBox.left - panelRect.left + toBox.width;
 
         // Calculate vertical offset for multiple connections
-        let endY = toBox.top - adjustedTop + toBox.height / 3;
+        let endY = toBox.top - adjustedTop + toBox.height / 3 - scrollTop;
         if (totalConnections > 1) {
           const spacing = 20; // Gap between lines
           const totalHeight = (totalConnections - 1) * spacing;
@@ -368,11 +373,31 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     // Recalculate after a short delay to ensure DOM is fully rendered
     const timeoutId = setTimeout(calculateConnections, 100);
     
-    // Recalculate on scroll
-    const scrollContainer = document.querySelector('.right-panel > div');
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', calculateConnections);
-    }
+    // Recalculate on scroll with throttling - add delay to ensure DOM is ready
+    const attachScrollListener = () => {
+      if (scrollContainerRef.current) {
+        let scrollTimeout;
+        const handleScroll = () => {
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(calculateConnections, 16); // ~60fps
+        };
+        scrollContainerRef.current.addEventListener('scroll', handleScroll);
+        
+        // Cleanup scroll listener
+        return () => {
+          clearTimeout(scrollTimeout);
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.removeEventListener('scroll', handleScroll);
+          }
+        };
+      }
+    };
+
+    // Try to attach immediately, and also after a delay
+    let cleanup = attachScrollListener();
+    const timeoutId2 = setTimeout(() => {
+      cleanup = attachScrollListener();
+    }, 100);
 
     // Recalculate on window resize
     const handleResize = () => {
@@ -393,21 +418,21 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         resizeObserver.observe(rightPanel);
       }
       
-      const scrollContainer = document.querySelector('.right-panel > div');
-      if (scrollContainer) {
-        resizeObserver.observe(scrollContainer);
+      if (scrollContainerRef.current) {
+        resizeObserver.observe(scrollContainerRef.current);
       }
     }
 
     // Cleanup function
     return () => {
       clearTimeout(timeoutId);
-      if (scrollContainer) {
-        scrollContainer.removeEventListener('scroll', calculateConnections);
-      }
+      clearTimeout(timeoutId2);
       window.removeEventListener('resize', handleResize);
       if (resizeObserver) {
         resizeObserver.disconnect();
+      }
+      if (cleanup) {
+        cleanup();
       }
     };
   }, [
@@ -1491,16 +1516,19 @@ Please provide a concise, direct answer to the question based on the interview c
         </svg>
 
         {/* Scrollable Boxes Area */}
-        <div style={{ 
-          flex: 1,
-          overflowY: 'auto', 
-          padding: '32px 16px 32px 0', // Add right padding to account for scrollbar
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          position: 'relative',
-          zIndex: 1
-        }}>
+        <div 
+          ref={scrollContainerRef}
+          style={{ 
+            flex: 1,
+            overflowY: 'auto', 
+            padding: '32px 16px 32px 0', // Add right padding to account for scrollbar
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 1
+          }}
+        >
         {SECTIONS.map((section, i) => (
           <div
             key={section.name}

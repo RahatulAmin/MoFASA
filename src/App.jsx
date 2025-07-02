@@ -7,11 +7,14 @@ import ParticipantPage from './components/ParticipantPage';
 import Settings from './components/Settings';
 import About from './components/About';
 import SplashScreen from './components/SplashScreen';
-import DeepSeekStatus from './components/DeepSeekStatus';
+import LLMStatus from './components/LLMStatus';
 import { getProjects, saveProjects } from './store';
 import '../styles.css';
 
 const App = () => {
+  // Configuration - Change this to control splash screen duration
+  const SPLASH_SCREEN_DURATION = 2000; // milliseconds (1 second)
+  
   const [showSplash, setShowSplash] = useState(true);
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,7 +27,9 @@ const App = () => {
     };
     loadProjects();
     // Hide splash screen after 1 second
-    const timer = setTimeout(() => setShowSplash(false), 1000);
+    // Change the number below to control duration:
+    // 500 = 0.5 seconds, 1000 = 1 second, 2000 = 2 seconds, 3000 = 3 seconds
+    const timer = setTimeout(() => setShowSplash(false), SPLASH_SCREEN_DURATION);
     return () => clearTimeout(timer);
   }, []);
 
@@ -231,7 +236,7 @@ const App = () => {
     const location = useLocation();
     return (
       <div className="sidebar-bottom">
-        <DeepSeekStatus />
+        <LLMStatus />
         <Link 
           to="/settings" 
           className="sidebar-item"

@@ -325,7 +325,7 @@ if (needsMigration()) {
 function getAllProjects() {
   console.log('Database: Getting all projects');
   
-  const projects = db.prepare('SELECT * FROM projects ORDER BY createdAt DESC').all();
+  const projects = db.prepare('SELECT * FROM projects ORDER BY createdAt ASC').all();
   
   const projectsWithData = projects.map(project => {
     // Get scopes for this project

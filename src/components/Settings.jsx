@@ -18,14 +18,14 @@ const Settings = ({ projects }) => {
   const [apiKey, setApiKey] = useState('');
 
   // Debug: Log when projects change
-  useEffect(() => {
-    console.log('Settings: Projects updated:', projects);
-    console.log('Settings: Projects length:', projects.length);
-    console.log('Settings: First project:', projects[0]);
-    if (projects.length > 0) {
-      console.log('Settings: First project keys:', Object.keys(projects[0]));
-    }
-  }, [projects]);
+  // useEffect(() => {
+  //   console.log('Settings: Projects updated:', projects);
+  //   console.log('Settings: Projects length:', projects.length);
+  //   console.log('Settings: First project:', projects[0]);
+  //   if (projects.length > 0) {
+  //     console.log('Settings: First project keys:', Object.keys(projects[0]));
+  //   }
+  // }, [projects]);
 
   // Function to count unique participants across all scopes
   const countUniqueParticipants = (project) => {

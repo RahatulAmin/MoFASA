@@ -36,11 +36,11 @@ const DeepSeekStatus = memo(() => {
   const getStatusText = () => {
     switch (status) {
       case 'connected':
-        return 'DeepSeek Connected';
+        return 'LLM Connected';
       case 'disconnected':
-        return 'DeepSeek Disconnected';
+        return 'LLM Disconnected';
       default:
-        return 'Checking DeepSeek...';
+        return 'Checking LLM...';
     }
   };
 

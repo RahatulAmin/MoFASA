@@ -1,23 +1,23 @@
 export const SECTIONS = [
   {
     name: 'Situation',
-    color: '#f9f3f2'
+    color: '#fff5f3'
   },
   {
     name: 'Identity',
-    color: '#fcfbf2'
+    color: '#fffef5'
   },
   {
     name: 'Definition of Situation',
-    color: '#f2f6fc'
+    color: '#f0f8ff'
   },
   {
     name: 'Rule Selection',
-    color: '#ededed'
+    color: '#f8f8f8'
   },
   {
     name: 'Decision',
-    color: '#f2fcf2'
+    color: '#f0fff0'
   }
 ];
 
