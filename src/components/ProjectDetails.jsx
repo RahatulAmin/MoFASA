@@ -71,6 +71,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [selectedRule, setSelectedRule] = useState(null);
   const [robotDraft, setRobotDraft] = useState('');
   const [environmentDraft, setEnvironmentDraft] = useState('');
+  const [expandedParticipants, setExpandedParticipants] = useState(new Set());
 
   if (!project) {
     return <div className="left-panel"><h2>Project Not Found</h2></div>;
@@ -372,13 +373,13 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
 
       const prompt = `Based on the following participant summaries from a human-robot interaction study, suggest specific changes that could improve the interaction scenario. Focus on two main areas:
 
-1. Robot Changes: Suggest modifications to the robot's behavior, appearance, or capabilities
-2. Environmental Changes: Suggest modifications to the physical space, context, or setting of the interaction
+      1. Robot Changes: Suggest modifications to the robot's behavior, appearance, or capabilities
+      2. Environmental Changes: Suggest modifications to the physical space, context, or setting of the interaction
 
-Participant Summaries:
-${allSummaries}
+      Participant Summaries:
+      ${allSummaries}
 
-Please provide concise, actionable suggestions in these two categories. Each suggestion should be directly tied to insights from the participant summaries.`;
+      Please provide concise, actionable suggestions in these two categories. Each suggestion should be directly tied to insights from the participant summaries.`;
 
       const response = await window.electronAPI.generateWithDeepSeek(prompt);
       
@@ -818,6 +819,18 @@ Please provide concise, actionable suggestions in these two categories. Each sug
     } catch (error) {
       console.error('Error saving selected scope:', error);
     }
+  };
+
+  const toggleParticipantExpansion = (participantId) => {
+    setExpandedParticipants(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(participantId)) {
+        newSet.delete(participantId);
+      } else {
+        newSet.add(participantId);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -1769,82 +1782,113 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                 {selectedRule && (
                   <div style={{ 
                     display: 'flex', 
-                    flexWrap: 'wrap', 
-                    gap: '16px',
+                    flexDirection: 'column',
+                    gap: '12px',
                     marginBottom: '24px'
                   }}>
                     {participants
                       .filter(p => p.answers?.['Rule Selection']?.selectedRules?.includes(selectedRule))
-                      .map(participant => (
-                        <div
-                          key={participant.id}
-                          style={{
-                            flex: '0 0 calc(33.333% - 16px)',
-                            background: '#fff',
-                            borderRadius: '8px',
-                            padding: '16px',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                            border: '1px solid #dcdde1',
-                            position: 'relative'
-                          }}
-                          onMouseEnter={(e) => {
-                            const tooltip = document.createElement('div');
-                            tooltip.id = `tooltip-${participant.id}`;
-                            tooltip.style.cssText = `
-                              position: absolute;
-                              left: 50%;
-                              transform: translateX(-50%) translateY(10%);
-                              bottom: -10px;
-                              background: #2c3e50;
-                              color: white;
-                              padding: 12px 16px;
-                              border-radius: 6px;
-                              font-family: 'Lexend', sans-serif;
-                              font-size: 0.9em;
-                              line-height: 1.5;
-                              width: 300px;
-                              z-index: 1000;
-                              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                              white-space: pre-wrap;
-                              pointer-events: none;
-                            `;
-                            tooltip.textContent = participant.summary || 'No Summary Available';
-                            e.currentTarget.appendChild(tooltip);
-                          }}
-                          onMouseLeave={(e) => {
-                            const tooltip = document.getElementById(`tooltip-${participant.id}`);
-                            if (tooltip) {
-                              tooltip.remove();
-                            }
-                          }}
-                        >
-                          <h4 style={{ 
-                            margin: '0 0 8px 0',
-                            fontFamily: 'Lexend, sans-serif',
-                            fontSize: '1em',
-                            color: '#2c3e50'
-                          }}>
-                            {participant.name}
-                          </h4>
-                          <div style={{ 
-                            fontSize: '0.9em',
-                            color: '#7f8c8d',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '2px'
-                          }}>
-                            {participant.answers?.Identity?.age && (
-                              <div>Age: {participant.answers.Identity.age}</div>
-                            )}
-                            {participant.answers?.Identity?.gender && (
-                              <div>Gender: {participant.answers.Identity.gender}</div>
-                            )}
-                            {participant.answers?.Identity?.nationality && (
-                              <div>Nationality: {participant.answers.Identity.nationality}</div>
+                      .map(participant => {
+                        const isExpanded = expandedParticipants.has(participant.id);
+                        return (
+                          <div
+                            key={participant.id}
+                            style={{
+                              background: '#fff',
+                              borderRadius: '8px',
+                              border: '1px solid #dcdde1',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                              overflow: 'hidden',
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            {/* Header - Clickable */}
+                            <div
+                              onClick={() => toggleParticipantExpansion(participant.id)}
+                              style={{
+                                padding: '16px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                backgroundColor: isExpanded ? '#f8f9fa' : '#fff',
+                                borderBottom: isExpanded ? '1px solid #e9ecef' : 'none',
+                                transition: 'background-color 0.2s ease'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.backgroundColor = isExpanded ? '#e9ecef' : '#f8f9fa';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.backgroundColor = isExpanded ? '#f8f9fa' : '#fff';
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <h4 style={{ 
+                                  margin: 0,
+                                  fontFamily: 'Lexend, sans-serif',
+                                  fontSize: '1em',
+                                  color: '#2c3e50'
+                                }}>
+                                  {participant.name}
+                                </h4>
+                                <div style={{ 
+                                  fontSize: '0.85em',
+                                  color: '#7f8c8d',
+                                  display: 'flex',
+                                  gap: '12px'
+                                }}>
+                                  {participant.answers?.Identity?.age && (
+                                    <span>Age: {participant.answers.Identity.age}</span>
+                                  )}
+                                  {participant.answers?.Identity?.gender && (
+                                    <span>Gender: {participant.answers.Identity.gender}</span>
+                                  )}
+                                  {participant.answers?.Identity?.nationality && (
+                                    <span>Nationality: {participant.answers.Identity.nationality}</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div style={{
+                                fontSize: '1em',
+                                color: '#7f8c8d',
+                                transition: 'transform 0.5s ease',
+                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                              }}>
+                                ▼
+                              </div>
+                            </div>
+                            
+                            {/* Expandable Content */}
+                            {isExpanded && (
+                              <div style={{
+                                padding: '16px',
+                                backgroundColor: '#f8f9fa',
+                                borderTop: '1px solid #e9ecef'
+                              }}>
+                                <h5 style={{
+                                  margin: '0 0 12px 0',
+                                  fontFamily: 'Lexend, sans-serif',
+                                  fontSize: '0.95em',
+                                  color: '#2c3e50',
+                                  fontWeight: '600'
+                                }}>
+                                  Summary:
+                                </h5>
+                                <p style={{
+                                  margin: 0,
+                                  fontFamily: 'Lexend, sans-serif',
+                                  fontSize: '0.9em',
+                                  color: '#495057',
+                                  lineHeight: 1.6,
+                                  whiteSpace: 'pre-wrap'
+                                }}>
+                                  {participant.summary || 'No summary available for this participant.'}
+                                </p>
+                              </div>
                             )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 )}
               </div>
@@ -2132,6 +2176,19 @@ Please provide concise, actionable suggestions in these two categories. Each sug
             <div style={{ padding: '24px' }}>
 
             {/* Robot Changes Section */}
+              <div style={{ width: '100%', marginBottom: '8px' }}>
+                <h4 style={{
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '1.05em',
+                  color: '#34495e',
+                  margin: 0,
+                  fontWeight: 600,
+                  textAlign: 'center'
+                }}>
+                  Current Scope: {currentScope?.scopeNumber || ''}
+                </h4>
+              </div>
+
               <div style={{ width: '100%' }}>
                 <h3 style={{
                   fontFamily: 'Lexend, sans-serif',
@@ -2153,13 +2210,24 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                     onChange={(e) => {
                       const newValue = e.target.value;
                       setRobotDraft(newValue);
-                      const updatedProject = {
-                        ...project,
+                      
+                      // Update the current scope's situation design
+                      const updatedScopes = [...project.scopes];
+                      updatedScopes[selectedScope] = {
+                        ...updatedScopes[selectedScope],
                         situationDesign: {
-                          ...project.situationDesign,
+                          ...updatedScopes[selectedScope].situationDesign,
                           robotChanges: newValue
                         }
                       };
+                      
+                      // Update the project with the new scopes
+                      const updatedProject = {
+                        ...project,
+                        scopes: updatedScopes
+                      };
+                      
+                      console.log('Saving robot changes to database:', newValue);
                       editProject(idx, updatedProject);
                     }}
                     style={{
@@ -2200,13 +2268,24 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                     onChange={(e) => {
                       const newValue = e.target.value;
                       setEnvironmentDraft(newValue);
-                      const updatedProject = {
-                        ...project,
+                      
+                      // Update the current scope's situation design
+                      const updatedScopes = [...project.scopes];
+                      updatedScopes[selectedScope] = {
+                        ...updatedScopes[selectedScope],
                         situationDesign: {
-                          ...project.situationDesign,
+                          ...updatedScopes[selectedScope].situationDesign,
                           environmentalChanges: newValue
                         }
                       };
+                      
+                      // Update the project with the new scopes
+                      const updatedProject = {
+                        ...project,
+                        scopes: updatedScopes
+                      };
+                      
+                      console.log('Saving environmental changes to database:', newValue);
                       editProject(idx, updatedProject);
                     }}
                     style={{
@@ -2224,7 +2303,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                 </div>
               </div>
 
-              {/* Generate Button at bottom */}
+              {/* Generate Button at bottom
               <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
                 <button
                   onClick={handleGenerateSituationDesign}
@@ -2300,7 +2379,7 @@ Please provide concise, actionable suggestions in these two categories. Each sug
                     </div>
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>  
           )}
         </div>
