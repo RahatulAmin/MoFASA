@@ -252,7 +252,7 @@ Guidelines:
                         fontSize: '0.9em'
                       }}
                     >
-                      Questionnaire
+                      Questionnaire Settings
                     </button>
                     <button
                       onClick={() => handleEditProject(project)}
@@ -266,7 +266,7 @@ Guidelines:
                         fontSize: '0.9em'
                       }}
                     >
-                      Edit Prompt
+                      Edit Summary Prompt
                     </button>
                   </div>
                 </div>

@@ -23,7 +23,7 @@ const SplashScreen = () => {
       left: 0,
       width: '100%',
       height: '100%',
-      background: 'linear-gradient(135deg, #667eea 0%,rgb(63, 51, 129) 100%)',
+      background: 'linear-gradient(135deg,rgb(98, 99, 168) 0%,rgb(43, 36, 83) 100%)',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
@@ -73,7 +73,7 @@ const SplashScreen = () => {
         zIndex: 1
       }}>
         {/* Logo/Icon */}
-        <div style={{
+        {/* <div style={{
           width: '80px',
           height: '80px',
           borderRadius: '20px',
@@ -88,7 +88,7 @@ const SplashScreen = () => {
           fontWeight: 'bold'
         }}>
           M
-        </div>
+        </div> */}
 
         {/* Title with gradient text */}
         <h1 style={{

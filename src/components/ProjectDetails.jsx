@@ -3,28 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import editIcon from '../images/edit.png';
 import deleteIcon from '../images/trash.png';
 import PersonaeFramework from './PersonaeFramework';
+import PersonaeMappingView from './PersonaeMappingView';
+import BehavioralDiversityView from './BehavioralDiversityView';
+import SituationDesignView from './SituationDesignView';
 import { SECTIONS, connectionPairs } from '../constants/frameAnalysis';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
 
 const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
@@ -49,7 +33,6 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [currentView, setCurrentView] = useState('details'); // 'details', 'personae', 'behavioral', or 'situation'
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [sortBy, setSortBy] = useState("");
-  const [sortBehavioralBy, setSortBehavioralBy] = useState("");
   const [statsSort, setStatsSort] = useState(""); // New state for stats sorting
   const [personaeView, setPersonaeView] = useState('framework');
   const [selectedAgeRanges, setSelectedAgeRanges] = useState([]);
@@ -250,87 +233,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     navigate(`/projects/${idx}/participants/${id}`);
   };
 
-  // Function to group participants by the selected criterion
-  const getGroupedParticipants = () => {
-    if (!participants) return {};
 
-    if (!sortBy) {
-      // Return all participants in a single group when no sorting is selected
-      return { 'All Participants': participants };
-    }
-
-
-    if (sortBy === 'age') {
-      const groups = {
-        ...AGE_RANGES.reduce((acc, range) => ({ ...acc, [range]: [] }), {}),
-        'Unspecified Age Range': []
-      };
-
-      participants.forEach(p => {
-        const ageRange = p.answers?.Identity?.age;
-        if (ageRange && AGE_RANGES.includes(ageRange)) {
-          groups[ageRange].push(p);
-        } else {
-          groups['Unspecified Age Range'].push(p);
-        }
-      });
-
-      // Remove empty groups
-      return Object.fromEntries(
-        Object.entries(groups).filter(([_, participants]) => participants.length > 0)
-      );
-    } else {
-      const groups = {
-        ...GENDER_OPTIONS.reduce((acc, gender) => ({ ...acc, [gender]: [] }), {}),
-        'Unspecified Gender': []
-      };
-
-      participants.forEach(p => {
-        const gender = p.answers?.Identity?.gender;
-        if (gender && GENDER_OPTIONS.includes(gender)) {
-          groups[gender].push(p);
-        } else {
-          groups['Unspecified Gender'].push(p);
-        }
-      });
-
-      // Remove empty groups
-      return Object.fromEntries(
-        Object.entries(groups).filter(([_, participants]) => participants.length > 0)
-      );
-    }
-  };
-
-  // Function to filter participants for summary view
-  const getFilteredParticipants = () => {
-    if (selectedAgeRanges.length === 0 && selectedGenders.length === 0) {
-      return participants;
-    }
-
-    return participants.filter(p => {
-      const ageMatch = selectedAgeRanges.length === 0 || 
-        (p.answers?.Identity?.age && selectedAgeRanges.includes(p.answers.Identity.age));
-      const genderMatch = selectedGenders.length === 0 || 
-        (p.answers?.Identity?.gender && selectedGenders.includes(p.answers.Identity.gender));
-      return ageMatch && genderMatch;
-    });
-  };
-
-  const handleAgeRangeToggle = (range) => {
-    setSelectedAgeRanges(prev => 
-      prev.includes(range) 
-        ? prev.filter(r => r !== range)
-        : [...prev, range]
-    );
-  };
-
-  const handleGenderToggle = (gender) => {
-    setSelectedGenders(prev => 
-      prev.includes(gender) 
-        ? prev.filter(g => g !== gender)
-        : [...prev, gender]
-    );
-  };
 
   // Add this function to check if all participants have summaries
   const checkAllSummariesGenerated = () => {
@@ -453,197 +356,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     setManualInput('');
   };
 
-  // Updated function to calculate rule usage statistics with detailed breakdowns
-  const getRuleUsageStats = (sortType = '') => {
-    if (!sortType) {
-      // Simple counting for no sort
-      const stats = {};
-      (currentScope?.rules || []).forEach(rule => {
-        stats[rule] = participants.filter(p => 
-          p.answers?.['Rule Selection']?.selectedRules?.includes(rule)
-        ).length;
-      });
-      return stats;
-    } else if (sortType === 'gender') {
-      // Group by gender for each rule
-      const stats = {};
-      (currentScope?.rules || []).forEach(rule => {
-        stats[rule] = {
-          Male: participants.filter(p => 
-            p.answers?.Identity?.gender === 'Male' && 
-            p.answers?.['Rule Selection']?.selectedRules?.includes(rule)
-          ).length,
-          Female: participants.filter(p => 
-            p.answers?.Identity?.gender === 'Female' && 
-            p.answers?.['Rule Selection']?.selectedRules?.includes(rule)
-          ).length,
-          'Non-Binary': participants.filter(p => 
-            p.answers?.Identity?.gender === 'Non-Binary' && 
-            p.answers?.['Rule Selection']?.selectedRules?.includes(rule)
-          ).length,
-          Other: participants.filter(p => 
-            p.answers?.Identity?.gender === 'Other' && 
-            p.answers?.['Rule Selection']?.selectedRules?.includes(rule)
-          ).length
-        };
-      });
-      return stats;
-    } else if (sortType === 'age') {
-      // Group by age range for each rule
-      const stats = {};
-      (currentScope?.rules || []).forEach(rule => {
-        stats[rule] = {};
-        AGE_RANGES.forEach(range => {
-          stats[rule][range] = participants.filter(p => 
-            p.answers?.Identity?.age === range && 
-            p.answers?.['Rule Selection']?.selectedRules?.includes(rule)
-          ).length;
-        });
-      });
-      return stats;
-    }
-    return {};
-  };
 
-  // Function to get filtered participants based on sorting
-  const getFilteredParticipantsForStats = () => {
-    if (!sortBehavioralBy) return participants;
-
-    if (sortBehavioralBy === 'age') {
-      const selectedRange = sortBy;
-      return participants.filter(p => p.answers?.Identity?.age === selectedRange);
-    } else if (sortBehavioralBy === 'gender') {
-      const selectedGender = sortBy;
-      return participants.filter(p => p.answers?.Identity?.gender === selectedGender);
-    }
-
-    return participants;
-  };
-
-  // Updated function to get chart data based on sort type
-  const getChartData = (sortType = '') => {
-    const stats = getRuleUsageStats(sortType);
-    
-    if (sortType === 'gender') {
-      return {
-        labels: Object.keys(stats),
-        datasets: GENDER_OPTIONS.map((gender, index) => ({
-          label: gender,
-          data: Object.values(stats).map(genderStats => genderStats[gender]),
-          backgroundColor: ['#3498db', '#e74c3c', '#9b59b6', '#f1c40f'][index],
-          borderColor: ['#2980b9', '#c0392b', '#8e44ad', '#f39c12'][index],
-          borderWidth: 1
-        }))
-      };
-    } else if (sortType === 'age') {
-      return {
-        labels: AGE_RANGES,
-        datasets: Object.entries(stats).map(([rule, ageStats], index) => ({
-          label: rule,
-          data: AGE_RANGES.map(range => ageStats[range]),
-          backgroundColor: `hsla(${index * (360 / Object.keys(stats).length)}, 70%, 50%, 0.7)`,
-          borderColor: `hsla(${index * (360 / Object.keys(stats).length)}, 70%, 45%, 1)`,
-          borderWidth: 1
-        }))
-      };
-    } else {
-      return {
-        labels: Object.keys(stats),
-        datasets: [{
-          label: 'Number of Participants',
-          data: Object.values(stats),
-          backgroundColor: '#27ae60',
-          borderColor: '#219a52',
-          borderWidth: 1
-        }]
-      };
-    }
-  };
-
-  // Chart options based on sort type
-  const getChartOptions = (sortType = '') => {
-    const baseOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'top',
-          labels: {
-            font: {
-              family: 'Lexend, sans-serif'
-            }
-          }
-        },
-        title: {
-          display: true,
-          text: 'Rule Usage Statistics',
-          font: {
-            family: 'Lexend, sans-serif',
-            size: 16
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: {
-            stepSize: 1,
-            font: {
-              family: 'Lexend, sans-serif'
-            }
-          }
-        },
-        y: {
-          ticks: {
-            stepSize: 1,
-            font: {
-              family: 'Lexend, sans-serif'
-            }
-          },
-        }
-      }
-    };
-
-    if (sortType === 'age') {
-      return {
-        ...baseOptions,
-        indexAxis: 'y',
-        plugins: {
-          ...baseOptions.plugins,
-          title: {
-            ...baseOptions.plugins.title,
-            text: 'Rule Usage by Age Range'
-          }       
-        }
-      };
-    } else if (sortType === 'gender') {
-      return {
-        ...baseOptions,
-        indexAxis: 'x',
-        plugins: {
-          ...baseOptions.plugins,
-          title: {
-            ...baseOptions.plugins.title,
-            text: 'Rule Usage by Gender'
-          }
-        }
-      };
-    } 
-    else if (sortType === '') {
-      return {
-        ...baseOptions,
-        indexAxis: 'x',
-        plugins: {
-          ...baseOptions.plugins,
-          title: {
-            ...baseOptions.plugins.title,
-            text: 'All Participants'
-          }
-        }
-      };
-    }
-
-    return baseOptions;
-  };
 
   const generatePDF = async () => {
     if (currentView === 'personae' && personaeView === 'framework' && !selectedParticipant) {
@@ -821,17 +534,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     }
   };
 
-  const toggleParticipantExpansion = (participantId) => {
-    setExpandedParticipants(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(participantId)) {
-        newSet.delete(participantId);
-      } else {
-        newSet.add(participantId);
-      }
-      return newSet;
-    });
-  };
+
 
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -931,7 +634,14 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                 />
                 <button 
                   key="save-name" 
-                  onClick={handleNameSave}
+                  onClick={(e) => {
+                    handleNameSave();
+                    // Add glowing ring effect
+                    e.target.style.boxShadow = '0 0 0 3px rgba(39, 174, 96, 0.3)';
+                    setTimeout(() => {
+                      e.target.style.boxShadow = 'none';
+                    }, 300);
+                  }}
                   style={{
                     padding: '6px 12px',
                     background: '#27ae60',
@@ -941,7 +651,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                     cursor: 'pointer',
                     fontFamily: 'Lexend, sans-serif',
                     fontWeight: '500',
-                    fontSize: '0.9em'
+                    fontSize: '0.9em',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   Save
@@ -1059,23 +770,31 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                   }}
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    key="save-desc" 
-                    onClick={handleDescSave}
-                    style={{
-                      padding: '6px 12px',
-                      background: '#27ae60',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontFamily: 'Lexend, sans-serif',
-                      fontWeight: '500',
-                      fontSize: '0.9em'
-                    }}
-                  >
-                    Save
-                  </button>
+                                  <button 
+                  key="save-desc" 
+                  onClick={(e) => {
+                    handleDescSave();
+                    // Add glowing ring effect
+                    e.target.style.boxShadow = '0 0 0 3px rgba(39, 174, 96, 0.3)';
+                    setTimeout(() => {
+                      e.target.style.boxShadow = 'none';
+                    }, 300);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: '#27ae60',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontFamily: 'Lexend, sans-serif',
+                    fontWeight: '500',
+                    fontSize: '0.9em',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Save
+                </button>
                   <button 
                     key="cancel-desc" 
                     onClick={() => setDescEditMode(false)}
@@ -1200,7 +919,14 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               {project.scopes.map((scope, index) => (
                 <button
                   key={`scope-${scope.scopeNumber}-${index}`}
-                  onClick={() => handleScopeSelection(index)}
+                  onClick={(e) => {
+                    handleScopeSelection(index);
+                    // Add glowing ring effect
+                    e.target.style.boxShadow = '0 0 0 3px rgba(39, 174, 96, 0.3)';
+                    setTimeout(() => {
+                      e.target.style.boxShadow = selectedScope === index ? '0 0 0 2px rgba(39, 174, 96, 0.2)' : 'none';
+                    }, 300);
+                  }}
                   style={{
                     padding: '8px 16px',
                     backgroundColor: selectedScope === index ? '#27ae60' : '#f8f9fa',
@@ -1214,7 +940,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                     fontFamily: 'Lexend, sans-serif',
                     transition: 'all 0.2s ease',
                     minWidth: '80px',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    boxShadow: selectedScope === index ? '0 0 0 2px rgba(39, 174, 96, 0.2)' : 'none'
                   }}
                   onMouseOver={(e) => {
                     if (selectedScope !== index) {
@@ -1290,7 +1017,14 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button 
                         key="save-scope-desc"
-                        onClick={handleScopeDescSave}
+                        onClick={(e) => {
+                          handleScopeDescSave();
+                          // Add glowing ring effect
+                          e.target.style.boxShadow = '0 0 0 3px rgba(39, 174, 96, 0.3)';
+                          setTimeout(() => {
+                            e.target.style.boxShadow = 'none';
+                          }, 300);
+                        }}
                         style={{
                           padding: '6px 12px',
                           background: '#27ae60',
@@ -1300,7 +1034,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                           cursor: 'pointer',
                           fontFamily: 'Lexend, sans-serif',
                           fontWeight: '500',
-                          fontSize: '0.9em'
+                          fontSize: '0.9em',
+                          transition: 'all 0.2s ease'
                         }}
                       >
                         Save
@@ -1413,7 +1148,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
             onClick={() => setCurrentView(currentView === 'behavioral' ? 'details' : 'behavioral')}
             style={{ 
               padding: '8px 16px', 
-              background: currentView === 'behavioral' ? '#16a085' : '#27ae60', 
+              background: currentView === 'behavioral' ? '#0c594a' : '#27ae60', 
               color: '#fff', 
               border: 'none', 
               borderRadius: 4, 
@@ -1441,7 +1176,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
             onClick={() => setCurrentView(currentView === 'situation' ? 'details' : 'situation')}
             style={{ 
               padding: '8px 16px', 
-              background: currentView === 'situation' ? '#8e44ad' : '#9b59b6', 
+              background: currentView === 'situation' ? '#4c1a61' : '#9b59b6', 
               color: '#fff', 
               border: 'none', 
               borderRadius: 4, 
@@ -1470,728 +1205,47 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         <div style={{ borderBottom: '1px solid #dcdde1', margin: '18px 0 12px 0' }}></div>
         
         {currentView === 'behavioral' ? (
-          // Behavioral Diversity View
-          <>
-            {/* Sort options and Download button */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              marginBottom: 20 
-            }}>
-              <div style={{ marginBottom: 0 }}>
-                <label style={{ 
-                  display: 'block', 
-                  marginBottom: 8,
-                  fontFamily: 'Lexend, sans-serif',
-                  fontSize: '0.95em',
-                  color: '#34495e'
-                }}>
-                  Sort by:
-                </label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 4,
-                    border: '1px solid #dcdde1',
-                    fontSize: '0.95em',
-                    fontFamily: 'Lexend, sans-serif',
-                    color: '#2c3e50',
-                    background: '#fff',
-                    width: '200px'
-                  }}
-                >
-                  <option value="">-No Sorting-</option>
-                  <option value="age">Age Range</option>
-                  <option value="gender">Gender</option>
-                </select>
-              </div>
-
-              {/* PDF Download Button */}
-              <button
-                onClick={generatePDF}
-                disabled={isPdfGenerating}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#27ae60',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: isPdfGenerating ? 'wait' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  opacity: isPdfGenerating ? 0.7 : 1,
-                  transition: 'opacity 0.2s'
-                }}
-              >
-                {isPdfGenerating ? (
-                  <>
-                    <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>↻</span>
-                    Generating PDF...
-                  </>
-                ) : (
-                  <>
-                    Download as PDF
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Wrap the entire behavioral content in a ref with max-width */}
-            <div 
-              ref={behavioralRef}
-              style={{
-                maxWidth: '100%',
-                width: 'fit-content'
-              }}
-            >
-              {/* Grouped participants */}
-              {Object.entries(getGroupedParticipants()).map(([group, groupParticipants]) => (
-                <div key={group} style={{ marginBottom: 20 }}>
-                  <h3 style={{ 
-                    fontFamily: 'Lexend, sans-serif',
-                    fontSize: '1em',
-                    color: '#2c3e50',
-                    marginBottom: 10,
-                    borderBottom: '1px solid #dcdde1',
-                    paddingBottom: 8
-                  }}>
-                    {group}
-                  </h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-                    {groupParticipants.map((participant) => (
-                      <div
-                        key={participant.id}
-                        style={{
-                          flex: '0 0 calc(33.333% - 20px)',
-                          background: '#fff',
-                          borderRadius: 8,
-                          padding: '20px',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                          border: '1px solid #dcdde1',
-                          boxSizing: 'border-box'
-                        }}
-                      >
-                        <h3 style={{ 
-                          margin: '0 0 15px 0',
-                          fontFamily: 'Lexend, sans-serif',
-                          fontSize: '1.1em',
-                          color: '#2c3e50',
-                          borderBottom: '1px solid #eee',
-                          paddingBottom: 10
-                        }}>
-                          {participant.name}
-                        </h3>
-                        
-                        <div style={{ marginBottom: 15 }}>
-                          <h4 style={{ 
-                            margin: '0 0 8px 0',
-                            fontFamily: 'Lexend, sans-serif',
-                            fontSize: '0.95em',
-                            color: '#34495e'
-                          }}>
-                            Selected Rules:
-                          </h4>
-                          <div style={{ 
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '8px',
-                            padding: '10px',
-                            background: '#f8f9fa',
-                            borderRadius: 4
-                          }}>
-                            {(currentScope?.rules || []).map((rule, index) => {
-                              const isSelected = participant.answers?.['Rule Selection']?.selectedRules?.includes(rule);
-                              return (
-                                <div
-                                  key={index}
-                                  style={{
-                                    padding: '6px 12px',
-                                    background: isSelected ? '#3498db' : '#fff',
-                                    color: isSelected ? '#fff' : '#2c3e50',
-                                    border: '1px solid #dcdde1',
-                                    borderRadius: '4px',
-                                    fontSize: '0.95em',
-                                    fontFamily: 'Lexend, sans-serif',
-                                    transition: 'all 0.2s ease'
-                                  }}
-                                >
-                                  {rule}
-                                </div>
-                              );
-                            })}
-                            {(currentScope?.rules || []).length === 0 && (
-                              <div style={{
-                                padding: '10px',
-                                color: '#7f8c8d',
-                                fontStyle: 'italic',
-                                width: '100%',
-                                textAlign: 'center'
-                              }}>
-                                No rules defined for this scope
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {/* Rule Usage Statistics Graph */}
-              <h3 style={{ 
-                fontFamily: 'Lexend, sans-serif',
-                fontSize: '1.1em',
-                color: '#2c3e50',
-                marginBottom: '20px'
-              }}>
-                Rule Usage Statistics
-              </h3>
-              <div style={{ 
-                marginTop: '40px',
-                padding: '20px',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                border: '1px solid #dcdde1'
-              }}>
-                
-
-                {/* Independent Sorting Controls for Stats */}
-                <div style={{ 
-                  marginBottom: '20px'
-                }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: '8px',
-                    fontFamily: 'Lexend, sans-serif',
-                    fontSize: '0.95em',
-                    color: '#34495e'
-                  }}>
-                    View Statistics By:
-                  </label>
-                  <select
-                    value={statsSort}
-                    onChange={(e) => setStatsSort(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '4px',
-                      border: '1px solid #dcdde1',
-                      fontSize: '0.95em',
-                      fontFamily: 'Lexend, sans-serif',
-                      color: '#2c3e50',
-                      background: '#fff',
-                      width: '150px'
-                    }}
-                  >
-                    <option value="">All Participants</option>
-                    <option value="gender">By Gender</option>
-                    <option value="age">By Age Range</option>
-                  </select>
-                </div>
-
-                {/* Bar Graph */}
-                <div style={{ 
-                  marginTop: '20px',
-                  position: 'relative',
-                  height: '400px',
-                  padding: '20px'
-                }}>
-                  <Bar
-                    data={getChartData(statsSort)}
-                    options={getChartOptions(statsSort)}
-                  />
-                </div>
-              </div>
-            </div>
-          </>
+          <BehavioralDiversityView
+            currentScope={currentScope}
+            participants={participants}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            statsSort={statsSort}
+            setStatsSort={setStatsSort}
+            isPdfGenerating={isPdfGenerating}
+            generatePDF={generatePDF}
+          />
         ) : currentView === 'personae' ? (
-          // Personae Mapping View
-          <>
-            {/* View selection buttons and PDF download */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
-              <button
-                key="framework-view"
-                onClick={() => setPersonaeView('framework')}
-                style={{
-                  padding: '8px 16px',
-                  background: personaeView === 'framework' ? '#1a5276' : '#2980b9',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-              >
-                Framework View
-              </button>
-              <button
-                key="summary-view"
-                onClick={() => setPersonaeView('summary')}
-                style={{
-                  padding: '8px 16px',
-                  background: personaeView === 'summary' ? '#1a5276' : '#2980b9',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-              >
-                Summary View
-              </button>
-
-              {/* PDF Download Button */}
-              <button
-                key="pdf-download"
-                onClick={generatePDF}
-                disabled={isPdfGenerating}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#27ae60',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: isPdfGenerating ? 'wait' : 'pointer',
-                  marginLeft: 'auto',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  opacity: isPdfGenerating ? 0.7 : 1,
-                  transition: 'opacity 0.2s'
-                }}
-              >
-                {isPdfGenerating ? (
-                  <>
-                    <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>↻</span>
-                    Generating PDF...
-                  </>
-                ) : (
-                  <>     
-                    Download as PDF
-                  </>
-                )}
-              </button>
-            </div>
-
-            {personaeView === 'framework' ? (
-              // Framework View Content
-              <>
-                {/* Sort options */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ 
-                    display: 'block', 
-                    marginBottom: 8,
-                    fontFamily: 'Lexend, sans-serif',
-                    fontSize: '0.95em',
-                    color: '#34495e'
-                  }}>
-                    Sort by:
-                  </label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 4,
-                      border: '1px solid #dcdde1',
-                      fontSize: '0.95em',
-                      fontFamily: 'Lexend, sans-serif',
-                      color: '#2c3e50',
-                      background: '#fff',
-                      width: '200px'
-                    }}
-                  >
-                    <option value="">-No Sorting-</option>
-                    <option value="age">Age Range</option>
-                    <option value="gender">Gender</option>
-                  </select>
-                </div>
-
-                {/* Grouped participants */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  {Object.entries(getGroupedParticipants()).map(([group, groupParticipants]) => (
-                    <div key={group}>
-                      <h3 style={{ 
-                        fontFamily: 'Lexend, sans-serif',
-                        fontSize: '1em',
-                        color: '#2c3e50',
-                        marginBottom: 10
-                      }}>
-                        {group}
-                      </h3>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {groupParticipants.map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => setSelectedParticipant(selectedParticipant?.id === p.id ? null : p)}
-                            style={{
-                              padding: '6px 12px',
-                              background: selectedParticipant?.id === p.id ? '#1a5276' : '#2980b9',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontSize: '.98em',
-                              transition: 'all 0.2s ease',
-                              opacity: selectedParticipant?.id === p.id ? 1 : 0.85,
-                              transform: selectedParticipant?.id === p.id ? 'scale(1.05)' : 'scale(1)'
-                            }}
-                          >
-                            {p.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              // Summary View Content
-              <>
-                {/* Filter Options */}
-                <div style={{ marginBottom: 20 }}>
-                  <h3 style={{ 
-                    fontFamily: 'Lexend, sans-serif',
-                    fontSize: '1em',
-                    color: '#2c3e50',
-                    marginBottom: 10
-                  }}>
-                    Filter by Age Range:
-                  </h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-                    {AGE_RANGES.map(range => (
-                      <button
-                        key={range}
-                        onClick={() => handleAgeRangeToggle(range)}
-                        style={{
-                          padding: '6px 12px',
-                          background: selectedAgeRanges.includes(range) ? '#1a5276' : '#2980b9',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontSize: '.9em',
-                          transition: 'background-color 0.2s',
-                          opacity: selectedAgeRanges.includes(range) ? 1 : 0.7
-                        }}
-                      >
-                        {range}
-                      </button>
-                    ))}
-                  </div>
-
-                  <h3 style={{ 
-                    fontFamily: 'Lexend, sans-serif',
-                    fontSize: '1em',
-                    color: '#2c3e50',
-                    marginBottom: 10
-                  }}>
-                    Filter by Gender:
-                  </h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {GENDER_OPTIONS.map(gender => (
-                      <button
-                        key={gender}
-                        onClick={() => handleGenderToggle(gender)}
-                        style={{
-                          padding: '6px 12px',
-                          background: selectedGenders.includes(gender) ? '#1a5276' : '#2980b9',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                          fontSize: '.9em',
-                          transition: 'background-color 0.2s',
-                          opacity: selectedGenders.includes(gender) ? 1 : 0.7
-                        }}
-                      >
-                        {gender}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </>
+          <PersonaeMappingView
+            project={project}
+            currentScope={currentScope}
+            participants={participants}
+            selectedParticipant={selectedParticipant}
+            setSelectedParticipant={setSelectedParticipant}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            selectedAgeRanges={selectedAgeRanges}
+            setSelectedAgeRanges={setSelectedAgeRanges}
+            selectedGenders={selectedGenders}
+            setSelectedGenders={setSelectedGenders}
+            personaeView={personaeView}
+            setPersonaeView={setPersonaeView}
+            isPdfGenerating={isPdfGenerating}
+            generatePDF={generatePDF}
+          />
         ) : currentView === 'situation' ? (
-          // Situation Design View
-          <div style={{ padding: '24px' }}>
-            {/* Missing Summaries Dialog */}
-            {showMissingSummariesDialog && (
-              <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 1000
-              }}>
-                <div style={{
-                  backgroundColor: 'white',
-                  padding: '24px',
-                  borderRadius: '8px',
-                  width: '400px',
-                  maxWidth: '90%',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                }}>
-                  <h3 style={{ 
-                    margin: '0 0 16px 0',
-                    color: '#2c3e50',
-                    fontSize: '1.2em',
-                    fontFamily: 'Lexend, sans-serif'
-                  }}>Missing Summaries</h3>
-                  <p style={{ 
-                    margin: '0 0 16px 0',
-                    color: '#34495e',
-                    fontSize: '1em',
-                    lineHeight: '1.5',
-                    fontFamily: 'Lexend, sans-serif'
-                  }}>
-                    Please generate or fill up summaries for the following participants:
-                  </p>
-                  <div style={{
-                    margin: '0 0 24px 0',
-                    padding: '12px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '4px',
-                    border: '1px solid #e9ecef',
-                    maxHeight: '150px',
-                    overflowY: 'auto'
-                  }}>
-                    {missingSummariesList.map((participant, index) => (
-                      <div
-                        key={participant.id}
-                        style={{
-                          padding: '8px 12px',
-                          backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa',
-                          fontFamily: 'Lexend, sans-serif',
-                          fontSize: '0.95em',
-                          color: '#2c3e50',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}
-                      >
-                        <span style={{
-                          width: '24px',
-                          height: '24px',
-                          backgroundColor: '#8e44ad',
-                          color: '#fff',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.8em',
-                          fontWeight: 'bold'
-                        }}>
-                          {index + 1}
-                        </span>
-                        {participant.name}
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'flex-end'
-                  }}>
-                    <button
-                      onClick={() => setShowMissingSummariesDialog(false)}
-                      style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#8e44ad',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.95em',
-                        fontFamily: 'Lexend, sans-serif',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseOver={(e) => e.target.style.backgroundColor = '#9b59b6'}
-                      onMouseOut={(e) => e.target.style.backgroundColor = '#8e44ad'}
-                    >
-                      Got it
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {/* Generated Rules Section */}
-              <div style={{ width: '100%' }}>
-                <h3 style={{
-                  fontFamily: 'Lexend, sans-serif',
-                  fontSize: '1.2em',
-                  color: '#2c3e50',
-                  marginBottom: '16px'
-                }}>
-                  Generated Rules
-                </h3>
-                <div style={{ 
-                  display: 'flex', 
-                  flexWrap: 'wrap', 
-                  gap: '8px',
-                  marginBottom: '20px'
-                }}>
-                  {(currentScope?.rules || []).map((rule, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedRule(selectedRule === rule ? null : rule)}
-                      style={{
-                        padding: '8px 16px',
-                        background: selectedRule === rule ? '#8e44ad' : '#95a5a6',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '0.9em',
-                        transition: 'all 0.2s ease',
-                        opacity: selectedRule === rule ? 1 : 0.7
-                      }}
-                      onMouseOver={(e) => {
-                        if (selectedRule !== rule) {
-                          e.target.style.background = '#8e44ad';
-                          e.target.style.opacity = '0.9';
-                        }
-                      }}
-                      onMouseOut={(e) => {
-                        if (selectedRule !== rule) {
-                          e.target.style.background = '#95a5a6';
-                          e.target.style.opacity = '0.7';
-                        }
-                      }}
-                    >
-                      {rule}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Participant Cards for Selected Rule */}
-                {selectedRule && (
-                  <div style={{ 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    gap: '12px',
-                    marginBottom: '24px'
-                  }}>
-                    {participants
-                      .filter(p => p.answers?.['Rule Selection']?.selectedRules?.includes(selectedRule))
-                      .map(participant => {
-                        const isExpanded = expandedParticipants.has(participant.id);
-                        return (
-                          <div
-                            key={participant.id}
-                            style={{
-                              background: '#fff',
-                              borderRadius: '8px',
-                              border: '1px solid #dcdde1',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                              overflow: 'hidden',
-                              transition: 'all 0.3s ease'
-                            }}
-                          >
-                            {/* Header - Clickable */}
-                            <div
-                              onClick={() => toggleParticipantExpansion(participant.id)}
-                              style={{
-                                padding: '16px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                backgroundColor: isExpanded ? '#f8f9fa' : '#fff',
-                                borderBottom: isExpanded ? '1px solid #e9ecef' : 'none',
-                                transition: 'background-color 0.2s ease'
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = isExpanded ? '#e9ecef' : '#f8f9fa';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = isExpanded ? '#f8f9fa' : '#fff';
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <h4 style={{ 
-                                  margin: 0,
-                                  fontFamily: 'Lexend, sans-serif',
-                                  fontSize: '1em',
-                                  color: '#2c3e50'
-                                }}>
-                                  {participant.name}
-                                </h4>
-                                <div style={{ 
-                                  fontSize: '0.85em',
-                                  color: '#7f8c8d',
-                                  display: 'flex',
-                                  gap: '12px'
-                                }}>
-                                  {participant.answers?.Identity?.age && (
-                                    <span>Age: {participant.answers.Identity.age}</span>
-                                  )}
-                                  {participant.answers?.Identity?.gender && (
-                                    <span>Gender: {participant.answers.Identity.gender}</span>
-                                  )}
-                                  {participant.answers?.Identity?.nationality && (
-                                    <span>Nationality: {participant.answers.Identity.nationality}</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div style={{
-                                fontSize: '1em',
-                                color: '#7f8c8d',
-                                transition: 'transform 0.5s ease',
-                                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
-                              }}>
-                                ▼
-                              </div>
-                            </div>
-                            
-                            {/* Expandable Content */}
-                            {isExpanded && (
-                              <div style={{
-                                padding: '16px',
-                                backgroundColor: '#f8f9fa',
-                                borderTop: '1px solid #e9ecef'
-                              }}>
-                                <h5 style={{
-                                  margin: '0 0 12px 0',
-                                  fontFamily: 'Lexend, sans-serif',
-                                  fontSize: '0.95em',
-                                  color: '#2c3e50',
-                                  fontWeight: '600'
-                                }}>
-                                  Summary:
-                                </h5>
-                                <p style={{
-                                  margin: 0,
-                                  fontFamily: 'Lexend, sans-serif',
-                                  fontSize: '0.9em',
-                                  color: '#495057',
-                                  lineHeight: 1.6,
-                                  whiteSpace: 'pre-wrap'
-                                }}>
-                                  {participant.summary || 'No summary available for this participant.'}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <SituationDesignView
+            currentScope={currentScope}
+            participants={participants}
+            robotDraft={robotDraft}
+            setRobotDraft={setRobotDraft}
+            environmentDraft={environmentDraft}
+            setEnvironmentDraft={setEnvironmentDraft}
+            project={project}
+            selectedScope={selectedScope}
+            editProject={editProject}
+            idx={idx}
+          />
         ) : (
           // Regular View
           <>
@@ -2413,67 +1467,11 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                   </div>
                 </div>
               )
-            ) : (
-              // Summary View Content
-              <div ref={summaryRef} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {getFilteredParticipants().map(participant => (
-                  <div
-                    key={participant.id}
-                    style={{
-                      background: '#fff',
-                      borderRadius: 8,
-                      padding: 20,
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                      border: '1px solid #dcdde1'
-                    }}
-                  >
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      marginBottom: 10,
-                      borderBottom: '1px solid #eee',
-                      paddingBottom: 10
-                    }}>
-                      <h3 style={{ 
-                        margin: 0,
-                        fontFamily: 'Lexend, sans-serif',
-                        fontSize: '1.1em',
-                        color: '#2c3e50'
-                      }}>
-                        {participant.name}
-                      </h3>
-                      <div style={{ 
-                        display: 'flex',
-                        gap: 15,
-                        fontSize: '0.9em',
-                        color: '#7f8c8d'
-                      }}>
-                        {participant.answers?.Identity?.age && (
-                          <span>Age: {participant.answers.Identity.age}</span>
-                        )}
-                        {participant.answers?.Identity?.gender && (
-                          <span>Gender: {participant.answers.Identity.gender}</span>
-                        )}
-                      </div>
-                    </div>
-                    <p style={{ 
-                      margin: 0,
-                      fontFamily: 'Lexend, sans-serif',
-                      fontSize: '0.95em',
-                      color: '#737B83',
-                      lineHeight: 1.5
-                    }}>
-                      {participant.summary || 'No summary available.'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )
+            ) : null
           )}
           {currentView === 'situation' && (
             <div style={{ padding: '24px' }}>
-
-            {/* Robot Changes Section */}
+              {/* Current Scope Header */}
               <div style={{ width: '100%', marginBottom: '8px' }}>
                 <h4 style={{
                   fontFamily: 'Lexend, sans-serif',
@@ -2487,7 +1485,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                 </h4>
               </div>
 
-              <div style={{ width: '100%' }}>
+              {/* Robot Changes Section */}
+              <div style={{ width: '100%', marginBottom: '24px' }}>
                 <h3 style={{
                   fontFamily: 'Lexend, sans-serif',
                   fontSize: '1.2em',
@@ -2546,7 +1545,6 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               {/* Environmental Changes Section */}
               <div style={{ width: '100%' }}>
                 <h3 style={{
-                  paddingTop: '20px',
                   fontFamily: 'Lexend, sans-serif',
                   fontSize: '1.2em',
                   color: '#2c3e50',
@@ -2600,85 +1598,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                   />
                 </div>
               </div>
-
-              {/* Generate Button at bottom
-              <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
-                <button
-                  onClick={handleGenerateSituationDesign}
-                  disabled={isGeneratingSuggestions}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: isGeneratingSuggestions ? '#95a5a6' : '#95a5a6',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isGeneratingSuggestions ? 'wait' : 'pointer',
-                    fontSize: '0.9em',
-                    fontFamily: 'Lexend, sans-serif',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s ease',
-                    opacity: isGeneratingSuggestions ? 0.7 : 0.7
-                  }}
-                  onMouseOver={(e) => {
-                    if (!isGeneratingSuggestions) {
-                      e.target.style.backgroundColor = '#8e44ad';
-                      e.target.style.opacity = '1';
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (!isGeneratingSuggestions) {
-                      e.target.style.backgroundColor = '#95a5a6';
-                      e.target.style.opacity = '0.7';
-                    }
-                  }}
-                >
-                  {isGeneratingSuggestions ? 'Generating Suggestions...' : 'Generate Situation Design Suggestions Using LLM'}
-                </button>
-
-                {isGeneratingSuggestions && (
-                  <div style={{ marginTop: '12px' }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      marginBottom: '8px'
-                    }}>
-                      <span style={{ 
-                        fontFamily: 'Lexend, sans-serif',
-                        fontSize: '0.9em',
-                        color: '#666'
-                      }}>
-                        Generating suggestions...
-                      </span>
-                      <span style={{ 
-                        fontFamily: 'Lexend, sans-serif',
-                        fontSize: '0.9em',
-                        color: '#666',
-                        fontWeight: 'bold'
-                      }}>
-                        {generationProgress}%
-                      </span>
-                    </div>
-                    <div style={{ 
-                      width: '100%', 
-                      height: '4px', 
-                      backgroundColor: '#eee',
-                      borderRadius: '2px',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{
-                        width: `${generationProgress}%`,
-                        height: '100%',
-                        backgroundColor: '#8e44ad',
-                        transition: 'width 0.3s ease'
-                      }} />
-                    </div>
-                  </div>
-                )}
-              </div> */}
-            </div>  
+            </div>
           )}
         </div>
       )}

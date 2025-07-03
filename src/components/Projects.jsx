@@ -1488,8 +1488,11 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
               <p style={{ color: '#7f8c8d', fontSize: '0.9em', marginBottom: '5px' }}>
                 <strong>Study Type:</strong> {project.studyType || 'Not specified'}
               </p>
-              <p style={{ color: '#7f8c8d', fontSize: '0.9em' }}>
+              <p style={{ color: '#7f8c8d', fontSize: '0.9em', marginBottom: '5px' }}>
                 <strong>Scopes:</strong> {project.scopes?.length || 0}
+              </p>
+              <p style={{ color: '#7f8c8d', fontSize: '0.9em' }}>
+                <strong>Participants:</strong> {project.scopes?.[0]?.participants?.length || 0}
               </p>
             </div>
           </div>

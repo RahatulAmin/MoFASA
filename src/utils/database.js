@@ -341,7 +341,7 @@ function getAllProjects() {
       const participants = db.prepare(`
         SELECT * FROM participants 
         WHERE projectId = ? AND scopeId = ? 
-        ORDER BY participantId
+        ORDER BY CAST(SUBSTR(participantId, 2) AS INTEGER)
       `).all(project.id, scope.id);
       
       // Get answers for each participant

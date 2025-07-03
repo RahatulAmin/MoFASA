@@ -463,16 +463,42 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     setProgress(0);
     
     try {
-      // Check if there are any answers to summarize
-      const hasAnswers = SECTIONS.some(section => 
-        questions[section.name]?.some(q => {
-          const questionText = typeof q === 'object' ? q.text : q;
-          return participant.answers?.[section.name]?.[questionText];
-        })
-      );
+      // Check if at least 1 answer is provided in each section
+      const sectionsWithAnswers = SECTIONS.map(section => {
+        let hasAnswers = false;
+        
+        if (section.name === 'Rule Selection') {
+          // For Rule Selection, check if any rules are selected
+          hasAnswers = Array.isArray(selectedRules) && selectedRules.length > 0;
+        } else if (section.name === 'Decision') {
+          // For Decision, check if any rules are selected (since decisions are based on selected rules)
+          hasAnswers = Array.isArray(selectedRules) && selectedRules.length > 0;
+        } else {
+          // For other sections, check if any questions have answers
+          hasAnswers = questions[section.name]?.some(q => {
+            if (typeof q === 'object' && q.type === 'dropdown') {
+              // For dropdown questions, use the question ID as the key
+              const answer = localAnswers[section.name]?.[q.id];
+              return answer && answer.trim() !== '';
+            } else {
+              // For text questions, use the question text as the key
+              const questionText = typeof q === 'object' ? q.text : q;
+              const answer = localAnswers[section.name]?.[questionText];
+              return answer && answer.trim() !== '';
+            }
+          }) || false;
+        }
+        
+        return { section: section.name, hasAnswers };
+      });
 
-      if (!hasAnswers) {
-        setError('Please provide some answers before generating a summary.');
+      const sectionsWithoutAnswers = sectionsWithAnswers.filter(s => !s.hasAnswers);
+      
+      if (sectionsWithoutAnswers.length > 0) {
+        const missingSections = sectionsWithoutAnswers.map(s => s.section).join(', ');
+        setError(`Please provide at least 1 answer in each section. Missing answers in: ${missingSections}`);
+        setIsGenerating(false);
+        setProgress(0);
         return;
       }
 
@@ -502,7 +528,9 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
 
       const prompt = `You are an expert in analyzing human-robot interaction using the MOFASA (Modified Factors of Social Appropriateness) framework.
 
-Your task is to write a concise, single-paragraph summary of a participant's responses. You must describe how their identity shaped their interpretation and behavior in the interaction, and clearly tag relevant subfactors in [brackets and italics] after each major element.
+Your task is to write a concise, single-paragraph summary of a participant's responses. 
+You need to describe how their identity shaped their interpretation and behavior in the interaction, and clearly tag relevant subfactors in [brackets and italics] after each major element. 
+Do not include any information that is not provided in the participant's responses. 
 
 🔹 Structure:
 1. Start with the participant's identity — background, personal history, social motive, and self-perception — and tag with [Background], [Personal History], [Social Motive], or [Self-Perception].
@@ -517,7 +545,7 @@ Your task is to write a concise, single-paragraph summary of a participant's res
 - Keep it to 4-5 sentences. Be concise, clear, and grounded in the data.
 
 🔹 Example format:
-"Participant A, a first-year biology student [Background] with no prior experience with robots [Experience], approached the robot because they were curious and felt it was safe [Self-Perception]. 
+"Participant {participant.name}, a first-year biology student [Background] with no prior experience with robots [Experience], approached the robot because they were curious and felt it was safe [Self-Perception]. 
 They decided to interact with it and ask a question **(Decision)**. The interaction happened in a public university hallway at midday [Context] [Time] [Environment], involving a mobile humanoid robot [Type of Robot]. 
 Their lack of experience and positive attitude led them to view the situation as harmless and non-authoritative [Emotional State] [Power Dynamics] [Uncertainty]. 
 They kept a respectful distance and maintained a neutral tone throughout [Rules]."
@@ -830,7 +858,7 @@ Please provide a concise, direct answer to the question based on the interview c
         <div style={{ 
           flex: 1, 
           overflowY: 'auto',
-          padding: '16px 24px'
+          padding: '24px 32px'
         }}>
         {/* Back Button
         <div style={{ marginBottom: '16px' }}>
@@ -861,27 +889,71 @@ Please provide a concise, direct answer to the question based on the interview c
           </button>
         </div> */}
 
-        {/* Participant Title */}
-          <div style={{ marginBottom: '24px', marginTop: '36px' }}>
-          <h2 style={{ fontFamily: 'Lexend, sans-serif', fontWeight: 700, fontSize: '1.3em', marginBottom: 18 }}>{participant.name}</h2>
+        {/* Project Title and Scopes */}
+        <div style={{ 
+          marginBottom: '24px', 
+          marginTop: '36px',
+          background: '#fff',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          border: '1px solid #e9ecef'
+        }}>
+          {/* Project Title */}
+          <div style={{ marginBottom: '20px' }}>
+            <h2 style={{ 
+              fontFamily: 'Lexend, sans-serif', 
+              fontWeight: 700, 
+              fontSize: '1.4em', 
+              marginBottom: '8px',
+              color: '#2c3e50'
+            }}>
+              {project.name}
+            </h2>
+            {project.description && (
+              <p style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.95em',
+                color: '#7f8c8d',
+                margin: 0,
+                lineHeight: 1.5
+              }}>
+                {project.description}
+              </p>
+            )}
+          </div>
+          
+          {/* Participant Name */}
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ 
+              fontFamily: 'Lexend, sans-serif', 
+              fontWeight: 600, 
+              fontSize: '1.2em', 
+              marginBottom: '12px',
+              color: '#34495e'
+            }}>
+              Participant: {participant.name}
+            </h3>
+          </div>
           
           {/* Scope Selection */}
           {project.scopes && project.scopes.length > 0 && (
-            <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ 
+            <div>
+              <h4 style={{ 
                 fontFamily: 'Lexend, sans-serif', 
                 fontWeight: 600, 
                 fontSize: '1.0em', 
                 marginBottom: '12px',
-                color: '#2c3e50'
+                color: '#34495e'
               }}>
                 Scopes:
-              </h3>
+              </h4>
               <div style={{ 
                 display: 'flex', 
                 gap: '8px', 
                 flexWrap: 'wrap',
-                alignItems: 'center'
+                alignItems: 'center',
+                marginBottom: '12px'
               }}>
                 {project.scopes.map((scope, index) => (
                   <button
@@ -897,18 +969,18 @@ Please provide a concise, direct answer to the question based on the interview c
                       navigate(`/projects/${idx}/participants/${participantId}`);
                     }}
                     style={{
-                      padding: '6px 12px',
+                      padding: '8px 16px',
                       backgroundColor: selectedScopeIndex === index ? '#3498db' : '#ecf0f1',
                       color: selectedScopeIndex === index ? '#fff' : '#2c3e50',
                       border: '1px solid',
                       borderColor: selectedScopeIndex === index ? '#3498db' : '#bdc3c7',
-                      borderRadius: '4px',
+                      borderRadius: '6px',
                       cursor: 'pointer',
                       fontWeight: selectedScopeIndex === index ? '600' : '500',
-                      fontSize: '0.85em',
+                      fontSize: '0.9em',
                       fontFamily: 'Lexend, sans-serif',
                       transition: 'all 0.2s ease',
-                      minWidth: '70px',
+                      minWidth: '80px',
                       textAlign: 'center'
                     }}
                     onMouseOver={(e) => {
@@ -930,14 +1002,14 @@ Please provide a concise, direct answer to the question based on the interview c
               </div>
               {currentScope && (
                 <div style={{
-                  marginTop: '8px',
-                  padding: '8px 12px',
+                  padding: '12px 16px',
                   backgroundColor: '#f8f9fa',
-                  borderRadius: '4px',
+                  borderRadius: '6px',
                   border: '1px solid #e9ecef',
                   fontFamily: 'Lexend, sans-serif',
                   fontSize: '0.9em',
-                  color: '#495057'
+                  color: '#495057',
+                  lineHeight: 1.4
                 }}>
                   {currentScope.scopeText || 'No description provided'}
                 </div>
@@ -946,7 +1018,7 @@ Please provide a concise, direct answer to the question based on the interview c
           )}
         </div>
 
-          {/* Toggle Switches */}
+          {/* Toggle Switches
           <div style={{ 
             display: 'flex', 
             gap: '16px', 
@@ -1049,7 +1121,7 @@ Please provide a concise, direct answer to the question based on the interview c
               </label>
               <span style={{ fontFamily: 'Lexend, sans-serif', fontSize: '0.95em' }}>Generate Summary</span>
             </div>
-          </div>
+          </div> */}
 
           {/* Interview Text Area */}
           {showInterview && (
@@ -1114,83 +1186,7 @@ Please provide a concise, direct answer to the question based on the interview c
             </div>
           )}
 
-          {/* Summary Section */}
-          {showSummary && (
-            <div style={{ 
-              marginBottom: '24px',
-              padding: '16px',
-              backgroundColor: '#f8f9fa',
-              borderRadius: '8px',
-              border: '1px solid #e9ecef'
-            }}>
-              <div style={{ marginBottom: '16px' }}>
-                <textarea
-                  value={summary}
-                  onChange={(e) => {
-                    setSummary(e.target.value);
-                    updateParticipantSummary(idx, participantId, e.target.value);
-                  }}
-                  placeholder="Generated summary will appear here..."
-                  style={{
-                    width: '100%',
-                    minHeight: '150px',
-                    padding: '12px',
-                    borderRadius: '4px',
-                    border: '1px solid #dcdde1',
-                    fontSize: '0.95em',
-                    fontFamily: 'Lexend, sans-serif',
-                    resize: 'vertical',
-                    marginBottom: '12px'
-                  }}
-                />
-                <button
-                  onClick={generateSummary}
-                  disabled={isGenerating}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: isGenerating ? '#bbb' : '#3498db',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isGenerating ? 'default' : 'pointer',
-                    fontFamily: 'Lexend, sans-serif'
-                  }}
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Summary'}
-                </button>
-                {isGenerating && (
-                  <div style={{ marginTop: '8px' }}>
-                    <div style={{ 
-                      width: '100%', 
-                      height: '4px', 
-                      backgroundColor: '#eee',
-                      borderRadius: '2px',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{
-                        width: `${progress}%`,
-                        height: '100%',
-                        backgroundColor: '#3498db',
-                        transition: 'width 0.3s ease'
-                      }} />
-                    </div>
-                  </div>
-                )}
-                {error && (
-                  <div style={{
-                    marginTop: '8px',
-                    padding: '8px 12px',
-                    backgroundColor: '#fee',
-                    color: '#e74c3c',
-                    borderRadius: '4px',
-                    fontSize: '0.9em'
-                  }}>
-                    {error}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+
 
           {/* Question Sections */}
           <div>
@@ -1418,6 +1414,91 @@ Please provide a concise, direct answer to the question based on the interview c
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Generate Summary Section */}
+          <div style={{ marginBottom: 32 }}>
+            <h3 style={{ 
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1.1em',
+              marginBottom: 16,
+              color: '#2c3e50'
+            }}>
+              Summary
+            </h3>
+            <div style={{ 
+              padding: '16px',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              border: '1px solid #e9ecef'
+            }}>
+              <div style={{ marginBottom: '16px' }}>
+                <textarea
+                  value={summary}
+                  onChange={(e) => {
+                    setSummary(e.target.value);
+                    updateParticipantSummary(idx, participantId, e.target.value);
+                  }}
+                  placeholder="Participant Summary..."
+                  style={{
+                    width: '100%',
+                    minHeight: '150px',
+                    padding: '12px',
+                    borderRadius: '4px',
+                    border: '1px solid #dcdde1',
+                    fontSize: '0.95em',
+                    fontFamily: 'Lexend, sans-serif',
+                    resize: 'vertical',
+                    marginBottom: '12px'
+                  }}
+                />
+                <button
+                  onClick={generateSummary}
+                  disabled={isGenerating}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: isGenerating ? '#bbb' : '#3498db',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: isGenerating ? 'default' : 'pointer',
+                    fontFamily: 'Lexend, sans-serif'
+                  }}
+                >
+                  {isGenerating ? 'Generating...' : 'Generate Summary using LLM'}
+                </button>
+                {isGenerating && (
+                  <div style={{ marginTop: '8px' }}>
+                    <div style={{ 
+                      width: '100%', 
+                      height: '4px', 
+                      backgroundColor: '#eee',
+                      borderRadius: '2px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: `${progress}%`,
+                        height: '100%',
+                        backgroundColor: '#3498db',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  </div>
+                )}
+                {error && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '8px 12px',
+                    backgroundColor: '#fee',
+                    color: '#e74c3c',
+                    borderRadius: '4px',
+                    fontSize: '0.9em'
+                  }}>
+                    {error}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
