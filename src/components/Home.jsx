@@ -78,44 +78,54 @@ const Home = () => {
             </p>
             
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/1.png')} alt="Add Project Button" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/1.png')} alt="Add Project First Page" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
             
             <p>
               Then, let the app know how many participants are involved, what type of robot you're working with, and the nature of your study. When you're ready, click <strong>Next</strong>.
             </p>
-            
-            <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/2.png')} alt="Project Details Form" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
-            </div>
-            
+            <br />
             <p>
-              Now comes the question selection step. You'll be shown a list of MoFASA questions — you need to select at least one, but we suggest choosing as many as you think are relevant. The more thoughtful your selection, the deeper your analysis can be later on.
+              Now comes the question selection step. You'll be shown a list of MoFASA questions — you need to select at least one for each section, but we suggest choosing as many as you think are relevant. The more thoughtful your selection, the deeper your analysis can be later on.
             </p>
             
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/3.png')} alt="Question Selection" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/2.png')} alt="Add Project Second Page - Question Selection" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
+                    
+            
+            
+
+           
 
             <h3 style={{ marginTop: '32px', fontSize: '20px' }}>2. Viewing Your Project</h3>
             <p>
               Once your project is created, it will show up as a card on the Projects page. Each card gives you a quick overview of the project, along with buttons to export, edit, or delete it if needed.
+            </p>
+
+            <div style={{ textAlign: 'center', margin: '20px 0' }}>
+              <img src={require('../images/12.png')} alt="Project Cards" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+            </div>
+
+            <p>
               Clicking on the card will open the detailed project page where the real work begins.
             </p>
-            
+
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/4.png')} alt="Project Cards" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/3.png')} alt="Project Page " style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
+            
+           
 
             <h3 style={{ marginTop: '32px', fontSize: '20px' }}>3. Adding Participant Observations</h3>
             <p>
               On the project details page, you'll see all your defined scopes and participants listed. To start adding observations, just click on a scope (like "Scope 1"), then select a participant (like "P1").
               This will take you to the participant entry page, where you can answer MoFASA questions specific to that scope and person.
             </p>
-            
+
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/5.png')} alt="Project Details Page" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
-            </div>
+              <img src={require('../images/4.png')} alt="Participant Q/A Page" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+            </div>          
             
             <p>
               The questions are grouped into three sections: <strong>Situation</strong>, <strong>Identity</strong>, and <strong>Definition of the Situation</strong>.
@@ -123,30 +133,40 @@ const Home = () => {
             </p>
             
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/6.png')} alt="Participant Page with Framework" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/5.png')} alt="Right Panel" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
+
+            
             
             <p>
               After answering the situation questions, you'll define the participant's decision — this is the rule or behavior you observed. You can either select an existing rule from the list or create a new one. Once a rule is added, it becomes available for all participants.
             </p>
-            
+
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/7.png')} alt="Rule Selection" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/6.png')} alt="Rule Selection" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
             
             <p>
-              After that, continue with the Identity section, which helps you describe who the participant is in this scenario. These answers will make it easier to complete the final part: how this person interprets the situation (the "definition of the situation").
+              After that, continue with the Identity section, which helps you describe who the participant is in this scenario. 
+              These answers will make it easier to complete the final part: how this person interprets the situation (the "definition of the situation").
             </p>
+
+           
+            
+            
 
             <h3 style={{ marginTop: '32px', fontSize: '20px' }}>4. Summarizing What Happened</h3>
             <p>
               Once you've completed all the questions, you have two options. You can write a short summary of the participant's experience based on your answers, or you can click <strong>"Generate Summary using LLM"</strong> to let the app help you write one using a large language model.
               If you're using this option for the first time, make sure to follow the LLM setup instructions in the Settings menu. You can also customize the LLM prompt there to better fit your project needs.
             </p>
-            
+
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/8.png')} alt="Summary Generation" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/7.png')} alt="Summary" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
+            
+            
+      
             
             <p>
               When you're done with one participant, you can repeat the same process for others and for different scopes if you have them.
@@ -156,27 +176,35 @@ const Home = () => {
             <p>
               Once all your observations are entered, return to the project details page. You'll see three useful tools there:
             </p>
-            <ul style={{ paddingLeft: '20px', marginBottom: '16px' }}>
-              <li><strong>Personae Mapping</strong> – View participants' summaries and framework responses in a single place.</li>
-              <li><strong>Behavioral Diversity</strong> – Explore what kinds of rules were generated and sort them by age, gender, or other traits to look for patterns.</li>
-              <li><strong>Situation Design</strong> – Focus on the rules you want to change. Sort participants by desirable or undesirable outcomes, and brainstorm changes to robot behavior or the environment to help shift future outcomes.</li>
-            </ul>
-            
+        
+            <strong>Personae Mapping</strong> – View participants' summaries and framework responses in a single place.
+            <br />
+            <strong>Behavioral Diversity</strong> – Explore what kinds of rules were generated and sort them by age, gender, or other traits to look for patterns.
+            <br />
+                          
+
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/9.png')} alt="Personae Mapping View" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/8.png')} alt="Behavioral Diversity View 1" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+            </div>
+
+            <div style={{ textAlign: 'center', margin: '20px 0' }}>
+              <img src={require('../images/9.png')} alt="Behavioral Diversity View 2 - Stats" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+            </div>
+
+            <strong>Situation Design</strong> – Focus on the rules you want to change. Sort participants by desirable or undesirable outcomes, and brainstorm changes to robot behavior or the environment to help shift future outcomes.
+        
+            <div style={{ textAlign: 'center', margin: '20px 0' }}>
+              <img src={require('../images/10.png')} alt="Situation Design View 1" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
             
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/10.png')} alt="Behavioral Diversity View" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/11.png')} alt="Situation Design View 2" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
-            
-            <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/11.png')} alt="Situation Design View" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
-            </div>
+
 
             <h3 style={{ marginTop: '32px', fontSize: '20px' }}>6. Exporting Your Report</h3>
             <p>
-              When your analysis is complete, you can click <strong>"Download as PDF"</strong> to generate a complete report of the project. This can be helpful for sharing your findings with your team or saving for future reference.
+              When your analysis is complete, you can click <strong>"Download Project Report"</strong> to generate a complete report of the project. This can be helpful for sharing your findings with your team or saving for future reference.
             </p>
 
             <p style={{ marginTop: '40px', fontStyle: 'italic', color: '#7f8c8d' }}>

@@ -55,6 +55,17 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [robotDraft, setRobotDraft] = useState('');
   const [environmentDraft, setEnvironmentDraft] = useState('');
   const [expandedParticipants, setExpandedParticipants] = useState(new Set());
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportOptions, setReportOptions] = useState({
+    scopes: true,
+    participants: true,
+    questionsAndAnswers: true,
+    frameworkView: true,
+    summaryView: true,
+    behavioralDiversity: true,
+    situationDesign: true
+  });
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   if (!project) {
     return <div className="left-panel"><h2>Project Not Found</h2></div>;
@@ -534,6 +545,254 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     }
   };
 
+  const generateProjectReport = async () => {
+    setIsGeneratingReport(true);
+    try {
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      let yPosition = 40;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 40;
+      const contentWidth = pageWidth - (2 * margin);
+      
+      // Helper function to add text with word wrapping
+      const addWrappedText = (text, y, fontSize = 12, fontStyle = 'normal') => {
+        pdf.setFontSize(fontSize);
+        pdf.setFont('helvetica', fontStyle);
+        
+        const lines = pdf.splitTextToSize(text, contentWidth);
+        if (y + (lines.length * fontSize * 1.2) > pdf.internal.pageSize.getHeight() - margin) {
+          pdf.addPage();
+          y = 40;
+        }
+        
+        pdf.text(lines, margin, y);
+        return y + (lines.length * fontSize * 1.2) + 10;
+      };
+
+      // Helper function to add section header
+      const addSectionHeader = (title, y) => {
+        y = addWrappedText(title, y, 16, 'bold');
+        y = addWrappedText('', y, 12, 'normal'); // Add some space
+        return y;
+      };
+
+      // Project Title
+      yPosition = addWrappedText(project.name, yPosition, 20, 'bold');
+      yPosition = addWrappedText('', yPosition, 12, 'normal');
+
+      // Project Description
+      if (project.description) {
+        yPosition = addWrappedText('Project Description:', yPosition, 14, 'bold');
+        yPosition = addWrappedText(project.description, yPosition, 12, 'normal');
+        yPosition = addWrappedText('', yPosition, 12, 'normal');
+      }
+
+      // Scopes
+      if (reportOptions.scopes && project.scopes) {
+        yPosition = addSectionHeader('Project Scopes', yPosition);
+        project.scopes.forEach((scope, index) => {
+          yPosition = addWrappedText(`Scope ${scope.scopeNumber}:`, yPosition, 14, 'bold');
+          if (scope.scopeText) {
+            yPosition = addWrappedText(scope.scopeText, yPosition, 12, 'normal');
+          }
+          yPosition = addWrappedText('', yPosition, 12, 'normal');
+        });
+      }
+
+      // Participants
+      if (reportOptions.participants && project.scopes) {
+        yPosition = addSectionHeader('Participants', yPosition);
+        project.scopes.forEach((scope, scopeIndex) => {
+          if (scope.participants && scope.participants.length > 0) {
+            yPosition = addWrappedText(`Scope ${scope.scopeNumber} Participants:`, yPosition, 14, 'bold');
+            scope.participants.forEach(participant => {
+              yPosition = addWrappedText(`• ${participant.name}`, yPosition, 12, 'normal');
+            });
+            yPosition = addWrappedText('', yPosition, 12, 'normal');
+          }
+        });
+      }
+
+      // Questions and Answers
+      if (reportOptions.questionsAndAnswers && project.scopes) {
+        yPosition = addSectionHeader('Questions and Answers', yPosition);
+        project.scopes.forEach((scope, scopeIndex) => {
+          if (scope.participants && scope.participants.length > 0) {
+            yPosition = addWrappedText(`Scope ${scope.scopeNumber}:`, yPosition, 14, 'bold');
+            
+            scope.participants.forEach(participant => {
+              yPosition = addWrappedText(`${participant.name}:`, yPosition, 12, 'bold');
+              
+              if (participant.answers) {
+                Object.entries(participant.answers).forEach(([section, data]) => {
+                  if (section !== 'Rule Selection' && data && typeof data === 'object') {
+                    Object.entries(data).forEach(([question, answer]) => {
+                      if (question !== 'selectedRules' && answer && answer.trim()) {
+                        yPosition = addWrappedText(`  ${question}: ${answer}`, yPosition, 11, 'normal');
+                      }
+                    });
+                  }
+                });
+              }
+              yPosition = addWrappedText('', yPosition, 12, 'normal');
+            });
+          }
+        });
+      }
+
+      // Framework View
+      if (reportOptions.frameworkView && project.scopes) {
+        yPosition = addSectionHeader('Framework Analysis', yPosition);
+        project.scopes.forEach((scope, scopeIndex) => {
+          if (scope.participants && scope.participants.length > 0) {
+            yPosition = addWrappedText(`Scope ${scope.scopeNumber}:`, yPosition, 14, 'bold');
+            
+            scope.participants.forEach(participant => {
+              yPosition = addWrappedText(`${participant.name}:`, yPosition, 12, 'bold');
+              
+              // Get framework data
+              const answers = participant.answers || {};
+              const situation = answers['Situation'] || {};
+              const identity = answers['Identity'] || {};
+              const definition = answers['Definition of the Situation'] || {};
+              const decision = answers['Decision'] || {};
+              
+              if (Object.keys(situation).length > 0) {
+                yPosition = addWrappedText('  Situation:', yPosition, 11, 'bold');
+                Object.entries(situation).forEach(([key, value]) => {
+                  if (value && value.trim()) {
+                    yPosition = addWrappedText(`    ${key}: ${value}`, yPosition, 10, 'normal');
+                  }
+                });
+              }
+              
+              if (Object.keys(identity).length > 0) {
+                yPosition = addWrappedText('  Identity:', yPosition, 11, 'bold');
+                Object.entries(identity).forEach(([key, value]) => {
+                  if (value && value.trim()) {
+                    yPosition = addWrappedText(`    ${key}: ${value}`, yPosition, 10, 'normal');
+                  }
+                });
+              }
+              
+              if (Object.keys(definition).length > 0) {
+                yPosition = addWrappedText('  Definition of the Situation:', yPosition, 11, 'bold');
+                Object.entries(definition).forEach(([key, value]) => {
+                  if (value && value.trim()) {
+                    yPosition = addWrappedText(`    ${key}: ${value}`, yPosition, 10, 'normal');
+                  }
+                });
+              }
+              
+              if (Object.keys(decision).length > 0) {
+                yPosition = addWrappedText('  Decision:', yPosition, 11, 'bold');
+                Object.entries(decision).forEach(([key, value]) => {
+                  if (value && value.trim()) {
+                    yPosition = addWrappedText(`    ${key}: ${value}`, yPosition, 10, 'normal');
+                  }
+                });
+              }
+              
+              yPosition = addWrappedText('', yPosition, 12, 'normal');
+            });
+          }
+        });
+      }
+
+      // Summary View
+      if (reportOptions.summaryView && project.scopes) {
+        yPosition = addSectionHeader('Participant Summaries', yPosition);
+        project.scopes.forEach((scope, scopeIndex) => {
+          if (scope.participants && scope.participants.length > 0) {
+            yPosition = addWrappedText(`Scope ${scope.scopeNumber}:`, yPosition, 14, 'bold');
+            
+            scope.participants.forEach(participant => {
+              yPosition = addWrappedText(`${participant.name}:`, yPosition, 12, 'bold');
+              if (participant.summary && participant.summary.trim()) {
+                yPosition = addWrappedText(participant.summary, yPosition, 11, 'normal');
+              } else {
+                yPosition = addWrappedText('No summary available', yPosition, 11, 'italic');
+              }
+              yPosition = addWrappedText('', yPosition, 12, 'normal');
+            });
+          }
+        });
+      }
+
+      // Behavioral Diversity
+      if (reportOptions.behavioralDiversity && project.scopes) {
+        yPosition = addSectionHeader('Behavioral Diversity Analysis', yPosition);
+        project.scopes.forEach((scope, scopeIndex) => {
+          if (scope.participants && scope.participants.length > 0) {
+            yPosition = addWrappedText(`Scope ${scope.scopeNumber}:`, yPosition, 14, 'bold');
+            
+            // Collect all rules from this scope
+            const allRules = new Set();
+            scope.participants.forEach(participant => {
+              const selectedRules = participant.answers?.['Rule Selection']?.selectedRules || [];
+              selectedRules.forEach(rule => allRules.add(rule));
+            });
+            
+            if (allRules.size > 0) {
+              yPosition = addWrappedText('Rules Generated:', yPosition, 12, 'bold');
+              Array.from(allRules).forEach(rule => {
+                yPosition = addWrappedText(`• ${rule}`, yPosition, 11, 'normal');
+              });
+              yPosition = addWrappedText('', yPosition, 12, 'normal');
+            }
+            
+            // Participant breakdown by rules
+            yPosition = addWrappedText('Participant Rule Selections:', yPosition, 12, 'bold');
+            scope.participants.forEach(participant => {
+              const selectedRules = participant.answers?.['Rule Selection']?.selectedRules || [];
+              if (selectedRules.length > 0) {
+                yPosition = addWrappedText(`${participant.name}: ${selectedRules.join(', ')}`, yPosition, 11, 'normal');
+              } else {
+                yPosition = addWrappedText(`${participant.name}: No rules selected`, yPosition, 11, 'normal');
+              }
+            });
+            yPosition = addWrappedText('', yPosition, 12, 'normal');
+          }
+        });
+      }
+
+      // Situation Design
+      if (reportOptions.situationDesign && project.scopes) {
+        yPosition = addSectionHeader('Situation Design Recommendations', yPosition);
+        project.scopes.forEach((scope, scopeIndex) => {
+          yPosition = addWrappedText(`Scope ${scope.scopeNumber}:`, yPosition, 14, 'bold');
+          
+          if (scope.situationDesign) {
+            if (scope.situationDesign.robotChanges && scope.situationDesign.robotChanges.trim()) {
+              yPosition = addWrappedText('Robot Changes:', yPosition, 12, 'bold');
+              yPosition = addWrappedText(scope.situationDesign.robotChanges, yPosition, 11, 'normal');
+              yPosition = addWrappedText('', yPosition, 12, 'normal');
+            }
+            
+            if (scope.situationDesign.environmentalChanges && scope.situationDesign.environmentalChanges.trim()) {
+              yPosition = addWrappedText('Environmental Changes:', yPosition, 12, 'bold');
+              yPosition = addWrappedText(scope.situationDesign.environmentalChanges, yPosition, 11, 'normal');
+              yPosition = addWrappedText('', yPosition, 12, 'normal');
+            }
+          } else {
+            yPosition = addWrappedText('No situation design recommendations available', yPosition, 11, 'italic');
+          }
+          yPosition = addWrappedText('', yPosition, 12, 'normal');
+        });
+      }
+
+      // Save the PDF
+      pdf.save(`${project.name}_Complete_Report.pdf`);
+      setShowReportModal(false);
+      
+    } catch (error) {
+      console.error('Error generating project report:', error);
+      alert('Error generating report. Please try again.');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
 
 
   return (
@@ -545,37 +804,73 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         borderRight: currentView !== 'behavioral' ? '1px solid #dcdde1' : 'none',
         transition: 'width 0.3s ease'
       }}>
-        {/* Back Button */}
-        <button
-          onClick={() => navigate('/projects')}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#ecf0f1',
-            color: '#2c3e50',
-            border: '1px solid #bdc3c7',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontFamily: 'Lexend, sans-serif',
-            fontSize: '0.95em',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '20px',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = '#dfe6e9';
-            e.currentTarget.style.borderColor = '#b2bec3';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = '#ecf0f1';
-            e.currentTarget.style.borderColor = '#bdc3c7';
-          }}
-        >
-          <span style={{ fontSize: '1.2em' }}>←</span>
-          Back to Projects
-        </button>
+        {/* Header with Back Button and Download Report Button */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '20px' 
+        }}>
+          <button
+            onClick={() => navigate('/projects')}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#ecf0f1',
+              color: '#2c3e50',
+              border: '1px solid #bdc3c7',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '0.95em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#dfe6e9';
+              e.currentTarget.style.borderColor = '#b2bec3';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#ecf0f1';
+              e.currentTarget.style.borderColor = '#bdc3c7';
+            }}
+          >
+            <span style={{ fontSize: '1.2em' }}>←</span>
+            Back to Projects
+          </button>
+          
+          <button
+            onClick={() => setShowReportModal(true)}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#3498db',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 400,
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '0.8em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#2980b9';
+              e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = '#3498db';
+              e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+            }}
+          >
+            📄 Download Project Report
+          </button>
+        </div>
 
         {/* Project Header Card */}
         <div style={{
@@ -1529,7 +1824,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                     }}
                     style={{
                       width: '100%',
-                      minHeight: '120px',
+                      minHeight: '250px',
                       padding: '12px',
                       borderRadius: '4px',
                       border: '1px solid #dcdde1',
@@ -1586,7 +1881,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                     }}
                     style={{
                       width: '100%',
-                      minHeight: '120px',
+                      minHeight: '250px',
                       padding: '12px',
                       borderRadius: '4px',
                       border: '1px solid #dcdde1',
@@ -1600,6 +1895,216 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Report Download Modal */}
+      {showReportModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1.5em',
+                color: '#2c3e50',
+                margin: 0
+              }}>
+                Download Project Report
+              </h2>
+              <button
+                onClick={() => setShowReportModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5em',
+                  cursor: 'pointer',
+                  color: '#7f8c8d',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#f8f9fa';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <p style={{
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '0.95em',
+              color: '#7f8c8d',
+              marginBottom: '24px',
+              lineHeight: '1.5'
+            }}>
+              Select the sections you want to include in your project report:
+            </p>
+
+            <div style={{ marginBottom: '24px' }}>
+              {Object.entries({
+                scopes: 'Project Scopes',
+                participants: 'Participants List',
+                questionsAndAnswers: 'Questions and Answers',
+                frameworkView: 'Framework Analysis',
+                summaryView: 'Participant Summaries',
+                behavioralDiversity: 'Behavioral Diversity Analysis',
+                situationDesign: 'Situation Design Recommendations'
+              }).map(([key, label]) => (
+                <div key={key} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '12px',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8f9fa';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                >
+                  <input
+                    type="checkbox"
+                    id={key}
+                    checked={reportOptions[key]}
+                    onChange={(e) => {
+                      setReportOptions(prev => ({
+                        ...prev,
+                        [key]: e.target.checked
+                      }));
+                    }}
+                    style={{
+                      marginRight: '12px',
+                      transform: 'scale(1.2)',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <label
+                    htmlFor={key}
+                    style={{
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.95em',
+                      color: '#2c3e50',
+                      cursor: 'pointer',
+                      flex: 1
+                    }}
+                  >
+                    {label}
+                  </label>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowReportModal(false)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#95a5a6',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.95em',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#7f8c8d';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#95a5a6';
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={generateProjectReport}
+                disabled={isGeneratingReport || Object.values(reportOptions).every(option => !option)}
+                style={{
+                  padding: '10px 20px',
+                  background: isGeneratingReport || Object.values(reportOptions).every(option => !option) 
+                    ? '#bdc3c7' 
+                    : '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: isGeneratingReport || Object.values(reportOptions).every(option => !option) 
+                    ? 'not-allowed' 
+                    : 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.95em',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onMouseOver={(e) => {
+                  if (!isGeneratingReport && !Object.values(reportOptions).every(option => !option)) {
+                    e.target.style.backgroundColor = '#2980b9';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isGeneratingReport && !Object.values(reportOptions).every(option => !option)) {
+                    e.target.style.backgroundColor = '#3498db';
+                  }
+                }}
+              >
+                {isGeneratingReport ? (
+                  <>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      border: '2px solid #fff',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Report'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
