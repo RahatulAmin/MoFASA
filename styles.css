@@ -100,7 +100,16 @@ body {
 .left-panel {
     border-right: 1px solid #dcdde1;
     padding-top: 20px;
-    
+
+}
+
+.about-left-panel, .about-right-panel {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 20px;
+    background-color: #f5f6fa;
+    overflow-y: auto;
+    height: 100%;
 }
 
 /* Add some basic styling for the sidebar items */

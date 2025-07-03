@@ -260,18 +260,51 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
         // Decrypt the imported data
         const importedData = await decryptData(encryptedData);
         
-        // Validate imported data
-        if (!importedData.name || !importedData.participants) {
-          throw new Error('Invalid project data format');
+        // Validate imported data - check for both old and new format
+        if (!importedData.name) {
+          throw new Error('Invalid project data format: missing project name');
+        }
+
+        // Check if it's the new scope-based format or old format
+        const hasScopes = importedData.scopes && Array.isArray(importedData.scopes) && importedData.scopes.length > 0;
+        const hasOldParticipants = importedData.participants && Array.isArray(importedData.participants);
+        
+        if (!hasScopes && !hasOldParticipants) {
+          throw new Error('Invalid project data format: missing scopes or participants');
+        }
+
+        // Convert old format to new format if needed
+        let convertedData = importedData;
+        if (hasOldParticipants && !hasScopes) {
+          console.log('Converting old format to new scope-based format');
+          convertedData = {
+            ...importedData,
+            scopes: [{
+              scopeNumber: 1,
+              scopeText: 'Imported scope',
+              isActive: true,
+              participants: importedData.participants.map(p => ({
+                ...p,
+                id: p.id || p.participantId,
+                participantId: p.participantId || p.id
+              })),
+              rules: importedData.rules || [],
+              situationDesign: importedData.situationDesign || null
+            }],
+            // Remove old fields
+            participants: undefined,
+            rules: undefined,
+            situationDesign: undefined
+          };
         }
 
         // Always show the import dialog with the original name as default
-        setImportedProjectData(importedData);
-        setImportProjectName(importedData.name);
+        setImportedProjectData(convertedData);
+        setImportProjectName(convertedData.name);
         setImportDialogOpen(true);
       } catch (error) {
         console.error('Error importing project:', error);
-        setImportError('Failed to import project. Please check if the file is a valid encrypted project file.');
+        setImportError(`Failed to import project: ${error.message}`);
       }
     };
     reader.readAsText(file);
@@ -798,9 +831,17 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                   </div>
                 ) : (
                   <div style={{ maxHeight: '400px', overflowY: 'auto', marginBottom: '20px' }}>
-                    {Object.entries(questions).map(([sectionName, sectionQuestions]) => {
-                      const enabledQuestions = sectionQuestions.filter(q => q.isEnabled !== false);
-                      const hasValidationError = enabledQuestions.length === 0;
+                    {Object.entries(questions)
+                      .sort(([a], [b]) => {
+                        // Define the correct order
+                        const order = ['Situation', 'Identity', 'Definition of Situation', 'Rule Selection', 'Decision'];
+                        const aIndex = order.indexOf(a);
+                        const bIndex = order.indexOf(b);
+                        return aIndex - bIndex;
+                      })
+                      .map(([sectionName, sectionQuestions]) => {
+                        const enabledQuestions = sectionQuestions.filter(q => q.isEnabled !== false);
+                        const hasValidationError = enabledQuestions.length === 0;
                       
                       return (
                         <div key={sectionName} style={{ marginBottom: '20px' }}>
@@ -929,7 +970,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                 )}
 
                 {/* Summary of enabled/disabled questions */}
-                {!questionsLoading && Object.keys(questions).length > 0 && (
+                {/* {!questionsLoading && Object.keys(questions).length > 0 && (
                   <div style={{ 
                     marginBottom: '20px', 
                     padding: '12px 16px', 
@@ -977,7 +1018,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       })}
                     </div>
                   </div>
-                )}
+                )} */}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <button

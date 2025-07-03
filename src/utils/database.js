@@ -68,6 +68,12 @@ function needsMigration() {
       return true;
     }
     
+    // Check if projects table has robotType and studyType columns
+    if (!columnNames.includes('robotType') || !columnNames.includes('studyType')) {
+      console.log('Database: projects table missing robotType or studyType columns - migration needed');
+      return true;
+    }
+    
     // Check if project_questions table has the section column
     const projectQuestionsColumns = db.prepare("PRAGMA table_info(project_questions)").all();
     const projectQuestionsColumnNames = projectQuestionsColumns.map(col => col.name);
@@ -109,6 +115,8 @@ function performMigration() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       description TEXT,
+      robotType TEXT,
+      studyType TEXT,
       rules TEXT,
       summaryPrompt TEXT,
       createdAt TEXT,
@@ -417,6 +425,8 @@ function getAllProjects() {
       id: project.id,
       name: project.name,
       description: project.description,
+      robotType: project.robotType,
+      studyType: project.studyType,
       rules: project.rules ? JSON.parse(project.rules) : [],
       summaryPrompt: project.summaryPrompt,
       scopes: scopesWithData,
@@ -462,8 +472,8 @@ function saveAllProjects(projects) {
     
     // Insert projects
     const insertProject = db.prepare(`
-      INSERT INTO projects (name, description, rules, summaryPrompt, createdAt, updatedAt) 
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO projects (name, description, robotType, studyType, rules, summaryPrompt, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     const insertScope = db.prepare(`
@@ -496,6 +506,8 @@ function saveAllProjects(projects) {
       const projectInfo = insertProject.run(
         sanitizeValue(project.name),
         sanitizeValue(project.description),
+        sanitizeValue(project.robotType),
+        sanitizeValue(project.studyType),
         sanitizeValue(JSON.stringify(project.rules)),
         sanitizeValue(project.summaryPrompt),
         sanitizeValue(project.createdAt || new Date().toISOString()),
@@ -582,13 +594,15 @@ function addProject(project) {
   
   const transaction = db.transaction((project) => {
     const insertProject = db.prepare(`
-      INSERT INTO projects (name, description, rules, summaryPrompt, createdAt, updatedAt) 
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO projects (name, description, robotType, studyType, rules, summaryPrompt, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     const projectInfo = insertProject.run(
       project.name,
       project.description,
+      project.robotType,
+      project.studyType,
       JSON.stringify(project.rules || []),
       project.summaryPrompt,
       project.createdAt || new Date().toISOString(),
@@ -607,13 +621,15 @@ function updateProject(id, project) {
   
   const stmt = db.prepare(`
     UPDATE projects 
-    SET name = ?, description = ?, rules = ?, summaryPrompt = ?, updatedAt = ? 
+    SET name = ?, description = ?, robotType = ?, studyType = ?, rules = ?, summaryPrompt = ?, updatedAt = ? 
     WHERE id = ?
   `);
   
   stmt.run(
     project.name,
     project.description,
+    project.robotType,
+    project.studyType,
     JSON.stringify(project.rules || []),
     project.summaryPrompt,
     new Date().toISOString(),

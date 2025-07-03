@@ -125,6 +125,8 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   
   // Debounce timer for answer changes
   const answerChangeTimer = useRef(null);
+  // Debounce timer for summary changes
+  const summaryChangeTimer = useRef(null);
 
   // Load questions from database
   useEffect(() => {
@@ -250,6 +252,9 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     return () => {
       if (answerChangeTimer.current) {
         clearTimeout(answerChangeTimer.current);
+      }
+      if (summaryChangeTimer.current) {
+        clearTimeout(summaryChangeTimer.current);
       }
     };
   }, []);
@@ -1436,8 +1441,18 @@ Please provide a concise, direct answer to the question based on the interview c
                 <textarea
                   value={summary}
                   onChange={(e) => {
-                    setSummary(e.target.value);
-                    updateParticipantSummary(idx, participantId, e.target.value);
+                    const newValue = e.target.value;
+                    setSummary(newValue);
+                    
+                    // Clear any existing timer
+                    if (summaryChangeTimer.current) {
+                      clearTimeout(summaryChangeTimer.current);
+                    }
+                    
+                    // Set a new timer to debounce the database update
+                    summaryChangeTimer.current = setTimeout(() => {
+                      updateParticipantSummary(idx, participantId, newValue);
+                    }, 500); // 500ms delay
                   }}
                   placeholder="Participant Summary..."
                   style={{
