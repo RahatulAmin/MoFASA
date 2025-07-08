@@ -124,7 +124,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const [showFactorDetails, setShowFactorDetails] = useState(false);
   const [selectedFactor, setSelectedFactor] = useState(null);
 
-  // Manual refresh function for connections
+  // Reference for connection calculation function
   const refreshConnections = useRef(() => {});
   
   // Debounce timer for answer changes
@@ -306,10 +306,6 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       
       const panelRect = rightPanel.getBoundingClientRect();
       
-      // Get the scrollable container
-      const scrollContainer = rightPanel.querySelector('div[style*="overflowY"]');
-      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-      
       // Account for the scope header height (60px)
       const headerHeight = 60;
       const adjustedTop = panelRect.top + headerHeight;
@@ -327,13 +323,13 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         const fromBox = boxes[pair.from];
         const toBox = boxes[pair.to];
         
-        // Calculate start point (adjust for header and scroll)
+        // Calculate start point (no scroll adjustment needed)
         const startX = pair.fromSide === 'right' 
           ? fromBox.left - panelRect.left + fromBox.width 
           : fromBox.left - panelRect.left;
-        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3) - scrollTop; 
+        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3); 
 
-        // Calculate end point with proper spacing (adjust for header and scroll)
+        // Calculate end point with proper spacing
         const toKey = `${pair.to}-${pair.toSide}`;
         const totalConnections = connectionCounts[toKey];
         const connectionIndex = connectionPairs
@@ -345,7 +341,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
           : toBox.left - panelRect.left + toBox.width;
 
         // Calculate vertical offset for multiple connections
-        let endY = toBox.top - adjustedTop + toBox.height / 3 - scrollTop;
+        let endY = toBox.top - adjustedTop + toBox.height / 3;
         if (totalConnections > 1) {
           const spacing = 20; // Gap between lines
           const totalHeight = (totalConnections - 1) * spacing;
@@ -354,7 +350,6 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         }
 
         // Calculate horizontal offset based on vertical distance
-        const verticalDistance = Math.abs(startY - endY);
         const horizontalOffset = pair.horizontalOffset || 20; // Default to 20 if not specified
 
         // Create path with proper offsets
@@ -389,32 +384,6 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     
     // Recalculate after a short delay to ensure DOM is fully rendered
     const timeoutId = setTimeout(calculateConnections, 100);
-    
-    // Recalculate on scroll with throttling - add delay to ensure DOM is ready
-    const attachScrollListener = () => {
-      if (scrollContainerRef.current) {
-        let scrollTimeout;
-        const handleScroll = () => {
-          clearTimeout(scrollTimeout);
-          scrollTimeout = setTimeout(calculateConnections, 16); // ~60fps
-        };
-        scrollContainerRef.current.addEventListener('scroll', handleScroll);
-        
-        // Cleanup scroll listener
-        return () => {
-          clearTimeout(scrollTimeout);
-          if (scrollContainerRef.current) {
-            scrollContainerRef.current.removeEventListener('scroll', handleScroll);
-          }
-        };
-      }
-    };
-
-    // Try to attach immediately, and also after a delay
-    let cleanup = attachScrollListener();
-    const timeoutId2 = setTimeout(() => {
-      cleanup = attachScrollListener();
-    }, 100);
 
     // Recalculate on window resize
     const handleResize = () => {
@@ -429,27 +398,19 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         setTimeout(calculateConnections, 50);
       });
       
-      // Observe the right panel and its scrollable content
+      // Observe the right panel
       const rightPanel = document.querySelector('.right-panel');
       if (rightPanel) {
         resizeObserver.observe(rightPanel);
-      }
-      
-      if (scrollContainerRef.current) {
-        resizeObserver.observe(scrollContainerRef.current);
       }
     }
 
     // Cleanup function
     return () => {
       clearTimeout(timeoutId);
-      clearTimeout(timeoutId2);
       window.removeEventListener('resize', handleResize);
       if (resizeObserver) {
         resizeObserver.disconnect();
-      }
-      if (cleanup) {
-        cleanup();
       }
     };
   }, [
@@ -462,15 +423,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     currentScope
   ]);
 
-  // Additional effect to handle content changes that might affect box heights
-  useEffect(() => {
-    // Refresh connections when answers change
-    const timeoutId = setTimeout(() => {
-      refreshConnections.current();
-    }, 100);
-    
-    return () => clearTimeout(timeoutId);
-  }, [localAnswers, selectedRules]);
+
 
   const generateSummary = async () => {
     if (!participant) return;
@@ -519,70 +472,107 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         return;
       }
 
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 10;
-        });
-      }, 500);
-
-      // Collect all answers from all sections
+      // Collect all answers from all sections with their associated factors
       const allAnswers = SECTIONS.map(section => {
-        const sectionAnswers = questions[section.name]?.map(q => {
-          const questionText = typeof q === 'object' ? q.text : q;
-          const answer = participant.answers?.[section.name]?.[questionText];
-          return answer ? `${questionText}: ${answer}` : null;
-        }).filter(Boolean) || [];
-        
-        return sectionAnswers.length > 0 
-          ? `${section.name}:\n${sectionAnswers.join('\n')}`
-          : null;
+        if (section.name === 'Rule Selection') {
+          return selectedRules.length > 0 ? `Rule Selection:\nSelected rules: ${selectedRules.join(', ')}` : null;
+        } else if (section.name === 'Decision') {
+          return selectedRules.length > 0 ? `Decision:\nRules for decision making: ${selectedRules.join(', ')}` : null;
+        } else {
+          const sectionAnswers = questions[section.name]?.map(q => {
+            if (typeof q === 'object' && q.type === 'dropdown') {
+              const answer = localAnswers[section.name]?.[q.id];
+              if (answer) {
+                const factorInfo = q.factors ? ` [Associated factors: ${q.factors}]` : '';
+                return `${q.text}: ${answer}${factorInfo}`;
+              }
+              return null;
+            } else {
+              const questionText = typeof q === 'object' ? q.text : q;
+              const answer = localAnswers[section.name]?.[questionText];
+              if (answer) {
+                const factorInfo = q.factors ? ` [Associated factors: ${q.factors}]` : '';
+                return `${questionText}: ${answer}${factorInfo}`;
+              }
+              return null;
+            }
+          }).filter(Boolean) || [];
+          
+          return sectionAnswers.length > 0 
+            ? `${section.name}:\n${sectionAnswers.join('\n')}`
+            : null;
+        }
       }).filter(Boolean);
+
+      // Extract all unique factors mentioned in the responses for reference
+      const allFactors = new Set();
+      SECTIONS.forEach(section => {
+        if (section.name !== 'Rule Selection' && section.name !== 'Decision') {
+          questions[section.name]?.forEach(q => {
+            if (q.factors && (
+              (typeof q === 'object' && q.type === 'dropdown' && localAnswers[section.name]?.[q.id]) ||
+              (typeof q !== 'object' && localAnswers[section.name]?.[q.text]) ||
+              (typeof q === 'object' && q.text && localAnswers[section.name]?.[q.text])
+            )) {
+              q.factors.split(',').forEach(factor => allFactors.add(factor.trim()));
+            }
+          });
+        }
+      });
+      const availableFactors = Array.from(allFactors);
 
       const prompt = `You are an expert in analyzing human-robot interaction using the MOFASA (Modified Factors of Social Appropriateness) framework.
 
-Your task is to write a concise, single-paragraph summary of a participant's responses. 
-You need to describe how their identity shaped their interpretation and behavior in the interaction, and clearly tag relevant subfactors in [brackets and italics] after each major element. 
-Do not include any information that is not provided in the participant's responses. 
+CRITICAL INSTRUCTIONS:
+- ONLY summarize information that is explicitly provided in the participant's responses
+- DO NOT make assumptions, inferences, or add information not directly stated
+- If a response appears to be gibberish, nonsensical, or unclear, mention it as "unclear response" rather than interpreting it
+- DO NOT fill in gaps with assumptions about typical situations
+- Be precise and factual, using only the exact information provided
 
-🔹 Structure:
-1. Start with the participant's identity — background, personal history, social motive, and self-perception — and tag with [Background], [Personal History], [Social Motive], or [Self-Perception].
-2. Describe their behavioral choice or judgment, and add [Decision].
-3. Briefly describe the situation — context, time, environment, and robot type — tagging with [Time], [Place], [Participants], [Role Identities], or [Group Size].
-4. Explain how their identity shaped their understanding of the situation — uncertainty, power dynamics, social interaction, emotional state, etc. — tagging with [Uncertainty], [Consequences], [Personal History], [Emotional State], [Power Dynamics], or [Context].
-5. Conclude with the social expectations or norms expressed or implied, and tag as [Rules] with relevant subfactors.
+FACTOR TAGGING INSTRUCTIONS:
+- Each question-answer pair includes "[Associated factors: X, Y, Z]" - these are the EXACT factors you must use
+- When summarizing each answer, include the relevant factors in brackets immediately after the content
+- Use ONLY the factors that are explicitly associated with each question - do not use generic factor names
+- If no factors are provided for a question, do not add any factor tags for that content
 
-🔹 Format Requirements:
-- Write ONE single paragraph — no line breaks or bullet points.
-- Add [Subfactor] tags in "Italic" after the related phrases.
-- Keep it to 4-5 sentences. Be concise, clear, and grounded in the data.
+Your task is to write a single-paragraph summary based STRICTLY on the participant's actual responses.
 
-🔹 Example format:
-"Participant {participant.name}, a first-year biology student [Background] with no prior experience with robots [Experience], approached the robot because they were curious and felt it was safe [Self-Perception]. 
-They decided to interact with it and ask a question **(Decision)**. The interaction happened in a public university hallway at midday [Context] [Time] [Environment], involving a mobile humanoid robot [Type of Robot]. 
-Their lack of experience and positive attitude led them to view the situation as harmless and non-authoritative [Emotional State] [Power Dynamics] [Uncertainty]. 
-They kept a respectful distance and maintained a neutral tone throughout [Rules]."
+Format Requirements:
+- ONE single paragraph only
+- Include the exact [Factor] tags provided with each question after relevant phrases
+- 3-5 sentences maximum
+- If critical information is missing or unclear, state "information not provided" rather than assuming
+- If responses are gibberish or unclear, note this explicitly
+
+${availableFactors.length > 0 ? `Available factors from the participant's responses: ${availableFactors.join(', ')}` : 'No factors available for this participant\'s responses.'}
+
+Example format using provided factors:
+"Participant ${participant.name} described their age as 25-34 [Age] and occupation as engineer [Occupation]. They decided to approach the robot cautiously [Emotional State, Consequences]. The interaction occurred in a university lab [Place, Context] with multiple people present [Group Size]."
 
 Participant Responses:
 ${allAnswers.join('\n\n')}
-`;
 
-      const generatedSummary = await window.electronAPI.generateWithDeepSeek(prompt);
-      clearInterval(progressInterval);
-      setProgress(100);
-      setSummary(generatedSummary);
+Generate summary (remember: use ONLY the exact factors provided with each question, and only summarize information explicitly provided):`;
+
+      // Set up real-time progress listener
+      const progressHandler = (event, data) => {
+        setProgress(data.progress);
+      };
       
-      // Update the participant's summary using the new function
-      updateParticipantSummary(idx, participantId, generatedSummary);
-      
-      // Refresh connections after summary generation
-      setTimeout(() => {
-        refreshConnections.current();
-      }, 100);
+      window.electronAPI.onGenerationProgress(progressHandler);
+
+      try {
+        const generatedSummary = await window.electronAPI.generateWithDeepSeekStream(prompt);
+        setSummary(generatedSummary);
+        
+        // Update the participant's summary using the new function
+        updateParticipantSummary(idx, participantId, generatedSummary);
+      } finally {
+        // Clean up the progress listener
+        window.electronAPI.removeGenerationProgressListener(progressHandler);
+      }
+
     } catch (error) {
       console.error('Failed to generate summary:', error);
       setError('Failed to generate summary. Please check if LLM is running and try again.');
@@ -712,11 +702,6 @@ Please provide a concise, direct answer to the question based on the interview c
     
     setSelectedRules(updatedRules);
     updateParticipantAnswers(idx, participantId, 'Rule Selection', 'selectedRules', updatedRules);
-    
-    // Refresh connections after rule selection
-    setTimeout(() => {
-      refreshConnections.current();
-    }, 100);
   };
 
   const handleFactorClickLocal = (question, factor) => {
@@ -763,8 +748,6 @@ Please provide a concise, direct answer to the question based on the interview c
       updateParticipantAnswers(idx, participantId, section, question, value);
     }, 500); // 500ms delay
   };
-
-  // Add effect for connection calculations
 
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -1065,10 +1048,6 @@ Please provide a concise, direct answer to the question based on the interview c
                   checked={showInterview}
                   onChange={() => {
                     setShowInterview(!showInterview);
-                    // Refresh connections after toggle
-                    setTimeout(() => {
-                      refreshConnections.current();
-                    }, 100);
                   }}
                   style={{ opacity: 0, width: 0, height: 0 }}
                 />
@@ -1112,10 +1091,6 @@ Please provide a concise, direct answer to the question based on the interview c
                   checked={showSummary}
                   onChange={() => {
                     setShowSummary(!showSummary);
-                    // Refresh connections after toggle
-                    setTimeout(() => {
-                      refreshConnections.current();
-                    }, 100);
                   }}
                   style={{ opacity: 0, width: 0, height: 0 }}
                 />
@@ -1565,38 +1540,44 @@ Please provide a concise, direct answer to the question based on the interview c
       </div>
 
       {/* Right Panel: Visual Answers */}
-      <div className="right-panel" style={{ 
-        flex: 1,
-        background: 'linear-gradient(180deg,rgb(55, 70, 83) 0%, #232b32 100%)', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        height: '100%',
-        position: 'relative'
-      }}>
-        {/* Current Scope Header */}
+      <div 
+        className="right-panel" 
+        ref={scrollContainerRef}
+        style={{ 
+          flex: 1,
+          background: 'linear-gradient(180deg,rgb(55, 70, 83) 0%, #232b32 100%)', 
+          overflowY: 'auto',
+          position: 'relative'
+        }}
+      >
+        {/* Current Scope Header - now scrollable */}
         {currentScope && (
           <div style={{
             padding: '16px 24px',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            backgroundColor: 'rgba(55, 70, 83, 0.95)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
             color: 'white',
             fontFamily: 'Lexend, sans-serif',
             fontSize: '1.1em',
             fontWeight: '600',
-            textAlign: 'center'
+            textAlign: 'center',
+            position: 'sticky',
+            top: 0,
+            zIndex: 200,
+            backdropFilter: 'blur(10px)'
           }}>
             Current Scope: {currentScope.scopeNumber || 'No description'}
           </div>
         )}
         
-        {/* SVG Container for Lines */}
+        {/* SVG Container for Lines - positioned relative to content */}
         <svg 
           style={{ 
             position: 'absolute',
             top: currentScope ? '60px' : '0',
             left: 0,
             right: '16px', // Leave space for scrollbar
-            height: currentScope ? 'calc(100% - 60px)' : '100%',
+            height: 'calc(100% - 60px)',
             pointerEvents: 'none',
             overflow: 'visible',
             zIndex: 100
@@ -1658,19 +1639,15 @@ Please provide a concise, direct answer to the question based on the interview c
           ))}
         </svg>
 
-        {/* Scrollable Boxes Area */}
-        <div 
-          ref={scrollContainerRef}
-          style={{ 
-            flex: 1,
-            overflowY: 'auto', 
-            padding: '32px 16px 32px 0', // Add right padding to account for scrollbar
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            position: 'relative',
-            zIndex: 1
-          }}
+        {/* Boxes Container */}
+        <div style={{ 
+          padding: '32px 16px 32px 0', // Add right padding to account for scrollbar
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          position: 'relative',
+          zIndex: 1
+        }}
         >
         {SECTIONS.map((section, i) => (
           <div

@@ -5,7 +5,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateParticipantInterview: (projectId, participantId, interviewText) => 
     ipcRenderer.invoke('update-participant-interview', projectId, participantId, interviewText),
   // DeepSeek LLM functionality
-  generateWithDeepSeek: (prompt) => ipcRenderer.invoke('generate-with-deepseek', prompt),
+      generateWithDeepSeek: (prompt) => ipcRenderer.invoke('generate-with-deepseek', prompt),
+    generateWithDeepSeekStream: (prompt) => ipcRenderer.invoke('generate-with-deepseek-stream', prompt),
+    onGenerationProgress: (callback) => ipcRenderer.on('generation-progress', callback),
+    removeGenerationProgressListener: (callback) => ipcRenderer.removeListener('generation-progress', callback),
   getDeepSeekStatus: () => ipcRenderer.invoke('get-deepseek-status'),
   // Settings API
   getSettings: () => ipcRenderer.invoke('get-settings'),

@@ -6,6 +6,8 @@ import PersonaeFramework from './PersonaeFramework';
 import PersonaeMappingView from './PersonaeMappingView';
 import BehavioralDiversityView from './BehavioralDiversityView';
 import SituationDesignView from './SituationDesignView';
+import FactorDetailsModal from './FactorDetailsModal';
+import { handleFactorClick } from '../utils/factorUtils';
 import { SECTIONS, connectionPairs } from '../constants/frameAnalysis';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -66,6 +68,53 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     situationDesign: true
   });
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [questions, setQuestions] = useState({});
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+  const [showFactorDetails, setShowFactorDetails] = useState(false);
+  const [selectedFactor, setSelectedFactor] = useState(null);
+
+  // Load questions from database
+  React.useEffect(() => {
+    const loadQuestions = async () => {
+      try {
+        setQuestionsLoading(true);
+        const questionsData = await window.electronAPI.getEnabledProjectQuestions(project.id);
+        
+        // Format them for the component
+        const formattedQuestions = {};
+        Object.keys(questionsData).forEach(section => {
+          formattedQuestions[section] = questionsData[section].map(q => {
+            if (q.questionType === 'dropdown') {
+              return {
+                id: q.questionId,
+                text: q.questionText,
+                type: 'dropdown',
+                options: q.options,
+                factors: q.factors
+              };
+            } else {
+              return {
+                text: q.questionText,
+                factors: q.factors
+              };
+            }
+          });
+        });
+        
+        setQuestions(formattedQuestions);
+      } catch (error) {
+        console.error('Error loading questions:', error);
+        // Set empty questions if database fails
+        setQuestions({});
+      } finally {
+        setQuestionsLoading(false);
+      }
+    };
+    
+    if (project?.id) {
+      loadQuestions();
+    }
+  }, [project?.id]);
 
   if (!project) {
     return <div className="left-panel"><h2>Project Not Found</h2></div>;
@@ -543,6 +592,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     } catch (error) {
       console.error('Error saving selected scope:', error);
     }
+  };
+
+  const handleFactorClickLocal = (question, factor) => {
+    handleFactorClick(question, factor, setSelectedFactor, setShowFactorDetails);
   };
 
   const generateProjectReport = async () => {
@@ -1744,13 +1797,36 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           {currentView === 'personae' && (
             personaeView === 'framework' ? (
               selectedParticipant ? (
-                <div ref={frameworkRef}>
-                  <PersonaeFramework 
-                    selectedParticipant={selectedParticipant}
-                    currentScope={currentScope}
-                    selectedRules={selectedParticipant?.answers?.['Rule Selection']?.selectedRules || []}
-                  />
-                </div>
+                <>
+                  {/* Current Scope Header - sticky */}
+                  {currentScope && (
+                    <div style={{
+                      padding: '16px 24px',
+                      backgroundColor: 'rgba(55, 70, 83, 0.95)',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+                      color: 'white',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '1.1em',
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 200,
+                      backdropFilter: 'blur(10px)'
+                    }}>
+                      Current Scope: {currentScope.scopeNumber || 'No description'}
+                    </div>
+                  )}
+                                     <div ref={frameworkRef}>
+                     <PersonaeFramework 
+                       selectedParticipant={selectedParticipant}
+                       currentScope={currentScope}
+                       selectedRules={selectedParticipant?.answers?.['Rule Selection']?.selectedRules || []}
+                       questions={questions}
+                       onFactorClick={handleFactorClickLocal}
+                     />
+                   </div>
+                </>
               ) : (
                 <div style={{
                   height: '100%',
@@ -2113,6 +2189,15 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
             </div>
           </div>
         </div>
+      )}
+
+      {/* Factor Details Modal */}
+      {showFactorDetails && selectedFactor && (
+        <FactorDetailsModal
+          isOpen={showFactorDetails}
+          onClose={() => setShowFactorDetails(false)}
+          factorDetails={selectedFactor}
+        />
       )}
     </div>
   );

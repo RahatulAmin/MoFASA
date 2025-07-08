@@ -122,6 +122,88 @@ ipcMain.handle('generate-with-deepseek', async (_e, prompt) => {
   }
 });
 
+ipcMain.handle('generate-with-deepseek-stream', async (event, prompt) => {
+  const settings = loadSettings();
+  return new Promise((resolve, reject) => {
+    try {
+      let fullResponse = '';
+      let wordCount = 0;
+
+      const request = axios.post(`${settings.llmUrl}/api/generate`, {
+        model: settings.modelName,
+        prompt,
+        stream: true
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+        responseType: 'stream'
+      });
+
+      request.then(response => {
+        response.data.on('data', (chunk) => {
+          const lines = chunk.toString().split('\n').filter(line => line.trim());
+          
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line);
+              if (data.response) {
+                fullResponse += data.response;
+                
+                // Count words to estimate progress more accurately
+                const newWordCount = fullResponse.split(/\s+/).length;
+                if (newWordCount > wordCount + 5) { // Update every 5 words
+                  wordCount = newWordCount;
+                  // Estimate progress based on expected summary length (100-150 words)
+                  const estimatedProgress = Math.min(90, Math.floor((wordCount / 120) * 100));
+                  
+                  // Send progress update to renderer
+                  event.sender.send('generation-progress', {
+                    progress: estimatedProgress,
+                    currentText: fullResponse.length > 100 ? fullResponse.substring(0, 100) + '...' : fullResponse
+                  });
+                }
+              }
+              
+              if (data.done) {
+                const cleanResponse = fullResponse.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                event.sender.send('generation-progress', { progress: 100, currentText: cleanResponse });
+                resolve(cleanResponse);
+              }
+            } catch (parseErr) {
+              // Ignore JSON parsing errors for partial chunks
+            }
+          }
+        });
+
+        response.data.on('error', (error) => {
+          console.error('Stream error:', error);
+          reject(new Error(`Stream error: ${error.message}`));
+        });
+
+        response.data.on('end', () => {
+          if (fullResponse) {
+            const cleanResponse = fullResponse.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            resolve(cleanResponse);
+          }
+        });
+
+      }).catch(err => {
+        console.error('Generate stream error:', err.message);
+        if (['ECONNREFUSED', 'ECONNRESET'].includes(err.code)) {
+          reject(new Error('Cannot connect to Ollama. Please ensure Ollama is running (ollama serve)'));
+        } else if (err.code === 'ETIMEDOUT') {
+          reject(new Error('Connection to Ollama timed out.'));
+        } else {
+          reject(new Error(`Failed to generate response: ${err.message}`));
+        }
+      });
+
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
 ipcMain.handle('get-deepseek-status', async () => {
   const settings = loadSettings();
   try {

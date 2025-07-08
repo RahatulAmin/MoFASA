@@ -4,12 +4,14 @@ import { SECTIONS, connectionPairs } from '../constants/frameAnalysis';
 const PersonaeFramework = ({ 
   selectedParticipant, 
   currentScope,
-  selectedRules = []
+  selectedRules = [],
+  questions = {},
+  onFactorClick = () => {}
 }) => {
   const boxRefs = useRef(SECTIONS.map(() => React.createRef()));
   const [connections, setConnections] = useState([]);
 
-  // Manual refresh function for connections
+  // Reference for connection calculation function
   const refreshConnections = useRef(() => {});
 
   // Calculate box positions and update connections
@@ -23,11 +25,7 @@ const PersonaeFramework = ({
       
       const panelRect = rightPanel.getBoundingClientRect();
       
-      // Get the scrollable container
-      const scrollContainer = rightPanel.querySelector('div[style*="overflowY"]');
-      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-      
-      // Account for the scope header height (60px)
+      // Account for the scope header height (60px) that's now in the parent
       const headerHeight = 60;
       const adjustedTop = panelRect.top + headerHeight;
 
@@ -44,13 +42,13 @@ const PersonaeFramework = ({
         const fromBox = boxes[pair.from];
         const toBox = boxes[pair.to];
         
-        // Calculate start point (adjust for header and scroll)
+        // Calculate start point (no scroll adjustment needed)
         const startX = pair.fromSide === 'right' 
           ? fromBox.left - panelRect.left + fromBox.width 
           : fromBox.left - panelRect.left;
-        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3) - scrollTop; 
+        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3); 
 
-        // Calculate end point with proper spacing (adjust for header and scroll)
+        // Calculate end point with proper spacing
         const toKey = `${pair.to}-${pair.toSide}`;
         const totalConnections = connectionCounts[toKey];
         const connectionIndex = connectionPairs
@@ -62,7 +60,7 @@ const PersonaeFramework = ({
           : toBox.left - panelRect.left + toBox.width;
 
         // Calculate vertical offset for multiple connections
-        let endY = toBox.top - adjustedTop + toBox.height / 3 - scrollTop;
+        let endY = toBox.top - adjustedTop + toBox.height / 3;
         if (totalConnections > 1) {
           const spacing = 20; // Gap between lines
           const totalHeight = (totalConnections - 1) * spacing;
@@ -71,7 +69,6 @@ const PersonaeFramework = ({
         }
 
         // Calculate horizontal offset based on vertical distance
-        const verticalDistance = Math.abs(startY - endY);
         const horizontalOffset = pair.horizontalOffset || 20; // Default to 20 if not specified
 
         // Create path with proper offsets
@@ -106,101 +103,61 @@ const PersonaeFramework = ({
     
     // Recalculate after a short delay to ensure DOM is fully rendered
     const timeoutId = setTimeout(calculateConnections, 100);
-    
-    // Recalculate on scroll with throttling
-    const scrollContainer = document.querySelector('.right-panel > div');
-    if (scrollContainer) {
-      let scrollTimeout;
-      const handleScroll = () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(calculateConnections, 16); // ~60fps
-      };
-      scrollContainer.addEventListener('scroll', handleScroll);
-      
-      // Cleanup scroll listener
-      return () => {
-        clearTimeout(scrollTimeout);
-        scrollContainer.removeEventListener('scroll', handleScroll);
-      };
-    }
 
-    // Recalculate on window resize
+    // Debounced resize handler to prevent excessive recalculations
+    let resizeTimer;
     const handleResize = () => {
-      setTimeout(calculateConnections, 50);
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+      }
+      resizeTimer = setTimeout(calculateConnections, 200);
     };
     window.addEventListener('resize', handleResize);
 
-    // Use ResizeObserver to detect content changes
+    // Use ResizeObserver to detect content changes with debouncing
     let resizeObserver;
     if (window.ResizeObserver) {
       resizeObserver = new ResizeObserver(() => {
-        setTimeout(calculateConnections, 50);
+        handleResize(); // Use the same debounced handler
       });
       
-      // Observe the right panel and its scrollable content
+      // Observe the right panel
       const rightPanel = document.querySelector('.right-panel');
       if (rightPanel) {
         resizeObserver.observe(rightPanel);
-      }
-      
-      const scrollContainer = document.querySelector('.right-panel > div');
-      if (scrollContainer) {
-        resizeObserver.observe(scrollContainer);
       }
     }
 
     // Cleanup function
     return () => {
       clearTimeout(timeoutId);
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+      }
       window.removeEventListener('resize', handleResize);
       if (resizeObserver) {
         resizeObserver.disconnect();
       }
     };
-  }, [selectedParticipant, selectedRules, currentScope]);
+  }, [currentScope]); // Removed selectedParticipant and selectedRules to prevent unnecessary recalculations
 
-  // Additional effect to handle content changes that might affect box heights
-  useEffect(() => {
-    // Refresh connections when answers change
-    const timeoutId = setTimeout(() => {
-      refreshConnections.current();
-    }, 100);
-    
-    return () => clearTimeout(timeoutId);
-  }, [selectedParticipant?.answers, selectedRules]);
+
 
   return (
     <div style={{ 
       background: 'linear-gradient(180deg,rgb(55, 70, 83) 0%, #232b32 100%)', 
-      display: 'flex', 
-      flexDirection: 'column', 
       height: '100%',
       position: 'relative'
     }}>
-      {/* Current Scope Header */}
-      {currentScope && (
-        <div style={{
-          padding: '16px 24px',
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          //borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-          color: 'white',
-          fontFamily: 'Lexend, sans-serif',
-          fontSize: '1.1em',
-          fontWeight: '600',
-          textAlign: 'center'
-        }}>
-          Current Scope: {currentScope.scopeNumber || 'No description'}
-        </div>
-      )}
       
-      {/* SVG Container for Lines */}
+      {/* SVG Container for Lines - positioned relative to content */}
       <svg 
         style={{ 
           position: 'absolute',
-          top: currentScope ? '60px' : '0',
+          top: 0,
           left: 0,
           right: '16px', // Leave space for scrollbar
-          height: currentScope ? 'calc(100% - 60px)' : '100%',
+          height: '100%',
           pointerEvents: 'none',
           overflow: 'visible',
           zIndex: 100
@@ -251,10 +208,8 @@ const PersonaeFramework = ({
         ))}
       </svg>
 
-      {/* Scrollable Boxes Area */}
+      {/* Boxes Container */}
       <div style={{ 
-        flex: 1,
-        overflowY: 'auto', 
         padding: '32px 16px 32px 0', // Add right padding to account for scrollbar
         display: 'flex',
         flexDirection: 'column',
@@ -349,13 +304,38 @@ const PersonaeFramework = ({
                   )}
                 </div>
               ) : (
-                selectedParticipant?.answers?.[section.name] && 
-                Object.entries(selectedParticipant.answers[section.name]).map(([questionId, answer]) => {
-                  // Skip selectedRules as it's handled separately
-                  if (questionId === 'selectedRules') return null;
+                questions[section.name]?.map((question, i) => {
+                  const isDropdown = question.type === 'dropdown';
+                  const questionId = isDropdown ? question.id : question.text;
+                  const answer = selectedParticipant?.answers?.[section.name]?.[questionId];
+                  const factors = question.factors;
                   return answer ? (
                     <div key={questionId} style={{ marginBottom: 12 }}>
-                      {answer}
+                      <span style={{ fontWeight: 500 }}>{answer}</span>
+                      {factors && (
+                        <span 
+                          onClick={() => onFactorClick(question, question.factors)}
+                          style={{
+                            fontSize: '0.8em',
+                            color: '#000000',
+                            background: '#cceeff',
+                            borderRadius: '8px',
+                            padding: '2px 8px',
+                            marginLeft: '6px',
+                            fontWeight: 400,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = '#99ddff';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = '#cceeff';
+                          }}
+                        >
+                          {question.factors}
+                        </span>
+                      )}
                     </div>
                   ) : null;
                 }) || []
