@@ -625,7 +625,7 @@ function performMigration() {
 // Function to update existing question-factor mappings
 function updateQuestionFactorMappings() {
   try {
-    console.log('Database: Updating question-factor mappings...');
+    // console.log('Database: Updating question-factor mappings...'); // Commented out verbose logging
     
     // Update the social_rules question to use "Standards of Customary Practices"
     const updateMapping = db.prepare(`
@@ -645,7 +645,7 @@ function updateQuestionFactorMappings() {
     
     updateQuestion.run('Standards of Customary Practices', 'social_rules');
     
-    console.log('Database: Question-factor mappings updated successfully');
+    // console.log('Database: Question-factor mappings updated successfully'); // Commented out verbose logging
   } catch (error) {
     console.error('Database: Failed to update question-factor mappings:', error);
   }
@@ -654,14 +654,14 @@ function updateQuestionFactorMappings() {
 // Function to update factors table with section information
 function updateFactorsWithSections() {
   try {
-    console.log('Database: Updating factors with section information...');
+    // console.log('Database: Updating factors with section information...'); // Commented out verbose logging
     
     // Check if section column exists, if not add it
     const tableInfo = db.prepare("PRAGMA table_info(factors)").all();
     const hasSectionColumn = tableInfo.some(col => col.name === 'section');
     
     if (!hasSectionColumn) {
-      console.log('Database: Adding section column to factors table...');
+      // console.log('Database: Adding section column to factors table...'); // Commented out verbose logging
       db.prepare('ALTER TABLE factors ADD COLUMN section TEXT').run();
     }
     
@@ -765,7 +765,7 @@ function updateFactorsWithSections() {
     ];
     
     for (const factor of missingFactors) {
-      console.log(`Database: Ensuring factor "${factor.name}" exists`);
+      // console.log(`Database: Ensuring factor "${factor.name}" exists`); // Commented out verbose logging
       insertOrReplaceFactor.run(
         factor.name,
         factor.description,
@@ -782,12 +782,12 @@ function updateFactorsWithSections() {
     const updateFactorSection = db.prepare('UPDATE factors SET section = ? WHERE factor_name = ?');
     
     for (const [factorName, section] of Object.entries(factorSections)) {
-      console.log(`Database: Updating section for "${factorName}" to "${section}"`);
+      // console.log(`Database: Updating section for "${factorName}" to "${section}"`); // Commented out verbose logging
       updateFactorSection.run(section, factorName);
     }
     
     // Update Self-Perception to Individual Specifics in existing data
-    console.log('Database: Migrating Self-Perception to Individual Specifics');
+    // console.log('Database: Migrating Self-Perception to Individual Specifics'); // Commented out verbose logging
     
     // Update questionnaire table factors
     const updateQuestionnaireFactors = db.prepare('UPDATE questionnaire SET factors = ? WHERE factors = ?');
@@ -802,15 +802,15 @@ function updateFactorsWithSections() {
     const deleteFactor = db.prepare('DELETE FROM factors WHERE factor_name = ?');
     
     for (const oldFactor of oldFactors) {
-      console.log(`Database: Removing old factor "${oldFactor}"`);
+      // console.log(`Database: Removing old factor "${oldFactor}"`); // Commented out verbose logging
       deleteFactor.run(oldFactor);
     }
     
     // Check final result
     const finalFactors = db.prepare('SELECT factor_name, section FROM factors ORDER BY factor_name').all();
-    console.log('Database: Final factors:', finalFactors);
+    // console.log('Database: Final factors:', finalFactors); // Commented out verbose logging
     
-    console.log('Database: Factors updated with section information successfully');
+    // console.log('Database: Factors updated with section information successfully'); // Commented out verbose logging
   } catch (error) {
     console.error('Database: Failed to update factors with sections:', error);
   }
@@ -824,7 +824,7 @@ if (needsMigration()) {
 }
 
 // Always update factors and mappings to ensure consistency
-console.log('Database: Updating factors and mappings...');
+// console.log('Database: Updating factors and mappings...'); // Commented out verbose logging
 updateQuestionFactorMappings();
 updateFactorsWithSections();
 

@@ -8,7 +8,7 @@ const Home = () => {
       case 'LLM-configuration':
         return (
           <div style={{ padding: '24px' }}>
-            <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Getting Started with MoFASA Tools</h2>
+            <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>LLM Configuration</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
               <div>
@@ -212,7 +212,9 @@ const Home = () => {
             <div style={{ padding: '24px' }}>
              <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Practice using MoFASA Tools with a sample project</h2>
              <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '24px' }}>
-               Click the button below to download the MoFASA practice study document. In this document you will find a simple HRI project and 10 participant interview data. You can follow the steps in the tutorial to analyze this project.
+               Click the button below to download the MoFASA practice study document. 
+               In this document you will find a simple HRI project and 10 participant interview data. 
+               You can follow the steps in the tutorial to analyze this project.
              </p>
              <div style={{ 
                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
@@ -289,67 +291,91 @@ const Home = () => {
           <div style={{ padding: '24px' }}>
             <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>🧠 What is MoFASA?</h2>
             
-            <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-              <strong>MoFASA</strong>, short for <strong>Modified Factors of Social Appropriateness</strong>, is a human-centered framework 
-              developed to support <em>context-dependent analysis</em> of behavior in Human-Robot Interaction (HRI). It helps researchers and designers 
-              unpack <em>why</em> people respond to robots differently — and how these responses are shaped not just by the robot’s actions, but by 
-              <strong> who the person is</strong>, <strong> where the interaction happens</strong>, and <strong> how they interpret the situation</strong>.
-            </p>
-      
-            <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-              MoFASA was created in response to a growing recognition in HRI research: robots that perform well in the lab often fail in the wild. 
-              This is rarely due to hardware or AI shortcomings. Instead, these failures reflect a mismatch between robot behavior and the rich, 
-              variable, and socially nuanced ways humans interpret those behaviors in everyday contexts.
-            </p>
-      
-            <h3 style={{ color: '#2c3e50', marginTop: '24px' }}>🌍 Why Context Matters in HRI</h3>
-            <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-              Many robots are designed based on generalized models of the "average user." But people interpret robots through the lens of their 
-              <em>roles, identities, and cultural expectations</em>. What feels polite in one setting might feel invasive in another.
-              MoFASA recognizes that <strong>human-robot interaction is always situated</strong>. Instead of only asking “Did the user complete the task?”, 
-              it prompts deeper questions like:
+            <div style={{ color: '#2c3e50', lineHeight: '1.6' }}>
+              <p><strong>Imagine this:</strong></p>
+              <p>A delivery robot rolls into a university café. Three students encounter it.</p>
+              <ul style={{ paddingLeft: '20px' }}>
+                <li><strong>Marcus</strong> waves, smiles, and begins a friendly interaction.</li>
+                <li><strong>Emilia</strong> frowns, mutters "this is creepy," and walks away.</li>
+                <li><strong>Tony</strong> glances at it briefly, then ignores it completely.</li>
+              </ul>
+              <br />  
+              <p>Same robot. Same place. Same behavior.</p>
+              <p>So why did only one person engage?</p>
+              <p>More importantly — Is it possible to design robots that work for <em>all</em> three?</p>
+              <p>That is exactly the kind of question <strong>MoFASA Tools</strong> is built to help you answer.</p>
+              <br />                             
+              <p><strong>MoFASA</strong>, short for <strong>Modified Factors of Social Appropriateness</strong>, 
+              is a framework built to help HRI practitioners go beyond "what happened" and understand <em>why</em> it happened.</p>
               <br />
-              <em>“What did the user believe was happening?” “Who did they think they were in that moment?” “What social logic guided their response?”</em>
-            </p>
+              <p>It helps you analyze interactions through three essential lenses:</p>
+              <ul style={{ paddingLeft: '20px' }}>
+                <li><strong>Situation</strong> – the external context (location, urgency, timing, setting, etc.)</li>
+                <li><strong>Identity</strong> – the internal context (the person's background, role, social motives, etc.)</li>
+                <li><strong>Definition of the Situation</strong> – how the person interprets the moment (uncertainty, consequence, power dynamics, etc.)</li>
+              </ul>
+              <p>Together, these lenses help you unpack why Emilia found the robot creepy and why Tony didn't engage at all. It's not just about the robot — it's about how 
+                humans make sense of the situation and how they react to it.</p>
+
+                <h3 style={{ color: '#2c3e50', marginTop: '24px' }}>🛠 From Insight to Impact: Why MoFASA Tools?</h3>
+                  <p><strong>MoFASA Tools</strong> is a desktop application purpose-built to help you design, evaluate, and reflect on HRI experiences with real-world nuance.</p>
+
+                  <ul style={{ paddingLeft: '20px' }}>
+                    <li>Analyze participant data from field or lab studies using MoFASA's lenses.</li>
+                    <li>Reveal the social logic behind different user reactions.</li>
+                    <li>Spot contextual mismatches that might cause harm, confusion, or resistance.</li>
+                    <li>Make informed, human-centered design decisions grounded in lived experience.</li>
+                  </ul>
+                  <p>Whether you're testing a new robot, iterating on deployment, or studying interactions 
+                    post-hoc — MoFASA Tools helps you move beyond task success and toward socially intelligent design.</p>
+            </div>
       
-            <h3 style={{ color: '#2c3e50', marginTop: '24px' }}>🔍 What Does MoFASA Help You Do?</h3>
-            <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-              MoFASA provides a structured way to reflect on robot encounters by analyzing them through three key layers:
-              <br />
-              <strong>1. Situation</strong> – The external context: time, place, urgency, activity. <br />
-              <strong>2. Identity</strong> – The user’s internal context: roles, background, emotional state. <br />
-              <strong>3. Definition of the Situation</strong> – How the user understood the interaction: what they thought the robot wanted, and what behavior they felt was expected or acceptable.
-            </p>
-      
-            <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-              By combining these dimensions, MoFASA lets you explore how different people make sense of the same robot behavior — and how 
-              divergent interpretations can lead to very different outcomes.
-            </p>
-      
-            <h3 style={{ color: '#2c3e50', marginTop: '24px' }}>🛠 How MoFASA Tools Supports You</h3>
-            <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-              <strong>MoFASA Tools</strong> is designed to operationalize this framework in real-world research. It helps you:
-            </p>
-            <ul style={{ color: '#7f8c8d', paddingLeft: '20px', lineHeight: '1.6' }}>
-              <li>Create HRI projects with multiple scopes (e.g., guidance, feedback, collaboration).</li>
-              <li>Enter participant data and associate their experiences with MoFASA’s key dimensions.</li>
-              <li>Identify behavioral rules — both desirable and undesirable — that emerge from those interactions.</li>
-              <li>Analyze patterns across individuals or groups based on age, role, emotional state, etc.</li>
-              <li>Reflect on how robot behavior or the situation could be redesigned to better support appropriate responses.</li>
-            </ul>
-      
-            <h3 style={{ color: '#2c3e50', marginTop: '24px' }}>💡 Why Use MoFASA?</h3>
-            <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-              MoFASA isn’t built to predict behavior — it’s built to help you <strong>interpret it</strong>. It gives structure to field observations 
-              and interviews, allowing you to trace back moments of confusion, resistance, or success to the <em>social logic</em> behind them.
-              It is especially useful during <strong>early field testing or post-hoc analysis</strong>, when designers and researchers are still 
-              learning how their robots are perceived in everyday life.
-            </p>
-      
-            <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-              By taking context seriously, MoFASA supports more thoughtful, inclusive, and resilient robot design — where interaction isn't just 
-              technically functional, but socially appropriate.
-            </p>
+            <div style={{ 
+              marginTop: '32px', 
+              textAlign: 'center',
+              padding: '20px',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              border: '1px solid #e9ecef'
+            }}>
+              <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '16px' }}>
+                <strong>Get started by exploring our interactive tutorial, or try analyzing a practice project today.</strong>
+              </p>
+              <button
+                onClick={() => {
+                  setSelectedSection('MoFASA-Tools-tutorial');
+                  // Scroll to top of the right panel after a short delay to ensure content is rendered
+                  setTimeout(() => {
+                    const rightPanel = document.querySelector('.right-panel');
+                    if (rightPanel) {
+                      rightPanel.scrollTop = 0;
+                    }
+                  });
+                }}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '1em',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#2980b9';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#3498db';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Getting Started with MoFASA
+              </button>
+            </div>
           </div>
         );
         
@@ -441,13 +467,13 @@ const Home = () => {
       <div className="left-panel" style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
         <div style={{ marginBottom: '30px' }}>
           <h2 style={{ color: '#2c3e50', marginBottom: '15px' }}>Welcome to MoFASA Tools</h2>
-          <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '16px' }}>
+          <p style={{ color: '#2c3e50', lineHeight: '1.6', marginBottom: '16px' }}>
             <strong>MoFASA Tools</strong> is a desktop application designed to help Human-Robot Interaction (HRI) practitioners make sense of social behavior in HRI studies. 
             Grounded in the <strong>MoFASA (Modified Factors of Social Appropriateness)</strong> framework, 
             the tool guides you through the structured analysis of participant data in real-world or experimental settings.
           </p>
           
-          <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '16px' }}>
+          {/* <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '16px' }}>
             With MoFASA Tools, you can:
           </p>
           
@@ -457,9 +483,9 @@ const Home = () => {
             <li>Organize responses using the MoFASA framework: Situation, Identity, and Definition of the Situation.</li>
             <li>Identify recurring behavioral patterns and decision-making rules.</li>
             <li>Generate summaries manually or with the help of a built-in LLM integration.</li>
-          </ul>
+          </ul> */}
           
-          <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
+          <p style={{ color: '#2c3e50', lineHeight: '1.6' }}>
             To get started, click the <strong>"What is MoFASA?"</strong> button below to know more about the framework. Then click the <strong>"Getting Started with MoFASA"</strong> button to start analyzing your first project.
           </p>
         </div>
