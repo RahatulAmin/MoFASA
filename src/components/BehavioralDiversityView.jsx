@@ -335,8 +335,7 @@ const BehavioralDiversityView = ({
       <div 
         ref={behavioralRef}
         style={{
-          maxWidth: '100%',
-          width: 'fit-content'
+          width: '100%'
         }}
       >
         {/* Grouped participants */}
@@ -357,7 +356,7 @@ const BehavioralDiversityView = ({
                 <div
                   key={participant.id}
                   style={{
-                    flex: '0 0 calc(33.333% - 20px)',
+                    width: '320px',
                     background: '#fff',
                     borderRadius: 8,
                     padding: '20px',

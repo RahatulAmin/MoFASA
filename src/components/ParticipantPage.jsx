@@ -1,5 +1,7 @@
 import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import FactorDetailsModal from './FactorDetailsModal';
+import { handleFactorClick } from '../utils/factorUtils';
 
 const SECTIONS = [
   {
@@ -119,6 +121,8 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const [showRuleInput, setShowRuleInput] = useState(false);
   const [ruleToDelete, setRuleToDelete] = useState(null);
   const [localAnswers, setLocalAnswers] = useState({});
+  const [showFactorDetails, setShowFactorDetails] = useState(false);
+  const [selectedFactor, setSelectedFactor] = useState(null);
 
   // Manual refresh function for connections
   const refreshConnections = useRef(() => {});
@@ -144,10 +148,14 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
                 id: q.questionId,
                 text: q.questionText,
                 type: 'dropdown',
-                options: q.options
+                options: q.options,
+                factors: q.factors
               };
             } else {
-              return q.questionText;
+              return {
+                text: q.questionText,
+                factors: q.factors
+              };
             }
           });
         });
@@ -182,10 +190,14 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
                 id: q.questionId,
                 text: q.questionText,
                 type: 'dropdown',
-                options: q.options
+                options: q.options,
+                factors: q.factors
               };
             } else {
-              return q.questionText;
+              return {
+                text: q.questionText,
+                factors: q.factors
+              };
             }
           });
         });
@@ -707,6 +719,10 @@ Please provide a concise, direct answer to the question based on the interview c
     }, 100);
   };
 
+  const handleFactorClickLocal = (question, factor) => {
+    handleFactorClick(question, factor, setSelectedFactor, setShowFactorDetails);
+  };
+
   if (!participant || !project) {
     return <div className="left-panel"><h2>Participant Not Found</h2></div>;
   }
@@ -754,11 +770,15 @@ Please provide a concise, direct answer to the question based on the interview c
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
       {/* Left Panel */}
       <div className="left-panel" style={{ 
+        width: '50%',
+        flex: 'none',
         position: 'relative', 
         display: 'flex', 
         flexDirection: 'column',
         height: '100%',
-        overflow: 'hidden' // Prevent double scrollbars
+        overflow: 'hidden', // Prevent double scrollbars
+        borderRight: '1px solid #dcdde1',
+        transition: 'width 0.3s ease'
       }}>
         {/* Navigation Pane - Fixed at top */}
         <div style={{ 
@@ -1362,18 +1382,44 @@ Please provide a concise, direct answer to the question based on the interview c
                     </>
                   ) : (
                     questions[section.name]?.map((question, i) => {
-                      const isDropdown = typeof question === 'object' && question.type === 'dropdown';
-                      const questionText = isDropdown ? question.text : question;
-                      const questionId = isDropdown ? question.id : question;
-
+                      const isDropdown = question.type === 'dropdown';
+                      const questionText = question.text;
+                      const questionId = isDropdown ? question.id : question.text;
                       return (
                         <div key={questionId} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <label style={{ 
                             fontFamily: 'Lexend, sans-serif',
                             fontSize: '0.95em',
-                            color: '#34495e'
+                            color: '#34495e',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
                           }}>
                             {questionText}
+                            {question.factors && (
+                              <span 
+                                onClick={() => handleFactorClickLocal(question, question.factors)}
+                                style={{
+                                  fontSize: '0.8em',
+                                  color: '#000000',
+                                  background: '#cceeff',
+                                  borderRadius: '8px',
+                                  padding: '2px 8px',
+                                  marginLeft: '6px',
+                                  fontWeight: 400,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseOver={(e) => {
+                                  e.target.style.background = '#99ddff';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.target.style.background = '#cceeff';
+                                }}
+                              >
+                                {question.factors}
+                              </span>
+                            )}
                           </label>
                           {isDropdown ? (
                             <select
@@ -1398,8 +1444,8 @@ Please provide a concise, direct answer to the question based on the interview c
                             </select>
                           ) : (
                             <textarea
-                              value={localAnswers[section.name]?.[question] || ''}
-                              onChange={(e) => handleAnswerChange(section.name, question, e.target.value)}
+                              value={localAnswers[section.name]?.[questionId] || ''}
+                              onChange={(e) => handleAnswerChange(section.name, questionId, e.target.value)}
                               style={{
                                 padding: 12,
                                 borderRadius: 4,
@@ -1520,6 +1566,7 @@ Please provide a concise, direct answer to the question based on the interview c
 
       {/* Right Panel: Visual Answers */}
       <div className="right-panel" style={{ 
+        flex: 1,
         background: 'linear-gradient(180deg,rgb(55, 70, 83) 0%, #232b32 100%)', 
         display: 'flex', 
         flexDirection: 'column', 
@@ -1714,11 +1761,37 @@ Please provide a concise, direct answer to the question based on the interview c
                   </div>
                 ) : (
                   questions[section.name]?.map((question, i) => {
-                    const questionId = typeof question === 'object' ? question.id : question;
+                    const isDropdown = question.type === 'dropdown';
+                    const questionId = isDropdown ? question.id : question.text;
                     const answer = localAnswers[section.name]?.[questionId];
+                    const factors = question.factors;
                     return answer ? (
                       <div key={questionId} style={{ marginBottom: 12 }}>
-                        {answer}
+                        <span style={{ fontWeight: 500 }}>{answer}</span>
+                        {factors && (
+                          <span 
+                            onClick={() => handleFactorClickLocal(question, question.factors)}
+                            style={{
+                              fontSize: '0.8em',
+                              color: '#000000',
+                              background: '#cceeff',
+                              borderRadius: '8px',
+                              padding: '2px 8px',
+                              marginLeft: '6px',
+                              fontWeight: 400,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseOver={(e) => {
+                              e.target.style.background = '#99ddff';
+                            }}
+                            onMouseOut={(e) => {
+                              e.target.style.background = '#cceeff';
+                            }}
+                          >
+                            {question.factors}
+                          </span>
+                        )}
                       </div>
                     ) : null;
                   }) || []
@@ -1786,6 +1859,15 @@ Please provide a concise, direct answer to the question based on the interview c
             </div>
           </div>
         </div>
+      )}
+
+      {/* Factor Details Modal */}
+      {showFactorDetails && selectedFactor && (
+        <FactorDetailsModal
+          isOpen={showFactorDetails}
+          onClose={() => setShowFactorDetails(false)}
+          factorDetails={selectedFactor}
+        />
       )}
     </div>
   );

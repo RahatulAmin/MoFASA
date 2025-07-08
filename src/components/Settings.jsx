@@ -187,6 +187,26 @@ Guidelines:
     }
   };
 
+  const handleUpdateFactorMappings = async () => {
+    try {
+      await window.electronAPI.updateQuestionFactorMappings();
+      setSaveStatus({ type: 'success', message: 'Factor mappings updated successfully! Please restart the app to see changes.' });
+    } catch (error) {
+      console.error('Failed to update factor mappings:', error);
+      setSaveStatus({ type: 'error', message: 'Failed to update factor mappings. Please try again.' });
+    }
+  };
+
+  const handleUpdateFactorsWithSections = async () => {
+    try {
+      await window.electronAPI.updateFactorsWithSections();
+      setSaveStatus({ type: 'success', message: 'Factors updated with section information successfully! Please restart the app to see changes.' });
+    } catch (error) {
+      console.error('Failed to update factors with sections:', error);
+      setSaveStatus({ type: 'error', message: 'Failed to update factors with sections. Please try again.' });
+    }
+  };
+
   const renderProjectsSettings = () => (
     <div>
       <h2>Projects</h2>
@@ -275,6 +295,46 @@ Guidelines:
           </div>
         )}
       </div>
+
+      {/* Database Management Section */}
+      {/* <div style={{ marginTop: 32, padding: 16, border: '1px solid #ddd', borderRadius: 8, backgroundColor: '#f8f9fa' }}>
+        <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Database Management</h3>
+        <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '0.9em' }}>
+          Update factor mappings to ensure consistency between questions and factors.
+        </p>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleUpdateFactorMappings}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#e74c3c',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.9em',
+              fontWeight: '500'
+            }}
+          >
+            Update Factor Mappings
+          </button>
+          <button
+            onClick={handleUpdateFactorsWithSections}
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#f39c12',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.9em',
+              fontWeight: '500'
+            }}
+          >
+            Update Factor Sections
+          </button>
+        </div>
+      </div> */}
 
       {/* Project Prompt Edit Modal */}
       {editingProject && (

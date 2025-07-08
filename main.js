@@ -172,8 +172,36 @@ ipcMain.handle('update-question-status', async (_e, questionId, isEnabled) => {
 ipcMain.handle('update-question-text', async (_e, questionId, questionText) => {
   database.updateQuestionText(questionId, questionText);
 });
-ipcMain.handle('add-question', async (_e, section, questionId, questionText, questionType, options, orderIndex) => {
-  database.addQuestion(section, questionId, questionText, questionType, options, orderIndex);
+ipcMain.handle('update-question-factors', async (_e, questionId, factors) => {
+  database.updateQuestionFactors(questionId, factors);
+});
+
+ipcMain.handle('get-factor-details', async (_e, factorName) => {
+  return database.getFactorDetails(factorName);
+});
+
+ipcMain.handle('get-all-factors', async () => {
+  return database.getAllFactors();
+});
+
+ipcMain.handle('get-question-factors', async (_e, questionId) => {
+  return database.getQuestionFactors(questionId);
+});
+
+ipcMain.handle('update-question-factor-mappings', async () => {
+  // This will update the existing database to use the correct factor names
+  database.updateQuestionFactorMappings();
+  return true;
+});
+
+ipcMain.handle('update-factors-with-sections', async () => {
+  // This will update the existing database to include section information for factors
+  database.updateFactorsWithSections();
+  return true;
+});
+
+ipcMain.handle('add-question', async (_e, section, questionId, questionText, questionType, options, factors, orderIndex) => {
+  database.addQuestion(section, questionId, questionText, questionType, options, factors, orderIndex);
 });
 ipcMain.handle('delete-question', async (_e, questionId) => {
   database.deleteQuestion(questionId);

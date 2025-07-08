@@ -556,6 +556,7 @@ button:disabled {
     cursor: pointer;
     text-align: left;
     font-size: 1em;
+    font-family: "Lexend", sans-serif;
     transition: all 0.2s;
   }
   

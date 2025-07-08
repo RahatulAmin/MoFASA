@@ -1421,7 +1421,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               borderRadius: 4, 
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: currentView === 'personae' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none'
+              boxShadow: currentView === 'personae' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+              fontFamily: 'Lexend, sans-serif'
             }}
             onMouseOver={(e) => {
               if (currentView !== 'personae') {
@@ -1449,7 +1450,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               borderRadius: 4, 
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: currentView === 'behavioral' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none'
+              boxShadow: currentView === 'behavioral' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+              fontFamily: 'Lexend, sans-serif'
             }}
             onMouseOver={(e) => {
               if (currentView !== 'behavioral') {
@@ -1477,7 +1479,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               borderRadius: 4, 
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: currentView === 'situation' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none'
+              boxShadow: currentView === 'situation' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+              fontFamily: 'Lexend, sans-serif'
             }}
             onMouseOver={(e) => {
               if (currentView !== 'situation') {
@@ -1554,7 +1557,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
             borderRadius: 4, 
             cursor: 'pointer', 
             marginBottom: 10,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            fontFamily: 'Lexend, sans-serif'
           }}
           onMouseOver={(e) => {
             e.target.style.background = '#16a085';
@@ -1600,7 +1604,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                       borderRadius: 4, 
                       cursor: 'pointer', 
                       fontSize: '.9em',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                     onMouseOver={(e) => {
                       e.target.style.background = '#16a085';
@@ -1624,7 +1629,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                       borderRadius: 4, 
                       cursor: 'pointer', 
                       fontSize: '.9em',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                     onMouseOver={(e) => {
                       e.target.style.background = '#7f8c8d';
@@ -1660,7 +1666,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                       cursor: 'pointer', 
                       fontSize: '.98em',
                       transition: 'all 0.2s ease',
-                      boxShadow: selectedParticipant?.id === p.id ? '0 2px 4px rgba(0,0,0,0.2)' : 'none'
+                      boxShadow: selectedParticipant?.id === p.id ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                     onMouseOver={(e) => {
                       if (selectedParticipant?.id !== p.id) {

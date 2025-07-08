@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import editIcon from '../images/edit.png';
 import deleteIcon from '../images/trash.png';
 import { encryptData, decryptData } from '../utils/crypto';
+import FactorDetailsModal from './FactorDetailsModal';
+import { handleFactorClick } from '../utils/factorUtils';
 
 const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const navigate = useNavigate();
@@ -29,6 +31,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const [questionnaireError, setQuestionnaireError] = useState(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [showFactorDetails, setShowFactorDetails] = useState(false);
+  const [selectedFactor, setSelectedFactor] = useState(null);
 
   const handleAddScope = () => {
     if (scopes.length < 5) {
@@ -415,6 +419,10 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
     });
   };
 
+  const handleFactorClickLocal = (question, factor) => {
+    handleFactorClick(question, factor, setSelectedFactor, setShowFactorDetails);
+  };
+
   // Handle final project creation with questionnaire settings
   const handleCreateProjectWithQuestionnaire = async () => {
     if (newProjectName.trim()) {
@@ -585,9 +593,9 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
             {!showQuestionnaireStep ? (
               // Project Details Step
               <>
-                <h3 style={{ marginBottom: '20px' }}>Add New Project</h3>
+                <h3 style={{ marginBottom: '20px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Add New Project</h3>
                 <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>Project Name:</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Project Name:</label>
                   <input
                     type="text"
                     value={newProjectName}
@@ -596,12 +604,13 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       width: '100%',
                       padding: '8px',
                       borderRadius: '4px',
-                      border: '1px solid #ddd'
+                      border: '1px solid #ddd',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                   />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>Brief Description of Situation:</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Brief Description of the Situation:</label>
                   <textarea
                     value={newProjectDescription}
                     onChange={(e) => setNewProjectDescription(e.target.value)}
@@ -611,14 +620,15 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       borderRadius: '4px',
                       border: '1px solid #ddd',
                       minHeight: '100px',
-                      resize: 'vertical'
+                      resize: 'vertical',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                   />
                 </div>
                 
                 {/* Scope Fields */}
                 <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Scopes:</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Scopes:</label>
                   {scopes.map((scope, index) => (
                     <div key={index} style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
                       <span style={{ 
@@ -639,7 +649,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                           padding: '8px',
                           borderRadius: '4px',
                           border: '1px solid #ddd',
-                          fontSize: '0.9em'
+                          fontSize: '0.9em',
+                          fontFamily: 'Lexend, sans-serif'
                         }}
                       />
                       {scopes.length > 1 && (
@@ -673,7 +684,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                         borderRadius: '4px',
                         cursor: 'pointer',
                         fontSize: '0.9em',
-                        marginTop: '5px'
+                        marginTop: '5px',
+                        fontFamily: 'Lexend, sans-serif'
                       }}
                     >
                       + Add New Scope
@@ -692,7 +704,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                 </div>
                 
                 <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>Number of Participants:</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Number of Participants:</label>
                   <input
                     type="number"
                     value={newProjectParticipants}
@@ -701,12 +713,13 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       width: '100%',
                       padding: '8px',
                       borderRadius: '4px',
-                      border: '1px solid #ddd'
+                      border: '1px solid #ddd',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                   />
                 </div>
                 <div style={{ marginBottom: '15px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>Type of Robot:</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Type of Robot:</label>
                   <input
                     type="text"
                     value={newProjectRobotType}
@@ -715,12 +728,13 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       width: '100%',
                       padding: '8px',
                       borderRadius: '4px',
-                      border: '1px solid #ddd'
+                      border: '1px solid #ddd',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                   />
                 </div>
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>Type of Study:</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Type of Study:</label>
                   <select
                     value={newProjectStudyType}
                     onChange={(e) => setNewProjectStudyType(e.target.value)}
@@ -728,7 +742,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       width: '100%',
                       padding: '8px',
                       borderRadius: '4px',
-                      border: '1px solid #ddd'
+                      border: '1px solid #ddd',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                   >
                     <option value="">Select Study Type</option>
@@ -748,7 +763,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       color: 'white',
                       border: 'none',
                       borderRadius: '4px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                   >
                     Cancel
@@ -763,7 +779,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       border: 'none',
                       borderRadius: '4px',
                       cursor: newProjectName.trim() ? 'pointer' : 'not-allowed',
-                      opacity: newProjectName.trim() ? 1 : 0.6
+                      opacity: newProjectName.trim() ? 1 : 0.6,
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                   >
                     Next
@@ -774,8 +791,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
               // Questionnaire Configuration Step
               <>
                 <div style={{ marginBottom: '20px' }}>
-                  <h3 style={{ marginBottom: '8px' }}>Configure Questionnaire</h3>
-                  <p style={{ color: '#7f8c8d', fontSize: '0.9em', margin: 0 }}>
+                  <h3 style={{ marginBottom: '8px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Configure Questionnaire</h3>
+                  <p style={{ color: '#7f8c8d', fontSize: '0.9em', margin: 0, fontFamily: 'Lexend, sans-serif' }}>
                     Enable or disable questions for <strong>{newProjectName}</strong>. At least one question per section must remain enabled.
                   </p>
                 </div>
@@ -945,7 +962,31 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                                       }}>
                                         {question.questionType}
                                       </span>
-                                      
+                                      {question.factors && (
+                                        <span 
+                                          onClick={() => handleFactorClickLocal(question, question.factors)}
+                                          style={{
+                                            fontSize: '0.7em',
+                                            color: '#000000',
+                                            backgroundColor: '#cceeff',
+                                            borderRadius: '8px',
+                                            padding: '1px 8px',
+                                            fontWeight: 400,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                          }}
+                                          onMouseOver={(e) => {
+                                            e.target.style.background = '#99ddff';
+                                            e.target.style.transform = 'scale(1.05)';
+                                          }}
+                                          onMouseOut={(e) => {
+                                            e.target.style.background = '#cceeff';
+                                            e.target.style.transform = 'scale(1)';
+                                          }}
+                                        >
+                                          {question.factors}
+                                        </span>
+                                      )}
                                       {question.options && (
                                         <span style={{ 
                                           fontSize: '0.7em', 
@@ -1029,7 +1070,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                       color: 'white',
                       border: 'none',
                       borderRadius: '4px',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      fontFamily: 'Lexend, sans-serif'
                     }}
                   >
                     Back
@@ -1046,7 +1088,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                         border: 'none',
                         borderRadius: '4px',
                         cursor: isCreatingProject ? 'not-allowed' : 'pointer',
-                        opacity: isCreatingProject ? 0.6 : 1
+                        opacity: isCreatingProject ? 0.6 : 1,
+                        fontFamily: 'Lexend, sans-serif'
                       }}
                     >
                       Cancel
@@ -1061,7 +1104,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                         border: 'none',
                         borderRadius: '4px',
                         cursor: isCreatingProject ? 'not-allowed' : 'pointer',
-                        opacity: isCreatingProject ? 0.6 : 1
+                        opacity: isCreatingProject ? 0.6 : 1,
+                        fontFamily: 'Lexend, sans-serif'
                       }}
                     >
                       {isCreatingProject ? 'Creating Project...' : 'Create Project'}
@@ -1539,6 +1583,15 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
           </div>
         ))}
       </div>
+
+      {/* Factor Details Modal */}
+      {showFactorDetails && selectedFactor && (
+        <FactorDetailsModal
+          isOpen={showFactorDetails}
+          onClose={() => setShowFactorDetails(false)}
+          factorDetails={selectedFactor}
+        />
+      )}
     </div>
   );
 };

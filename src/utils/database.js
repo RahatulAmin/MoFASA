@@ -83,6 +83,29 @@ function needsMigration() {
       return true;
     }
     
+    // Check if questionnaire table has the factors column
+    const questionnaireColumns = db.prepare("PRAGMA table_info(questionnaire)").all();
+    const questionnaireColumnNames = questionnaireColumns.map(col => col.name);
+    
+    if (!questionnaireColumnNames.includes('factors')) {
+      console.log('Database: questionnaire table missing factors column - migration needed');
+      return true;
+    }
+
+    // Check if factors table exists
+    const factorsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='factors'").get();
+    if (!factorsTableExists) {
+      console.log('Database: factors table missing - migration needed');
+      return true;
+    }
+
+    // Check if question_factors table exists
+    const questionFactorsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='question_factors'").get();
+    if (!questionFactorsTableExists) {
+      console.log('Database: question_factors table missing - migration needed');
+      return true;
+    }
+    
     console.log('Database: No migration needed - all tables exist with correct structure');
     return false;
   } catch (error) {
@@ -131,11 +154,35 @@ function performMigration() {
       questionText TEXT NOT NULL,
       questionType TEXT DEFAULT 'text',
       options TEXT,
+      factors TEXT,
       isEnabled BOOLEAN DEFAULT 1,
       orderIndex INTEGER DEFAULT 0,
       createdAt TEXT,
       updatedAt TEXT,
       UNIQUE(section, questionId)
+    );
+
+    -- Factors table
+    CREATE TABLE factors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      factor_name TEXT NOT NULL UNIQUE,
+      description TEXT NOT NULL,
+      examples TEXT,
+      related_factors TEXT,
+      research_notes TEXT,
+      section TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    );
+
+    -- Question-Factor relationship table
+    CREATE TABLE question_factors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id TEXT NOT NULL,
+      factor_name TEXT NOT NULL,
+      created_at TEXT,
+      FOREIGN KEY (factor_name) REFERENCES factors(factor_name),
+      UNIQUE(question_id, factor_name)
     );
 
     -- Project questions table (without foreign key constraints initially)
@@ -242,43 +289,43 @@ function performMigration() {
     
     // Populate questionnaire table with default questions
     const insertQuestion = db.prepare(`
-      INSERT INTO questionnaire (section, questionId, questionText, questionType, options, orderIndex, createdAt, updatedAt) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO questionnaire (section, questionId, questionText, questionType, options, factors, orderIndex, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     const now = new Date().toISOString();
     
     // Situation questions
     const situationQuestions = [
-      { id: 'when', text: 'When did the interaction happen?', type: 'text', order: 0 },
-      { id: 'where', text: 'Where did it take place?', type: 'text', order: 1 },
-      { id: 'agents_count', text: 'How many interacting agents (Humans and Robots) were there?', type: 'text', order: 2 },
-      { id: 'in_group', text: 'Were they in a group?', type: 'text', order: 3 },
-      { id: 'roles', text: 'What were the roles of the interacting agents?', type: 'text', order: 4 }
+      { id: 'when', text: 'When did the interaction happen?', type: 'text', factors: 'Time', order: 0 },
+      { id: 'where', text: 'Where did it take place?', type: 'text', factors: 'Place', order: 1 },
+      { id: 'agents_count', text: 'How many interacting agents (Humans and Robots) were there?', type: 'text', factors: 'Participants', order: 2 },
+      { id: 'in_group', text: 'Were they in a group?', type: 'text', factors: 'Group Size', order: 3 },
+      { id: 'roles', text: 'What were the roles of the interacting agents?', type: 'text', factors: 'Role Identities', order: 4 }
     ];
     
     // Identity questions
     const identityQuestions = [
-      { id: 'age', text: 'Age range of the participant(s)', type: 'dropdown', options: JSON.stringify(['18-24', '25-34', '35-44', '45-54', '55-64', '65+']), order: 0 },
-      { id: 'gender', text: 'Gender of the participant(s)', type: 'dropdown', options: JSON.stringify(['Male', 'Female', 'Non-Binary', 'Other']), order: 1 },
-      { id: 'nationality', text: 'Nationality of the participant(s)', type: 'text', order: 2 },
-      { id: 'occupation', text: 'Occupation of the participant(s)', type: 'text', order: 3 },
-      { id: 'education', text: 'Education level of the participant(s)', type: 'text', order: 4 },
-      { id: 'social_motive', text: 'What was their social motive for interacting with the robot?', type: 'text', order: 5 },
-      { id: 'experience', text: 'Do they have previous experience of interacting with robots?', type: 'text', order: 6 },
-      { id: 'perception', text: 'What was the participant(s) perception of the robot and their interaction with it? Is the robot disrupting, negative, supportive, positive, or neutral?', type: 'text', order: 7 }
+      { id: 'age', text: 'Age range of the participant(s)', type: 'dropdown', options: JSON.stringify(['18-24', '25-34', '35-44', '45-54', '55-64', '65+']), factors: 'Background', order: 0 },
+      { id: 'gender', text: 'Gender of the participant(s)', type: 'dropdown', options: JSON.stringify(['Male', 'Female', 'Non-Binary', 'Other']), factors: 'Background', order: 1 },
+      { id: 'nationality', text: 'Nationality of the participant(s)', type: 'text', factors: 'Background', order: 2 },
+      { id: 'occupation', text: 'Occupation of the participant(s)', type: 'text', factors: 'Background', order: 3 },
+      { id: 'education', text: 'Education level of the participant(s)', type: 'text', factors: 'Background', order: 4 },
+      { id: 'social_motive', text: 'What was their social motive for interacting with the robot?', type: 'text', factors: 'Social Motive', order: 5 },
+      { id: 'experience', text: 'Do they have previous experience of interacting with robots?', type: 'text', factors: 'Experience', order: 6 },
+      { id: 'perception', text: 'What was the participant(s) perception of the robot and their interaction with it? Is the robot disrupting, negative, supportive, positive, or neutral?', type: 'text', factors: 'Self-Perception', order: 7 }
     ];
     
     // Definition of Situation questions
     const definitionQuestions = [
-      { id: 'uncertainty', text: 'Were the participants uncertain about the situation?', type: 'text', order: 0 },
-      { id: 'consequences', text: 'Were the participants unsure about the consequences of their actions?', type: 'text', order: 1 },
-      { id: 'familiarity', text: 'How well does the interacting agents know each other?', type: 'text', order: 2 },
-      { id: 'context_perception', text: 'How did the participants perceive the context of the interaction?', type: 'text', order: 3 },
-      { id: 'power_dynamics', text: 'What does the power dynamic look like in this interaction?', type: 'text', order: 4 },
-      { id: 'group_interaction', text: 'If multiple participants were involved, how did they interact with the robot? Did they communicate with each other?', type: 'text', order: 5 },
-      { id: 'social_rules', text: 'Are there any social rules or cultural norms that the participants are following?', type: 'text', order: 6 },
-      { id: 'emotional_state', text: 'Did the emotional state of the participant at that very moment influence the interaction in any way?', type: 'text', order: 7 }
+      { id: 'uncertainty', text: 'Were the participants uncertain about the situation?', type: 'text', factors: 'Uncertainty', order: 0 },
+      { id: 'consequences', text: 'Were the participants unsure about the consequences of their actions?', type: 'text', factors: 'Consequences', order: 1 },
+      { id: 'familiarity', text: 'How well does the interacting agents know each other?', type: 'text', factors: 'Personal History', order: 2 },
+      { id: 'context_perception', text: 'How did the participants perceive the context of the interaction?', type: 'text', factors: 'Context', order: 3 },
+      { id: 'power_dynamics', text: 'What does the power dynamic look like in this interaction?', type: 'text', factors: 'Power Dynamics', order: 4 },
+      { id: 'group_interaction', text: 'If multiple participants were involved, how did they interact with the robot? Did they communicate with each other?', type: 'text', factors: 'Context', order: 5 },
+      { id: 'social_rules', text: 'Are there any social rules or cultural norms that the participants are following?', type: 'text', factors: 'Standards of Customary Practices', order: 6 },
+      { id: 'emotional_state', text: 'Did the emotional state of the participant at that very moment influence the interaction in any way?', type: 'text', factors: 'Emotional State', order: 7 }
     ];
     
     // Rule Selection questions
@@ -307,16 +354,414 @@ function performMigration() {
         question.text,
         question.type,
         question.options || null,
+        question.factors || null,
         question.order,
         now,
         now
       );
+    }
+
+    // Populate factors table with initial data
+    const insertFactor = db.prepare(`
+      INSERT INTO factors (factor_name, description, examples, related_factors, research_notes, section, created_at, updated_at) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const initialFactors = [
+      {
+        name: 'Time',
+        category: 'Situation',
+        description: 'The temporal characteristics of the interaction, such as time of day or urgency.',
+        examples: [
+          'Morning interactions may feel more formal',
+          'Late evening visits might encourage relaxed behavior',
+          'Time pressure affects how quickly decisions are made'
+        ],
+        relatedFactors: ['Context', 'Urgency', 'Schedule'],
+        researchNotes: 'Time influences social expectations and behavioral patterns in HRI, including perceived urgency or appropriateness.',
+        section: 'Situation'
+      },
+      {
+        name: 'Place',
+        category: 'Situation',
+        description: 'The physical and social setting of the interaction.',
+        examples: [
+          'Libraries expect quieter, more respectful behavior',
+          'Private spaces may allow more openness',
+          'Different environments set different norms'
+        ],
+        relatedFactors: ['Context', 'Privacy', 'Environment'],
+        researchNotes: 'Physical location shapes norms and interpretations of robot behavior.',
+        section: 'Situation'
+      },
+      {
+        name: 'Participants',
+        category: 'Situation',
+        description: 'Who is present in the interaction and how their presence affects behavior.',
+        examples: [
+          'Being alone with the robot vs in a group',
+          'Children may act differently with parents nearby',
+          'Observers may affect someone’s behavior'
+        ],
+        relatedFactors: ['Group Size', 'Social Pressure'],
+        researchNotes: 'Social presence influences interaction dynamics and decision-making.',
+        section: 'Situation'
+      },
+      {
+        name: 'Group Size',
+        category: 'Situation',
+        description: 'The number of people involved in the interaction.',
+        examples: [
+          'One-on-one interactions allow more depth',
+          'Larger groups create performance pressure',
+          'Anonymity increases in crowds'
+        ],
+        relatedFactors: ['Participants', 'Social Dynamics'],
+        researchNotes: 'Group size influences how visible and socially accountable a person feels.',
+        section: 'Situation'
+      },
+      {
+        name: 'Role Identities',
+        category: 'Identity',
+        description: 'The formal or informal roles individuals perceive themselves as holding.',
+        examples: [
+          'A teacher may feel responsible for group behavior',
+          'A customer may expect service',
+          'A researcher may stay analytical'
+        ],
+        relatedFactors: ['Authority', 'Norms', 'Status'],
+        researchNotes: 'Perceived role shapes expectations and perceived obligations in HRI.',
+        section: 'Identity'
+      },
+      {
+        name: 'Background',
+        category: 'Identity',
+        description: 'Demographic and experiential characteristics that shape a participant’s worldview.',
+        examples: [
+          'Older adults may be more hesitant with robots',
+          'Cultural norms influence engagement style',
+          'Language fluency affects interpretation of prompts'
+        ],
+        relatedFactors: ['Culture', 'Personal History', 'Demographics'],
+        researchNotes: 'Background shapes trust, familiarity, and engagement in technology contexts.',
+        section: 'Identity'
+      },
+      {
+        name: 'Social Motive',
+        category: 'Identity',
+        description: 'The underlying reason for engaging with the robot or the situation.',
+        examples: [
+          'Curiosity to try new tech',
+          'Desire to help with a study',
+          'Need for assistance in a task'
+        ],
+        relatedFactors: ['Intent', 'Goal', 'Purpose'],
+        researchNotes: 'Motives influence engagement depth and perceived outcomes.',
+        section: 'Identity'
+      },
+      {
+        name: 'Personal History',
+        category: 'Identity',
+        description: 'Prior experience with technology, robots, or similar interactions.',
+        examples: [
+          'Early exposure to assistive robots in school',
+          'Negative past interactions may cause avoidance',
+          'Frequent users may act with confidence'
+        ],
+        relatedFactors: ['Familiarity', 'Trust', 'Expectations'],
+        researchNotes: 'Past experience often informs expectations and behavior in present situations.',
+        section: 'Identity'
+      },
+      {
+        name: 'Individual Specifics',
+        category: 'Identity',
+        description: 'How individuals see themselves in terms of confidence, competence, and control.',
+        examples: [
+          'A confident person may challenge the robot’s suggestions',
+          'Self-conscious participants may follow quietly',
+          'Some may act performatively if being observed'
+        ],
+        relatedFactors: ['Self-Image', 'Agency', 'Confidence'],
+        researchNotes: 'Self-perception shapes the style and tone of engagement.',
+        section: 'Identity'
+      },
+      {
+        name: 'Uncertainty',
+        category: 'Definition of Situation',
+        description: 'Level of ambiguity or confusion participants experience about the interaction.',
+        examples: [
+          'Not knowing what the robot is doing',
+          'Being unsure of the robot’s capabilities',
+          'Unclear social norms for interacting with robots'
+        ],
+        relatedFactors: ['Risk', 'Anxiety', 'Expectations'],
+        researchNotes: 'Uncertainty affects willingness to engage and choice of action.',
+        section: 'Definition of Situation'
+      },
+      {
+        name: 'Consequences',
+        category: 'Definition of Situation',
+        description: 'Perceived weight or risk of the outcomes related to their choices.',
+        examples: [
+          'Choosing to follow the robot might waste time',
+          'Engaging may affect how others view them',
+          'Perceived stakes influence behavior'
+        ],
+        relatedFactors: ['Risk', 'Impact', 'Responsibility'],
+        researchNotes: 'Consequences help shape behavioral thresholds — what’s worth doing.',
+        section: 'Definition of Situation'
+      },
+      {
+        name: 'Context',
+        category: 'Definition of Situation',
+        description: 'The broader set of conditions and expectations surrounding the interaction.',
+        examples: [
+          'A study setting vs natural use in a library',
+          'HRI demo vs daily-use robot',
+          'Personal vs public robot use'
+        ],
+        relatedFactors: ['Place', 'Time', 'Purpose'],
+        researchNotes: 'Context is the lens through which all other factors are interpreted.',
+        section: 'Definition of Situation'
+      },
+      {
+        name: 'Power Dynamics',
+        category: 'Definition of Situation',
+        description: 'Perceived authority, control, or influence within the interaction.',
+        examples: [
+          'A staff robot issuing instructions to visitors',
+          'Participants feeling observed or tested',
+          'Robots treated with obedience or defiance depending on perceived role'
+        ],
+        relatedFactors: ['Authority', 'Compliance', 'Resistance'],
+        researchNotes: 'Power shapes reactions, including resistance, submission, or testing behavior.',
+        section: 'Definition of Situation'
+      },
+      {
+        name: 'Standards of Customary Practices',
+        category: 'Definition of Situation',
+        description: 'Social norms and institutional rules that define “appropriate” behavior.',
+        examples: [
+          'Library behavior norms (quiet, respectful)',
+          'Social etiquette like saying thank you',
+          'Expectations based on previous tech usage'
+        ],
+        relatedFactors: ['Norms', 'Culture', 'Rules'],
+        researchNotes: 'These rules help participants decide how to act in ambiguous situations.',
+        section: 'Definition of Situation'
+      },
+      {
+        name: 'Emotional State',
+        category: 'Identity',
+        description: 'The participant’s mood or affective state during the interaction.',
+        examples: [
+          'Stress reduces patience',
+          'Excitement encourages engagement',
+          'Fatigue may cause disinterest'
+        ],
+        relatedFactors: ['Mood', 'Affect', 'Well-being'],
+        researchNotes: 'Emotions influence perception, attention, and social decision-making.',
+        section: 'Definition of Situation'
+      }
+    ];
+
+    for (const factor of initialFactors) {
+      insertFactor.run(
+        factor.name,
+        factor.description,
+        JSON.stringify(factor.examples),
+        JSON.stringify(factor.relatedFactors),
+        factor.researchNotes,
+        factor.section,
+        now,
+        now
+      );
+    }
+
+    // Populate question_factors table with initial relationships
+    const insertQuestionFactor = db.prepare(`
+      INSERT INTO question_factors (question_id, factor_name, created_at) 
+      VALUES (?, ?, ?)
+    `);
+
+    // Map questions to their factors (based on the current factors column)
+    const questionFactorMappings = [
+      { questionId: 'when', factorName: 'Time' },
+      { questionId: 'where', factorName: 'Place' },
+      { questionId: 'agents_count', factorName: 'Participants' },
+      { questionId: 'in_group', factorName: 'Group Size' },
+      { questionId: 'roles', factorName: 'Role Identities' },
+      { questionId: 'age', factorName: 'Background' },
+      { questionId: 'gender', factorName: 'Background' },
+      { questionId: 'nationality', factorName: 'Background' },
+      { questionId: 'occupation', factorName: 'Background' },
+      { questionId: 'education', factorName: 'Background' },
+      { questionId: 'social_motive', factorName: 'Social Motive' },
+      { questionId: 'experience', factorName: 'Experience' },
+      { questionId: 'perception', factorName: 'Individual Specifics' },
+      { questionId: 'uncertainty', factorName: 'Uncertainty' },
+      { questionId: 'consequences', factorName: 'Consequences' },
+      { questionId: 'familiarity', factorName: 'Personal History' },
+      { questionId: 'context_perception', factorName: 'Context' },
+      { questionId: 'power_dynamics', factorName: 'Power Dynamics' },
+      { questionId: 'group_interaction', factorName: 'Context' },
+      { questionId: 'social_rules', factorName: 'Standards of Customary Practices' },
+      { questionId: 'emotional_state', factorName: 'Emotional State' }
+      // { questionId: 'options', factorName: 'Rules' },
+      // { questionId: 'final_decision', factorName: 'Decision' }
+    ];
+
+    for (const mapping of questionFactorMappings) {
+      insertQuestionFactor.run(mapping.questionId, mapping.factorName, now);
     }
     
     console.log('Database: Migration completed successfully');
   } catch (error) {
     console.error('Database: Migration failed:', error);
     throw error;
+  }
+}
+
+// Function to update existing question-factor mappings
+function updateQuestionFactorMappings() {
+  try {
+    console.log('Database: Updating question-factor mappings...');
+    
+    // Update the social_rules question to use "Standards of Customary Practices"
+    const updateMapping = db.prepare(`
+      UPDATE question_factors 
+      SET factor_name = ? 
+      WHERE question_id = ?
+    `);
+    
+    updateMapping.run('Standards of Customary Practices', 'social_rules');
+    
+    // Also update the question itself to have the correct factors field
+    const updateQuestion = db.prepare(`
+      UPDATE questionnaire 
+      SET factors = ? 
+      WHERE questionId = ?
+    `);
+    
+    updateQuestion.run('Standards of Customary Practices', 'social_rules');
+    
+    console.log('Database: Question-factor mappings updated successfully');
+  } catch (error) {
+    console.error('Database: Failed to update question-factor mappings:', error);
+  }
+}
+
+// Function to update factors table with section information
+function updateFactorsWithSections() {
+  try {
+    console.log('Database: Updating factors with section information...');
+    
+    // Check if section column exists, if not add it
+    const tableInfo = db.prepare("PRAGMA table_info(factors)").all();
+    const hasSectionColumn = tableInfo.some(col => col.name === 'section');
+    
+    if (!hasSectionColumn) {
+      console.log('Database: Adding section column to factors table...');
+      db.prepare('ALTER TABLE factors ADD COLUMN section TEXT').run();
+    }
+    
+    // Simple factor sections mapping
+    const factorSections = {
+      'Time': 'Situation',
+      'Place': 'Situation',
+      'Participants': 'Situation',
+      'Group Size': 'Situation',
+      'Role Identities': 'Identity',
+      'Background': 'Identity',
+      'Social Motive': 'Identity',
+      'Personal History': 'Identity',
+      'Individual Specifics': 'Identity',
+      'Uncertainty': 'Definition of Situation',
+      'Consequences': 'Definition of Situation',
+      'Context': 'Definition of Situation',
+      'Power Dynamics': 'Definition of Situation',
+      'Standards of Customary Practices': 'Definition of Situation',
+      'Emotional State': 'Identity'
+    };
+    
+    const now = new Date().toISOString();
+    
+    // First, ensure all factors exist with proper data
+    const insertOrReplaceFactor = db.prepare(`
+      INSERT OR REPLACE INTO factors (factor_name, description, examples, related_factors, research_notes, section, created_at, updated_at) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    // Insert missing factors that might not exist
+    const missingFactors = [
+      {
+        name: 'Background',
+        description: 'Demographic and experiential characteristics that shape a participant\'s worldview.',
+        examples: ['Older adults may be more hesitant with robots', 'Cultural norms influence engagement style'],
+        relatedFactors: ['Culture', 'Personal History'],
+        researchNotes: 'Background shapes trust and familiarity in technology contexts.'
+      },
+      {
+        name: 'Social Motive',
+        description: 'The underlying reason for engaging with the robot or the situation.',
+        examples: ['Curiosity to try new tech', 'Desire to help with a study'],
+        relatedFactors: ['Intent', 'Goal'],
+        researchNotes: 'Motives influence engagement depth and perceived outcomes.'
+      },
+      {
+        name: 'Individual Specifics',
+        description: 'How individuals see themselves in terms of confidence, competence, and control.',
+        examples: ['A confident person may challenge suggestions', 'Self-conscious participants may follow quietly'],
+        relatedFactors: ['Self-Image', 'Agency'],
+        researchNotes: 'Self-perception shapes the style and tone of engagement.'
+      },
+      {
+        name: 'Standards of Customary Practices',
+        description: 'Social norms and institutional rules that define appropriate behavior.',
+        examples: ['Library behavior norms', 'Social etiquette like saying thank you'],
+        relatedFactors: ['Norms', 'Culture'],
+        researchNotes: 'These rules help participants decide how to act in ambiguous situations.'
+      }
+    ];
+    
+    for (const factor of missingFactors) {
+      console.log(`Database: Ensuring factor "${factor.name}" exists`);
+      insertOrReplaceFactor.run(
+        factor.name,
+        factor.description,
+        JSON.stringify(factor.examples),
+        JSON.stringify(factor.relatedFactors),
+        factor.researchNotes,
+        factorSections[factor.name],
+        now,
+        now
+      );
+    }
+    
+    // Update all factors with their sections
+    const updateFactorSection = db.prepare('UPDATE factors SET section = ? WHERE factor_name = ?');
+    
+    for (const [factorName, section] of Object.entries(factorSections)) {
+      console.log(`Database: Updating section for "${factorName}" to "${section}"`);
+      updateFactorSection.run(section, factorName);
+    }
+    
+    // Remove old unused factors
+    const oldFactors = ['Rules', 'Decision', 'Experience', 'Self-Perception'];
+    const deleteFactor = db.prepare('DELETE FROM factors WHERE factor_name = ?');
+    
+    for (const oldFactor of oldFactors) {
+      console.log(`Database: Removing old factor "${oldFactor}"`);
+      deleteFactor.run(oldFactor);
+    }
+    
+    // Check final result
+    const finalFactors = db.prepare('SELECT factor_name, section FROM factors ORDER BY factor_name').all();
+    console.log('Database: Final factors:', finalFactors);
+    
+    console.log('Database: Factors updated with section information successfully');
+  } catch (error) {
+    console.error('Database: Failed to update factors with sections:', error);
   }
 }
 
@@ -327,6 +772,8 @@ if (needsMigration()) {
   console.log('Database: Migration completed');
 } else {
   console.log('Database: No migration needed');
+  // Update existing mappings to ensure consistency
+  updateQuestionFactorMappings();
 }
 
 // Get all projects with their related data
@@ -712,17 +1159,96 @@ function updateQuestionText(questionId, questionText) {
   stmt.run(questionText, new Date().toISOString(), questionId);
 }
 
+// Update question factors
+function updateQuestionFactors(questionId, factors) {
+  console.log('Database: Updating question factors', questionId);
+  
+  const stmt = db.prepare(`
+    UPDATE questionnaire 
+    SET factors = ?, updatedAt = ? 
+    WHERE questionId = ?
+  `);
+  
+  stmt.run(factors, new Date().toISOString(), questionId);
+}
+
+// Get factor details by name
+function getFactorDetails(factorName) {
+  console.log('Database: Getting factor details for', factorName);
+  
+  const stmt = db.prepare(`
+    SELECT factor_name, description, examples, related_factors, research_notes, section 
+    FROM factors 
+    WHERE factor_name = ?
+  `);
+  
+  const factor = stmt.get(factorName);
+  if (factor) {
+    return {
+      factor: factor.factor_name,
+      description: factor.description,
+      examples: JSON.parse(factor.examples || '[]'),
+      relatedFactors: JSON.parse(factor.related_factors || '[]'),
+      researchNotes: factor.research_notes,
+      section: factor.section || 'Unknown'
+    };
+  }
+  return null;
+}
+
+// Get all factors
+function getAllFactors() {
+  console.log('Database: Getting all factors');
+  
+  const stmt = db.prepare(`
+    SELECT factor_name, description, examples, related_factors, research_notes, section 
+    FROM factors 
+    ORDER BY factor_name
+  `);
+  
+  const factors = stmt.all();
+  return factors.map(factor => ({
+    factor: factor.factor_name,
+    description: factor.description,
+    examples: JSON.parse(factor.examples || '[]'),
+    relatedFactors: JSON.parse(factor.related_factors || '[]'),
+    researchNotes: factor.research_notes,
+    section: factor.section || 'Unknown'
+  }));
+}
+
+// Get factors for a specific question
+function getQuestionFactors(questionId) {
+  console.log('Database: Getting factors for question', questionId);
+  
+  const stmt = db.prepare(`
+    SELECT f.factor_name, f.description, f.examples, f.related_factors, f.research_notes
+    FROM factors f
+    JOIN question_factors qf ON f.factor_name = qf.factor_name
+    WHERE qf.question_id = ?
+  `);
+  
+  const factors = stmt.all(questionId);
+  return factors.map(factor => ({
+    factor: factor.factor_name,
+    description: factor.description,
+    examples: JSON.parse(factor.examples || '[]'),
+    relatedFactors: JSON.parse(factor.related_factors || '[]'),
+    researchNotes: factor.research_notes
+  }));
+}
+
 // Add new question
-function addQuestion(section, questionId, questionText, questionType = 'text', options = null, orderIndex = 0) {
+function addQuestion(section, questionId, questionText, questionType = 'text', options = null, factors = null, orderIndex = 0) {
   console.log('Database: Adding new question', questionId);
   
   const stmt = db.prepare(`
-    INSERT INTO questionnaire (section, questionId, questionText, questionType, options, orderIndex, isEnabled, createdAt, updatedAt) 
-    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+    INSERT INTO questionnaire (section, questionId, questionText, questionType, options, factors, orderIndex, isEnabled, createdAt, updatedAt) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `);
   
   const now = new Date().toISOString();
-  stmt.run(section, questionId, questionText, questionType, options ? JSON.stringify(options) : null, orderIndex, now, now);
+  stmt.run(section, questionId, questionText, questionType, options ? JSON.stringify(options) : null, factors, orderIndex, now, now);
 }
 
 // Delete question
@@ -903,10 +1429,16 @@ module.exports = {
   getAllQuestions,
   updateQuestionStatus,
   updateQuestionText,
+  updateQuestionFactors,
   addQuestion,
   deleteQuestion,
   getProjectQuestions,
   updateProjectQuestionStatus,
   getEnabledProjectQuestions,
-  testProjectQuestionSettings
+  testProjectQuestionSettings,
+  getFactorDetails,
+  getAllFactors,
+  getQuestionFactors,
+  updateQuestionFactorMappings,
+  updateFactorsWithSections
 };

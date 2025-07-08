@@ -23,5 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateProjectQuestionStatus: (projectId, questionId, isEnabled) => 
     ipcRenderer.invoke('update-project-question-status', projectId, questionId, isEnabled),
   getEnabledProjectQuestions: (projectId) => ipcRenderer.invoke('get-enabled-project-questions', projectId),
-  testProjectQuestionSettings: (projectId) => ipcRenderer.invoke('test-project-question-settings', projectId)
+  testProjectQuestionSettings: (projectId) => ipcRenderer.invoke('test-project-question-settings', projectId),
+  // Factor management API
+  getFactorDetails: (factorName) => ipcRenderer.invoke('get-factor-details', factorName),
+  getAllFactors: () => ipcRenderer.invoke('get-all-factors'),
+  getQuestionFactors: (questionId) => ipcRenderer.invoke('get-question-factors', questionId),
+  updateQuestionFactorMappings: () => ipcRenderer.invoke('update-question-factor-mappings'),
+  updateFactorsWithSections: () => ipcRenderer.invoke('update-factors-with-sections')
 });
