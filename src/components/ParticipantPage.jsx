@@ -1744,7 +1744,7 @@ Please provide a concise, direct answer to the question based on the interview c
                     const factors = question.factors;
                     return answer ? (
                       <div key={questionId} style={{ marginBottom: 12 }}>
-                        <span style={{ fontWeight: 500 }}>{answer}</span>
+                        <span style={{ fontWeight: 400 }}>{answer}</span>
                         {factors && (
                           <span 
                             onClick={() => handleFactorClickLocal(question, question.factors)}

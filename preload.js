@@ -32,5 +32,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAllFactors: () => ipcRenderer.invoke('get-all-factors'),
   getQuestionFactors: (questionId) => ipcRenderer.invoke('get-question-factors', questionId),
   updateQuestionFactorMappings: () => ipcRenderer.invoke('update-question-factor-mappings'),
-  updateFactorsWithSections: () => ipcRenderer.invoke('update-factors-with-sections')
+  updateFactorsWithSections: () => ipcRenderer.invoke('update-factors-with-sections'),
+  forceDatabaseUpdate: () => ipcRenderer.invoke('force-database-update')
 });

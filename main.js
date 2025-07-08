@@ -80,6 +80,19 @@ ipcMain.handle('update-participant-interview', async (_e, projectId, participant
   database.updateParticipantInterview(projectId, participantId, interviewText);
 });
 
+ipcMain.handle('force-database-update', async () => {
+  try {
+    console.log('Forcing database update...');
+    database.updateQuestionFactorMappings();
+    database.updateFactorsWithSections();
+    console.log('Database update completed');
+    return true;
+  } catch (error) {
+    console.error('Database update failed:', error);
+    return false;
+  }
+});
+
 ipcMain.handle('get-settings', async () => loadSettings());
 
 ipcMain.handle('save-settings', async (_e, newSettings) => {
@@ -281,6 +294,8 @@ ipcMain.handle('update-factors-with-sections', async () => {
   database.updateFactorsWithSections();
   return true;
 });
+
+
 
 ipcMain.handle('add-question', async (_e, section, questionId, questionText, questionType, options, factors, orderIndex) => {
   database.addQuestion(section, questionId, questionText, questionType, options, factors, orderIndex);

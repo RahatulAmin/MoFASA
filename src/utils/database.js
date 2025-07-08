@@ -306,14 +306,14 @@ function performMigration() {
     
     // Identity questions
     const identityQuestions = [
-      { id: 'age', text: 'Age range of the participant(s)', type: 'dropdown', options: JSON.stringify(['18-24', '25-34', '35-44', '45-54', '55-64', '65+']), factors: 'Background', order: 0 },
-      { id: 'gender', text: 'Gender of the participant(s)', type: 'dropdown', options: JSON.stringify(['Male', 'Female', 'Non-Binary', 'Other']), factors: 'Background', order: 1 },
-      { id: 'nationality', text: 'Nationality of the participant(s)', type: 'text', factors: 'Background', order: 2 },
-      { id: 'occupation', text: 'Occupation of the participant(s)', type: 'text', factors: 'Background', order: 3 },
+      { id: 'age', text: 'Age range of the participant(s)', type: 'dropdown', options: JSON.stringify(['18-24', '25-34', '35-44', '45-54', '55-64', '65+']), factors: 'Age-Range', order: 0 },
+      { id: 'gender', text: 'Gender of the participant(s)', type: 'dropdown', options: JSON.stringify(['Male', 'Female', 'Non-Binary', 'Other']), factors: 'Gender', order: 1 },
+      { id: 'nationality', text: 'Nationality of the participant(s)', type: 'text', factors: 'Nationality', order: 2 },
+      { id: 'occupation', text: 'Occupation of the participant(s)', type: 'text', factors: 'Occupation', order: 3 },
       { id: 'education', text: 'Education level of the participant(s)', type: 'text', factors: 'Background', order: 4 },
       { id: 'social_motive', text: 'What was their social motive for interacting with the robot?', type: 'text', factors: 'Social Motive', order: 5 },
       { id: 'experience', text: 'Do they have previous experience of interacting with robots?', type: 'text', factors: 'Experience', order: 6 },
-      { id: 'perception', text: 'What was the participant(s) perception of the robot and their interaction with it? Is the robot disrupting, negative, supportive, positive, or neutral?', type: 'text', factors: 'Self-Perception', order: 7 }
+      { id: 'perception', text: 'What was the participant(s) perception of the robot and their interaction with it? Is the robot disrupting, negative, supportive, positive, or neutral?', type: 'text', factors: 'Individual Specifics', order: 7 }
     ];
     
     // Definition of Situation questions
@@ -672,8 +672,13 @@ function updateFactorsWithSections() {
       'Participants': 'Situation',
       'Group Size': 'Situation',
       'Role Identities': 'Identity',
+      'Age-Range': 'Identity',
+      'Gender': 'Identity',
+      'Nationality': 'Identity',
+      'Occupation': 'Identity',
       'Background': 'Identity',
       'Social Motive': 'Identity',
+      'Experience': 'Identity',
       'Personal History': 'Identity',
       'Individual Specifics': 'Identity',
       'Uncertainty': 'Definition of Situation',
@@ -695,6 +700,34 @@ function updateFactorsWithSections() {
     // Insert missing factors that might not exist
     const missingFactors = [
       {
+        name: 'Age-Range',
+        description: 'The age group or demographic range of the participant.',
+        examples: ['Younger participants may be more tech-savvy', 'Older adults may prefer traditional interactions'],
+        relatedFactors: ['Background', 'Experience'],
+        researchNotes: 'Age influences comfort level and expectations with technology.'
+      },
+      {
+        name: 'Gender',
+        description: 'The gender identity of the participant and how it influences interaction style.',
+        examples: ['Gender may affect communication preferences', 'Different comfort levels with technology'],
+        relatedFactors: ['Background', 'Social Norms'],
+        researchNotes: 'Gender can influence interaction patterns and technology acceptance.'
+      },
+      {
+        name: 'Nationality',
+        description: 'Cultural background and national origin that shapes interaction expectations.',
+        examples: ['Cultural norms vary by country', 'Language influences interaction style'],
+        relatedFactors: ['Background', 'Culture'],
+        researchNotes: 'National culture affects social norms and technology interactions.'
+      },
+      {
+        name: 'Occupation',
+        description: 'Professional background that influences interaction approach and expectations.',
+        examples: ['Engineers may be more analytical', 'Teachers may be more patient'],
+        relatedFactors: ['Background', 'Experience'],
+        researchNotes: 'Professional experience shapes how people approach new technology.'
+      },
+      {
         name: 'Background',
         description: 'Demographic and experiential characteristics that shape a participant\'s worldview.',
         examples: ['Older adults may be more hesitant with robots', 'Cultural norms influence engagement style'],
@@ -709,10 +742,17 @@ function updateFactorsWithSections() {
         researchNotes: 'Motives influence engagement depth and perceived outcomes.'
       },
       {
+        name: 'Experience',
+        description: 'Previous exposure to robots, technology, or similar interactions.',
+        examples: ['First-time users may be cautious', 'Experienced users have clear expectations'],
+        relatedFactors: ['Personal History', 'Familiarity'],
+        researchNotes: 'Prior experience strongly influences behavior and comfort levels.'
+      },
+      {
         name: 'Individual Specifics',
         description: 'How individuals see themselves in terms of confidence, competence, and control.',
         examples: ['A confident person may challenge suggestions', 'Self-conscious participants may follow quietly'],
-        relatedFactors: ['Self-Image', 'Agency'],
+        relatedFactors: ['Background', 'Agency', 'Confidence'],
         researchNotes: 'Self-perception shapes the style and tone of engagement.'
       },
       {
@@ -746,8 +786,19 @@ function updateFactorsWithSections() {
       updateFactorSection.run(section, factorName);
     }
     
-    // Remove old unused factors
-    const oldFactors = ['Rules', 'Decision', 'Experience', 'Self-Perception'];
+    // Update Self-Perception to Individual Specifics in existing data
+    console.log('Database: Migrating Self-Perception to Individual Specifics');
+    
+    // Update questionnaire table factors
+    const updateQuestionnaireFactors = db.prepare('UPDATE questionnaire SET factors = ? WHERE factors = ?');
+    updateQuestionnaireFactors.run('Individual Specifics', 'Self-Perception');
+    
+    // Update question_factors table
+    const updateQuestionFactors = db.prepare('UPDATE question_factors SET factor_name = ? WHERE factor_name = ?');
+    updateQuestionFactors.run('Individual Specifics', 'Self-Perception');
+    
+    // Remove old unused factors (including Self-Perception which is now Individual Specifics)
+    const oldFactors = ['Rules', 'Decision', 'Self-Perception'];
     const deleteFactor = db.prepare('DELETE FROM factors WHERE factor_name = ?');
     
     for (const oldFactor of oldFactors) {
@@ -770,11 +821,12 @@ if (needsMigration()) {
   console.log('Database: Running migration...');
   performMigration();
   console.log('Database: Migration completed');
-} else {
-  console.log('Database: No migration needed');
-  // Update existing mappings to ensure consistency
-  updateQuestionFactorMappings();
 }
+
+// Always update factors and mappings to ensure consistency
+console.log('Database: Updating factors and mappings...');
+updateQuestionFactorMappings();
+updateFactorsWithSections();
 
 // Get all projects with their related data
 function getAllProjects() {

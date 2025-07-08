@@ -21,6 +21,14 @@ const App = () => {
 
   useEffect(() => {
     const loadProjects = async () => {
+      // Force database update to ensure new factor names are applied
+      try {
+        await window.electronAPI.forceDatabaseUpdate();
+        console.log('Database updated with new factor names');
+      } catch (error) {
+        console.error('Failed to update database:', error);
+      }
+      
       const userProjects = await getProjects();
       setProjects(userProjects);
       setIsLoading(false);
