@@ -22,10 +22,10 @@ export const SECTIONS = [
 ];
 
 export const connectionPairs = [
-  { from: 0, to: 1, fromSide: 'left', toSide: 'right', horizontalOffset: 20 },
-  { from: 0, to: 2, fromSide: 'right', toSide: 'left', horizontalOffset: 20 },     // Situation → Definition of Situation
-  { from: 1, to: 2, fromSide: 'left', toSide: 'right', horizontalOffset: 20 },     // Identity → Definition of Situation
-  { from: 1, to: 3, fromSide: 'right', toSide: 'left', horizontalOffset: 30 },     // Identity → Rule Selection
-  { from: 2, to: 3, fromSide: 'left', toSide: 'right', horizontalOffset: 20 },     // Definition of Situation → Rule Selection
-  { from: 3, to: 4, fromSide: 'left', toSide: 'right', horizontalOffset: 20 }      // Rule Selection → Decision
+  { from: 0, to: 1, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'A' },     // Situation → Identity
+  { from: 0, to: 2, fromSide: 'right', toSide: 'left', horizontalOffset: 20, label: 'B' },     // Situation → Definition of Situation
+  { from: 1, to: 2, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'C' },     // Identity → Definition of Situation
+  { from: 1, to: 3, fromSide: 'right', toSide: 'left', horizontalOffset: 30, label: 'D' },     // Identity → Rule Selection
+  { from: 2, to: 3, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'E' },     // Definition of Situation → Rule Selection
+  { from: 3, to: 4, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'F' }      // Rule Selection → Decision
 ]; 

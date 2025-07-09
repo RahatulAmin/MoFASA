@@ -87,9 +87,50 @@ const SituationDesignView = ({
               gap: '12px',
               marginBottom: '24px'
             }}>
-              {participants
-                .filter(p => p.answers?.['Rule Selection']?.selectedRules?.includes(selectedRule))
-                .map(participant => {
+              {(() => {
+                const participantsWithRule = participants
+                  .filter(p => p.answers?.['Rule Selection']?.selectedRules?.includes(selectedRule));
+                
+                if (participantsWithRule.length === 0) {
+                  return (
+                    <div style={{
+                      background: '#fff',
+                      borderRadius: '8px',
+                      border: '1px solid #dcdde1',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                      padding: '32px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: '2em',
+                        marginBottom: '16px',
+                        color: '#95a5a6'
+                      }}>
+                        👥
+                      </div>
+                      <h4 style={{
+                        margin: '0 0 8px 0',
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '1.1em',
+                        color: '#2c3e50',
+                        fontWeight: '600'
+                      }}>
+                        No participants to display
+                      </h4>
+                      <p style={{
+                        margin: 0,
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '0.95em',
+                        color: '#7f8c8d',
+                        lineHeight: 1.5
+                      }}>
+                        No participants have selected this rule in their responses.
+                      </p>
+                    </div>
+                  );
+                }
+                
+                return participantsWithRule.map(participant => {
                   const isExpanded = expandedParticipants.has(participant.id);
                   return (
                     <div
@@ -189,7 +230,8 @@ const SituationDesignView = ({
                       )}
                     </div>
                   );
-                })}
+                });
+              })()}
             </div>
           )}
         </div>

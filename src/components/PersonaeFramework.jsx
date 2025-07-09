@@ -1,6 +1,33 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { SECTIONS, connectionPairs } from '../constants/frameAnalysis';
 
+const CONNECTION_EXPLANATIONS = {
+  'A': {
+    title: 'Connection A: Situation → Identity',
+    explanation: 'The situation is perceived by the individual\'s identity.'
+  },
+  'B': {
+    title: 'Connection B: Situation → Definition of Situation',
+    explanation: 'The situation influences how individuals define and interpret the context.'
+  },
+  'C': {
+    title: 'Connection C: Identity → Definition of Situation',
+    explanation: 'An individual\'s identity shapes how they define and understand the situation.'
+  },
+  'D': {
+    title: 'Connection D: Identity → Rule Selection',
+    explanation: 'Personal identity influences which rules or norms individuals choose to follow.'
+  },
+  'E': {
+    title: 'Connection E: Definition of Situation → Rule Selection',
+    explanation: 'How individuals define the situation determines which rules they consider applicable.'
+  },
+  'F': {
+    title: 'Connection F: Rule Selection → Decision',
+    explanation: 'The selected rules guide the final decision or course of action.'
+  }
+};
+
 const PersonaeFramework = ({ 
   selectedParticipant, 
   currentScope,
@@ -10,9 +37,19 @@ const PersonaeFramework = ({
 }) => {
   const boxRefs = useRef(SECTIONS.map(() => React.createRef()));
   const [connections, setConnections] = useState([]);
+  const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [selectedConnection, setSelectedConnection] = useState(null);
 
   // Reference for connection calculation function
   const refreshConnections = useRef(() => {});
+
+  const handleConnectionClick = (label) => {
+    const connectionInfo = CONNECTION_EXPLANATIONS[label];
+    if (connectionInfo) {
+      setSelectedConnection(connectionInfo);
+      setShowConnectionModal(true);
+    }
+  };
 
   // Calculate box positions and update connections
   useEffect(() => {
@@ -139,7 +176,7 @@ const PersonaeFramework = ({
         resizeObserver.disconnect();
       }
     };
-  }, [currentScope]); // Removed selectedParticipant and selectedRules to prevent unnecessary recalculations
+  }, [currentScope, selectedParticipant]); // Added selectedParticipant back to refresh connections when participant changes
 
 
 
@@ -158,7 +195,7 @@ const PersonaeFramework = ({
           left: 0,
           right: '16px', // Leave space for scrollbar
           height: '100%',
-          pointerEvents: 'none',
+          pointerEvents: 'auto',
           overflow: 'visible',
           zIndex: 100
         }}
@@ -182,30 +219,108 @@ const PersonaeFramework = ({
           </marker>
         </defs>
         
-        {connections.map((connection, index) => (
-          <g key={index}>
-            {/* Connection line */}
-            <path
-              d={connection.path}
-              stroke="url(#lineGradient)"
-              strokeWidth="1"
-              fill="none"
-              opacity="2"
-              markerEnd="url(#arrowhead)"
-            />
-            
-            {/* Start point dot */}
-            <circle
-              cx={connection.startPoint.x}
-              cy={connection.startPoint.y}
-              r="4"
-              fill="rgba(210, 233, 255, 0.9)"
-              stroke="rgba(124, 193, 240, 0.8)"
-              strokeWidth="1"
-              filter="url(#dotGlow)"
-            />
-          </g>
-        ))}
+        {connections.map((connection, index) => {
+          // Calculate the middle point of the actual path
+          const pair = connectionPairs[index];
+          const startX = connection.startPoint.x;
+          const startY = connection.startPoint.y;
+          const endX = connection.endPoint.x;
+          const endY = connection.endPoint.y;
+          const horizontalOffset = pair?.horizontalOffset || 30;
+          
+          // Calculate the middle point based on the actual path structure
+          let midX, midY;
+          
+          if (Math.abs(startY - endY) > 20) {
+            // For paths with vertical segments
+            if (pair?.fromSide === pair?.toSide) {
+              // Same side connection - label at middle of vertical segment
+              midX = pair?.fromSide === 'right' ? startX + horizontalOffset : startX - horizontalOffset;
+              midY = (startY + endY) / 2;
+            } else {
+              // Different side connection - complex path with multiple segments
+              // Place label at the middle of the horizontal segment in the middle
+              const firstHorizontalX = pair?.fromSide === 'right' ? startX + horizontalOffset : startX - horizontalOffset;
+              const secondHorizontalX = pair?.fromSide === 'right' ? firstHorizontalX + horizontalOffset : firstHorizontalX - horizontalOffset;
+              midX = (firstHorizontalX + secondHorizontalX) / 2;
+              
+              // Adjust label position based on connection direction
+              if (pair?.toSide === 'right') {
+                midX -= 12; // Move right-side labels further right
+              } else {
+                midX += 12; // Move left-side labels further left
+              }
+              
+              midY = (startY + endY) / 2;
+            }
+          } else {
+            // For mostly horizontal paths
+            midX = (startX + endX) / 2;
+            midY = startY; // Use startY since the path is mostly horizontal
+          }
+          
+          const label = pair?.label || '';
+          
+          return (
+            <g key={index}>
+              {/* Connection line */}
+              <path
+                d={connection.path}
+                stroke="url(#lineGradient)"
+                strokeWidth="1"
+                fill="none"
+                opacity="2"
+                markerEnd="url(#arrowhead)"
+                style={{ pointerEvents: 'none' }}
+              />
+              
+              {/* Start point dot */}
+              <circle
+                cx={connection.startPoint.x}
+                cy={connection.startPoint.y}
+                r="4"
+                fill="rgba(210, 233, 255, 0.9)"
+                stroke="rgba(124, 193, 240, 0.8)"
+                strokeWidth="1"
+                filter="url(#dotGlow)"
+                style={{ pointerEvents: 'none' }}
+              />
+              
+              {/* Label in the middle of the line */}
+              {label && (
+                <g style={{ pointerEvents: 'auto' }}>
+                  {/* Background circle for label */}
+                  <circle
+                    cx={midX}
+                    cy={midY}
+                    r="12"
+                    fill="rgba(255, 255, 255, 0.9)"
+                    stroke="rgba(52, 152, 219, 0.8)"
+                    strokeWidth="1"
+                    filter="url(#dotGlow)"
+                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                    onClick={() => handleConnectionClick(label)}
+                  />
+                  {/* Label text */}
+                  <text
+                    x={midX}
+                    y={midY}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize="12"
+                    fontWeight="600"
+                    fontFamily="Lexend, sans-serif"
+                    fill="#2c3e50"
+                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                    onClick={() => handleConnectionClick(label)}
+                  >
+                    {label}
+                  </text>
+                </g>
+              )}
+            </g>
+          );
+        })}
       </svg>
 
       {/* Boxes Container */}
@@ -344,6 +459,75 @@ const PersonaeFramework = ({
           </div>
         ))}
       </div>
+
+      {/* Connection Details Modal */}
+      {showConnectionModal && selectedConnection && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '32px',
+            borderRadius: '12px',
+            width: '500px',
+            maxWidth: '90%',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+          }}>
+            <h3 style={{ 
+              marginBottom: '20px',
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1.3em',
+              color: '#2c3e50',
+              fontWeight: '600'
+            }}>
+              {selectedConnection.title}
+            </h3>
+            <p style={{ 
+              marginBottom: '24px',
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1.1em',
+              color: '#34495e',
+              lineHeight: '1.6'
+            }}>
+              {selectedConnection.explanation}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowConnectionModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#3498db',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '1em',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#2980b9';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#3498db';
+                }}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

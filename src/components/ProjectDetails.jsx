@@ -72,6 +72,9 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [questionsLoading, setQuestionsLoading] = useState(true);
   const [showFactorDetails, setShowFactorDetails] = useState(false);
   const [selectedFactor, setSelectedFactor] = useState(null);
+  const [showSituationInfoModal, setShowSituationInfoModal] = useState(false);
+  const [showPersonaeInfoModal, setShowPersonaeInfoModal] = useState(false);
+  const [showBehavioralInfoModal, setShowBehavioralInfoModal] = useState(false);
 
   // Load questions from database
   React.useEffect(() => {
@@ -1556,47 +1559,275 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         <div style={{ borderBottom: '1px solid #dcdde1', margin: '18px 0 12px 0' }}></div>
         
         {currentView === 'behavioral' ? (
-          <BehavioralDiversityView
-            currentScope={currentScope}
-            participants={participants}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            statsSort={statsSort}
-            setStatsSort={setStatsSort}
-            isPdfGenerating={isPdfGenerating}
-            generatePDF={generatePDF}
-          />
+          <>
+            {/* Behavioral Diversity Header */}
+            <div style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px',
+              border: '1px solid #e9ecef',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <div style={{
+                  width: '3px',
+                  height: '16px',
+                  background: '#27ae60',
+                  borderRadius: '2px'
+                }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{
+                    fontFamily: 'Lexend, sans-serif',
+                    fontWeight: '600',
+                    fontSize: '1.1em',
+                    color: '#2c3e50',
+                    margin: 0
+                  }}>
+                    Behavioral Diversity
+                  </h3>
+                  <button
+                    onClick={() => setShowBehavioralInfoModal(true)}
+                    style={{
+                      background: '#3498db',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '6px 10px',
+                      borderRadius: '50%',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '28px',
+                      height: '28px',
+                      boxShadow: '0 2px 4px rgba(52, 152, 219, 0.3)'
+                    }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#2980b9';
+                    e.target.style.boxShadow = '0 4px 8px rgba(52, 152, 219, 0.4)';
+                    e.target.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = '#3498db';
+                    e.target.style.boxShadow = '0 2px 4px rgba(52, 152, 219, 0.3)';
+                    e.target.style.transform = 'scale(1)';
+                  }}
+                >
+                  <span style={{
+                    fontSize: '1em',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    fontFamily: 'Arial, sans-serif'
+                  }}>
+                    i
+                  </span>
+                </button>
+                </div>
+              </div>
+              <p style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.95em',
+                color: '#495057',
+                margin: 0,
+                fontWeight: 500
+              }}>
+                Current Scope: {currentScope?.scopeNumber || ''}
+              </p>
+            </div>
+            <BehavioralDiversityView
+              currentScope={currentScope}
+              participants={participants}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              statsSort={statsSort}
+              setStatsSort={setStatsSort}
+              isPdfGenerating={isPdfGenerating}
+              generatePDF={generatePDF}
+            />
+          </>
         ) : currentView === 'personae' ? (
-          <PersonaeMappingView
-            project={project}
-            currentScope={currentScope}
-            participants={participants}
-            selectedParticipant={selectedParticipant}
-            setSelectedParticipant={setSelectedParticipant}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            selectedAgeRanges={selectedAgeRanges}
-            setSelectedAgeRanges={setSelectedAgeRanges}
-            selectedGenders={selectedGenders}
-            setSelectedGenders={setSelectedGenders}
-            personaeView={personaeView}
-            setPersonaeView={setPersonaeView}
-            isPdfGenerating={isPdfGenerating}
-            generatePDF={generatePDF}
-          />
+          <>
+            {/* Personae Mapping Header */}
+            <div style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px',
+              border: '1px solid #e9ecef',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <div style={{
+                  width: '3px',
+                  height: '16px',
+                  background: '#2980b9',
+                  borderRadius: '2px'
+                }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{
+                    fontFamily: 'Lexend, sans-serif',
+                    fontWeight: '600',
+                    fontSize: '1.1em',
+                    color: '#2c3e50',
+                    margin: 0
+                  }}>
+                    Personae Mapping
+                  </h3>
+                  <button
+                    onClick={() => setShowPersonaeInfoModal(true)}
+                    style={{
+                      background: '#3498db',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '6px 10px',
+                      borderRadius: '50%',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '28px',
+                      height: '28px',
+                      boxShadow: '0 2px 4px rgba(52, 152, 219, 0.3)'
+                    }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#2980b9';
+                    e.target.style.boxShadow = '0 4px 8px rgba(52, 152, 219, 0.4)';
+                    e.target.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = '#3498db';
+                    e.target.style.boxShadow = '0 2px 4px rgba(52, 152, 219, 0.3)';
+                    e.target.style.transform = 'scale(1)';
+                  }}
+                >
+                  <span style={{
+                    fontSize: '1em',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    fontFamily: 'Arial, sans-serif'
+                  }}>
+                    i
+                  </span>
+                </button>
+                </div>
+              </div>
+              <p style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.95em',
+                color: '#495057',
+                margin: 0,
+                fontWeight: 500
+              }}>
+                Current Scope: {currentScope?.scopeNumber || ''}
+              </p>
+            </div>
+            <PersonaeMappingView
+              project={project}
+              currentScope={currentScope}
+              participants={participants}
+              selectedParticipant={selectedParticipant}
+              setSelectedParticipant={setSelectedParticipant}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              selectedAgeRanges={selectedAgeRanges}
+              setSelectedAgeRanges={setSelectedAgeRanges}
+              selectedGenders={selectedGenders}
+              setSelectedGenders={setSelectedGenders}
+              personaeView={personaeView}
+              setPersonaeView={setPersonaeView}
+              isPdfGenerating={isPdfGenerating}
+              generatePDF={generatePDF}
+            />
+          </>
         ) : currentView === 'situation' ? (
-          <SituationDesignView
-            currentScope={currentScope}
-            participants={participants}
-            robotDraft={robotDraft}
-            setRobotDraft={setRobotDraft}
-            environmentDraft={environmentDraft}
-            setEnvironmentDraft={setEnvironmentDraft}
-            project={project}
-            selectedScope={selectedScope}
-            editProject={editProject}
-            idx={idx}
-          />
+          <>
+            {/* Situation Design Header */}
+            <div style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px',
+              border: '1px solid #e9ecef',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <div style={{
+                  width: '3px',
+                  height: '16px',
+                  background: '#9b59b6',
+                  borderRadius: '2px'
+                }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{
+                    fontFamily: 'Lexend, sans-serif',
+                    fontWeight: '600',
+                    fontSize: '1.1em',
+                    color: '#2c3e50',
+                    margin: 0
+                  }}>
+                    Situation Design
+                  </h3>
+                  <button
+                    onClick={() => setShowSituationInfoModal(true)}
+                    style={{
+                      background: '#3498db',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '6px 10px',
+                      borderRadius: '50%',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '28px',
+                      height: '28px',
+                      boxShadow: '0 2px 4px rgba(52, 152, 219, 0.3)'
+                    }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#2980b9';
+                    e.target.style.boxShadow = '0 4px 8px rgba(52, 152, 219, 0.4)';
+                    e.target.style.transform = 'scale(1.1)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = '#3498db';
+                    e.target.style.boxShadow = '0 2px 4px rgba(52, 152, 219, 0.3)';
+                    e.target.style.transform = 'scale(1)';
+                  }}
+                >
+                  <span style={{
+                    fontSize: '1em',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    fontFamily: 'Arial, sans-serif'
+                  }}>
+                    i
+                  </span>
+                </button>
+                </div>
+              </div>
+              <p style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.95em',
+                color: '#495057',
+                margin: 0,
+                fontWeight: 500
+              }}>
+                Current Scope: {currentScope?.scopeNumber || ''}
+              </p>
+            </div>
+            <SituationDesignView
+              currentScope={currentScope}
+              participants={participants}
+              robotDraft={robotDraft}
+              setRobotDraft={setRobotDraft}
+              environmentDraft={environmentDraft}
+              setEnvironmentDraft={setEnvironmentDraft}
+              project={project}
+              selectedScope={selectedScope}
+              editProject={editProject}
+              idx={idx}
+            />
+          </>
         ) : (
           // Regular View
           <>
@@ -1784,6 +2015,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         </div>
           </>
         )}
+        
       </div>
 
       {currentView !== 'behavioral' && (
@@ -1845,6 +2077,72 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                   </div>
                 </div>
               )
+            ) : personaeView === 'summary' ? (
+              <div ref={summaryRef}>
+                {(() => {
+                  const participantsWithSummaries = participants.filter(p => p.summary && p.summary.trim() !== '');
+                  
+                  if (participantsWithSummaries.length === 0) {
+                    return (
+                      <div style={{
+                        height: '100%',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        color: '#fff',
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '1.1em',
+                        textAlign: 'center',
+                        padding: '20px'
+                      }}>
+                        <div>
+                          <div style={{ marginBottom: '10px' }}>📝</div>
+                          No summaries available yet for the project
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div style={{ padding: '20px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        {participantsWithSummaries.map((participant) => (
+                          <div
+                            key={participant.id}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.1)',
+                              borderRadius: '8px',
+                              padding: '20px',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              backdropFilter: 'blur(10px)'
+                            }}
+                          >
+                            <h3 style={{
+                              margin: '0 0 15px 0',
+                              fontFamily: 'Lexend, sans-serif',
+                              fontSize: '1.2em',
+                              color: '#fff',
+                              borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+                              paddingBottom: '10px'
+                            }}>
+                              {participant.name}
+                            </h3>
+                            <p style={{
+                              fontFamily: 'Lexend, sans-serif',
+                              fontSize: '0.95em',
+                              color: 'rgba(255, 255, 255, 0.9)',
+                              lineHeight: '1.6',
+                              margin: 0
+                            }}>
+                              {participant.summary}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
             ) : null
           )}
           {currentView === 'situation' && (
@@ -2185,6 +2483,579 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                 ) : (
                   'Generate Report'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Personae Mapping Information Modal */}
+      {showPersonaeInfoModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            padding: '32px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1.5em',
+                color: '#2c3e50',
+                margin: 0
+              }}>
+                Personae Mapping Information
+              </h2>
+              <button
+                onClick={() => setShowPersonaeInfoModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5em',
+                  cursor: 'pointer',
+                  color: '#7f8c8d',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#f8f9fa';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '0.95em',
+              color: '#2c3e50',
+              lineHeight: '1.6'
+            }}>
+              <h3 style={{
+                fontSize: '1.2em',
+                color: '#3498db',
+                marginBottom: '16px',
+                fontWeight: '600'
+              }}>
+                About Personae Mapping
+              </h3>
+              
+              <p style={{ marginBottom: '16px' }}>
+                The Personae Mapping section provides two different views to analyze participant responses and create comprehensive personae for your human-robot interaction study.
+              </p>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#27ae60',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  Framework View
+                </h4>
+                <p style={{ marginBottom: '12px' }}>
+                  Visualize individual participant responses through the Personae Framework, showing how each participant navigates through:
+                </p>
+                <ul style={{ 
+                  marginLeft: '20px', 
+                  marginBottom: '12px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Situation understanding and context</li>
+                  <li>Identity and personal characteristics</li>
+                  <li>Definition of the interaction situation</li>
+                  <li>Rule selection and decision-making</li>
+                  <li>Final decisions and actions</li>
+                </ul>
+              </div>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#27ae60',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  Summary View
+                </h4>
+                <p style={{ marginBottom: '12px' }}>
+                  Access AI-generated summaries of each participant's responses, providing insights into:
+                </p>
+                <ul style={{ 
+                  marginLeft: '20px', 
+                  marginBottom: '12px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Key behavioral patterns and preferences</li>
+                  <li>Decision-making processes and rationale</li>
+                  <li>Individual characteristics and traits</li>
+                  <li>Potential interaction preferences</li>
+                  <li>Areas for robot adaptation</li>
+                </ul>
+              </div>
+              
+              <div style={{
+                background: '#f8f9fa',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef',
+                marginTop: '20px'
+              }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#e67e22',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  💡 Tips for Effective Personae Mapping
+                </h4>
+                <ul style={{ 
+                  marginLeft: '20px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Use the Framework View to understand individual decision-making patterns</li>
+                  <li>Compare participants using the sorting options (age, gender)</li>
+                  <li>Review summaries to identify common themes across participants</li>
+                  <li>Look for patterns that could inform robot behavior design</li>
+                  <li>Use the PDF export feature to share findings with your team</li>
+                </ul>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginTop: '24px'
+            }}>
+              <button
+                onClick={() => setShowPersonaeInfoModal(false)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.95em',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#2980b9';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#3498db';
+                }}
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Behavioral Diversity Information Modal */}
+      {showBehavioralInfoModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            padding: '32px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1.5em',
+                color: '#2c3e50',
+                margin: 0
+              }}>
+                Behavioral Diversity Information
+              </h2>
+              <button
+                onClick={() => setShowBehavioralInfoModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5em',
+                  cursor: 'pointer',
+                  color: '#7f8c8d',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#f8f9fa';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '0.95em',
+              color: '#2c3e50',
+              lineHeight: '1.6'
+            }}>
+              <h3 style={{
+                fontSize: '1.2em',
+                color: '#3498db',
+                marginBottom: '16px',
+                fontWeight: '600'
+              }}>
+                About Behavioral Diversity
+              </h3>
+              
+              <p style={{ marginBottom: '16px' }}>
+                The Behavioral Diversity section analyzes how different participants select and apply rules in human-robot interactions, helping you understand patterns across demographic groups.
+              </p>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#27ae60',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  Rule Selection Analysis
+                </h4>
+                <p style={{ marginBottom: '12px' }}>
+                  Explore how participants choose from available interaction rules:
+                </p>
+                <ul style={{ 
+                  marginLeft: '20px', 
+                  marginBottom: '12px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Individual rule selection patterns</li>
+                  <li>Demographic-based grouping (age, gender)</li>
+                  <li>Rule combination preferences</li>
+                  <li>Decision-making consistency</li>
+                  <li>Behavioral variation across participants</li>
+                </ul>
+              </div>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#27ae60',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  Statistical Visualization
+                </h4>
+                <p style={{ marginBottom: '12px' }}>
+                  Visual representations of behavioral patterns:
+                </p>
+                <ul style={{ 
+                  marginLeft: '20px', 
+                  marginBottom: '12px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Bar charts showing rule usage frequency</li>
+                  <li>Demographic breakdowns of rule preferences</li>
+                  <li>Comparative analysis across groups</li>
+                  <li>Pattern identification and trends</li>
+                  <li>Data-driven insights for robot design</li>
+                </ul>
+              </div>
+              
+              <div style={{
+                background: '#f8f9fa',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef',
+                marginTop: '20px'
+              }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#e67e22',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  💡 Tips for Effective Behavioral Analysis
+                </h4>
+                <ul style={{ 
+                  marginLeft: '20px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Use sorting options to identify demographic patterns</li>
+                  <li>Look for rules that are consistently selected across groups</li>
+                  <li>Identify unique behavioral patterns for specific demographics</li>
+                  <li>Consider how rule preferences might inform robot adaptation</li>
+                  <li>Export findings to share with your research team</li>
+                </ul>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginTop: '24px'
+            }}>
+              <button
+                onClick={() => setShowBehavioralInfoModal(false)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.95em',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#2980b9';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#3498db';
+                }}
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Situation Design Information Modal */}
+      {showSituationInfoModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            padding: '32px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1.5em',
+                color: '#2c3e50',
+                margin: 0
+              }}>
+                Situation Design Information
+              </h2>
+              <button
+                onClick={() => setShowSituationInfoModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5em',
+                  cursor: 'pointer',
+                  color: '#7f8c8d',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#f8f9fa';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '0.95em',
+              color: '#2c3e50',
+              lineHeight: '1.6'
+            }}>
+              <h3 style={{
+                fontSize: '1.2em',
+                color: '#3498db',
+                marginBottom: '16px',
+                fontWeight: '600'
+              }}>
+                About Situation Design
+              </h3>
+              
+              <p style={{ marginBottom: '16px' }}>
+                The Situation Design section allows you to document and refine the interaction scenario based on insights from your participant analysis. This section focuses on two key areas:
+              </p>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#27ae60',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  Robot Changes
+                </h4>
+                <p style={{ marginBottom: '12px' }}>
+                  Document suggested modifications to the robot's behavior, appearance, or capabilities. Consider aspects such as:
+                </p>
+                <ul style={{ 
+                  marginLeft: '20px', 
+                  marginBottom: '12px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Communication style and language</li>
+                  <li>Physical appearance and form factor</li>
+                  <li>Movement patterns and gestures</li>
+                  <li>Response timing and interaction flow</li>
+                  <li>Error handling and recovery behaviors</li>
+                </ul>
+              </div>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#27ae60',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  Environmental Changes
+                </h4>
+                <p style={{ marginBottom: '12px' }}>
+                  Document suggested modifications to the physical space, context, or setting. Consider aspects such as:
+                </p>
+                <ul style={{ 
+                  marginLeft: '20px', 
+                  marginBottom: '12px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Physical layout and spatial arrangement</li>
+                  <li>Lighting and ambient conditions</li>
+                  <li>Noise levels and acoustic environment</li>
+                  <li>Presence of other people or objects</li>
+                  <li>Task context and goals</li>
+                </ul>
+              </div>
+              
+              <div style={{
+                background: '#f8f9fa',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef',
+                marginTop: '20px'
+              }}>
+                <h4 style={{
+                  fontSize: '1.1em',
+                  color: '#e67e22',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  💡 Tips for Effective Situation Design
+                </h4>
+                <ul style={{ 
+                  marginLeft: '20px',
+                  listStyleType: 'disc'
+                }}>
+                  <li>Base your suggestions on specific insights from participant summaries</li>
+                  <li>Focus on actionable, implementable changes</li>
+                  <li>Consider the impact on both individual participants and overall interaction patterns</li>
+                  <li>Document the rationale behind each suggested change</li>
+                  <li>Prioritize changes that address the most common or critical issues identified</li>
+                </ul>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginTop: '24px'
+            }}>
+              <button
+                onClick={() => setShowSituationInfoModal(false)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: '500',
+                  fontSize: '0.95em',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#2980b9';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#3498db';
+                }}
+              >
+                Got it!
               </button>
             </div>
           </div>

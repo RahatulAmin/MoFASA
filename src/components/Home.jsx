@@ -295,41 +295,48 @@ const Home = () => {
             <p><strong>Imagine this:</strong></p>
               <p>A delivery robot rolls into a busy university café. Three students encounter it.</p>
 
+              <div style={{ textAlign: 'center', margin: '20px 0' }}>
+              <img src={require('../images/home_image.png')} alt="robot entering a busy university café" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              </div>
+
               <ul style={{ paddingLeft: '20px' }}>
                 <li><strong>Marcus</strong> smiles, waves, and starts a cheerful interaction.</li>
                 <li><strong>Emilia</strong> frowns, mutters “this is creepy,” and walks away.</li>
                 <li><strong>Tony</strong> glances briefly, then returns to scrolling his phone.</li>
               </ul>
-
+              <br />
               <p>Same robot. Same place. Same behavior.</p>
+              <br />
               <p><strong>So why did only one person engage?</strong></p>
-              <p>And more importantly — <em>can we design robots that resonate with all three?</em></p>
-              
-              <p>That’s exactly the kind of question the <strong>MoFASA Framework</strong> is built to help you answer.</p>
+              <p><strong>Can we design the robot in a way that resonates with all three individuals?</strong></p>
+              <br />
+              <p>We designed the MoFASA Framework to help HRI practitioners find solutions for situations like this. It let's practitioners uncover the deeper reasons behind why someone interacts with robots in certain ways, and how we can 
+                manage undesirable behaviors towards robots.</p>
               
               <h3 style={{ marginTop: '24px' }}>🤖 What is the MoFASA Framework?</h3>
-              <p><strong>MoFASA</strong>, short for <strong>Modified Factors of Social Appropriateness</strong>, is a human-centered framework designed for HRI practitioners who want to understand the <em>why</em> behind human behavior in human-robot interaction.</p>
-              
-              <p>Unlike approaches that only measure task success, MoFASA helps you analyze the <em>social and contextual logic</em> that drives people's reactions. It’s built on and extends two foundational models: <strong>FASA</strong> (Five Factors of Social Appropriateness) and <strong>LOA</strong> (Logic of Appropriateness). By combining theoretical depth with practical relevance, MoFASA offers a streamlined, HRI-focused framework for interpreting human behavior.</p>
-              
+              <p><strong>MoFASA</strong>, short for <strong>Modified Factors of Social Appropriateness</strong>, is a human-centered framework designed for HRI practitioners who 
+              want to understand the <em>why</em> behind human behavior in human-robot interaction. MoFASA helps you analyze the <em>social and contextual logic</em> that drives 
+              people's reactions. It is built on and extends two foundational models: <strong>FASA</strong> (Five Factors of Social Appropriateness) and <strong>LOA</strong> 
+              (Logic of Appropriateness). By combining theoretical depth with practical relevance, MoFASA offers a streamlined, HRI-focused framework for interpreting human behavior.</p>
+              <br />
               <p>At the heart of MoFASA are three key analytical lenses:</p>
               <ul style={{ paddingLeft: '20px' }}>
-                <li><strong>Situation</strong> – External context (location, urgency, timing, setting)</li>
-                <li><strong>Identity</strong> – Internal context (background, role, social motives)</li>
-                <li><strong>Definition of the Situation</strong> – Interpretation of the moment (framing, uncertainty, consequences)</li>
+                <li><strong>Situation</strong> - External context (location, timing, setting, etc.)</li>
+                <li><strong>Identity</strong> - Internal context (background, role, social motives, etc.)</li>
+                <li><strong>Definition of the Situation</strong> - Interpretation of the moment (framing, uncertainty, consequences, etc.)</li>
               </ul>
-
+              <br />
               <p>These lenses help you understand why Emilia found the robot unsettling, while Tony simply tuned it out. But MoFASA goes further by offering three practical affordances to guide design and reflection:</p>
-
+              <br />
               <ul style={{ paddingLeft: '20px' }}>
-                <li><strong>Personae Mapping</strong> – Understand how participants see themselves in the interaction.</li>
-                <li><strong>Behavioral Diversity</strong> – Observe the range of reactions that emerge from the same situation.</li>
-                <li><strong>Situation Design</strong> – Identify and adjust problematic dynamics, whether by redesigning the robot or modifying the environment.</li>
+                <li><strong>Personae Mapping</strong> - Understand how participants see themselves in the interaction.</li>
+                <li><strong>Behavioral Diversity</strong> - Observe the range of reactions that emerge from the same situation.</li>
+                <li><strong>Situation Design</strong> - Identify and adjust problematic dynamics, whether by redesigning the robot or modifying the environment.</li>
               </ul>
 
               <h3 style={{ marginTop: '24px' }}>🛠 MoFASA Tools</h3>
               <p><strong>MoFASA Tools</strong> is a companion desktop application that helps you apply the framework to your own HRI research or deployment scenarios.</p>
-
+              <br />
               <p>Use it to:</p>
               <ul style={{ paddingLeft: '20px' }}>
                 <li>Set up projects with scopes, participant data, and interaction contexts</li>
@@ -337,10 +344,10 @@ const Home = () => {
                 <li>Identify patterns, outliers, and underlying logic in participant responses</li>
                 <li>Generate insights to inform robot design and situational adaptations</li>
               </ul>
-
-              <p>This isn’t a spreadsheet or a loose set of notes — it’s a structured, thoughtful analysis environment designed to elevate your HRI evaluations and interventions.</p>
-
-              <p>Whether you're analyzing early field tests, designing for sensitive environments, or trying to prevent unintended consequences — <strong>MoFASA Tools helps you move beyond surface-level metrics and into the heart of social understanding.</strong></p>
+              <br />
+              <p>This isn't a spreadsheet or a loose set of notes — it's a structured, thoughtful analysis environment designed to elevate your HRI evaluations and interventions.</p>
+              <p>Whether you're analyzing early field tests, designing for sensitive environments, or trying to prevent unintended consequences — <strong>MoFASA Tools helps you move 
+                beyond surface-level metrics and into the heart of social understanding.</strong></p>
 
             </div>
       
@@ -350,10 +357,15 @@ const Home = () => {
               padding: '20px',
               backgroundColor: '#f8f9fa',
               borderRadius: '8px',
-              border: '1px solid #e9ecef'
+              border: '1px solid #e9ecef',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              borderRadius: '8px',
+              padding: '16px',
+              backgroundColor: 'white',
+           
             }}>
-              <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '16px' }}>
-                <strong>Get started by exploring our interactive tutorial, or try analyzing a practice project today.</strong>
+              <p style={{ color: '#2c3e50', lineHeight: '1.6', marginBottom: '16px' }}>
+                <strong>Get started by exploring our interactive tutorial, or try analyzing a practice project.</strong>
               </p>
               <button
                 onClick={() => {
@@ -376,8 +388,11 @@ const Home = () => {
                   fontWeight: '600',
                   fontFamily: 'Lexend, sans-serif',
                   fontSize: '1em',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  
+                  
                 }}
+                
                 onMouseOver={(e) => {
                   e.target.style.backgroundColor = '#2980b9';
                   e.target.style.transform = 'translateY(-1px)';
@@ -389,6 +404,45 @@ const Home = () => {
               >
                 Getting Started with MoFASA
               </button>
+
+              <button
+                onClick={() => {
+                  setSelectedSection('practice-mofasa');
+                  // Scroll to top of the right panel after a short delay to ensure content is rendered
+                  setTimeout(() => {
+                    const rightPanel = document.querySelector('.right-panel');
+                    if (rightPanel) {
+                      rightPanel.scrollTop = 0;
+                    }
+                  });
+                }}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '1em',
+                  transition: 'all 0.2s ease',
+                  marginLeft: '10px', 
+                  marginRight: '10px',
+                  
+                }}
+                
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#2980b9';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#3498db';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Practice MoFASA Tools
+              </button>
             </div>
           </div>
         );
@@ -398,40 +452,7 @@ const Home = () => {
           <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
             <h2 style={{ color: '#2c3e50', marginBottom: '20px', textAlign: 'center' }}>About Us</h2>
             
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              gap: '40px', 
-              marginBottom: '30px',
-              flexWrap: 'wrap'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <img 
-                  src={require('../images/raise_logo.png')} 
-                  alt="RAISE Lab Logo" 
-                  style={{ 
-                    maxWidth: '200px', 
-                    height: 'auto',
-                    marginBottom: '10px'
-                  }} 
-                />
-                <p style={{ color: '#7f8c8d', fontSize: '14px', margin: 0 }}>RAISE Lab</p>
-              </div>
-              
-              <div style={{ textAlign: 'center' }}>
-                <img 
-                  src={require('../images/mcgill_logo.png')} 
-                  alt="McGill University Logo" 
-                  style={{ 
-                    maxWidth: '200px', 
-                    height: 'auto',
-                    marginBottom: '10px'
-                  }} 
-                />
-                <p style={{ color: '#7f8c8d', fontSize: '14px', margin: 0 }}>McGill University</p>
-              </div>
-            </div>
+            
             
             <div style={{ 
               background: '#f8f9fa', 
@@ -442,13 +463,13 @@ const Home = () => {
             }}>
               <h3 style={{ color: '#34495e', marginBottom: '16px' }}>MoFASA Tools Development</h3>
               <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '16px' }}>
-                MoFASA Tools is developed by the RAISE (Robotics and AI for Social Empowerment) Lab at McGill University. 
-                Our research focuses on understanding and improving human-robot interactions in real-world settings.
+                MoFASA Tools is developed by the RAISE (Responsible Autonomy and Intelligent Systems Ethics) Lab at McGill University. 
+                Our research focuses on understanding and improving human-robot interactions (HRI) in real-world settings.
               </p>
               <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
-                The MoFASA framework and this desktop application are designed to help researchers and practitioners 
-                systematically analyze social behavior in human-robot interaction studies, making it easier to 
-                identify patterns and generate insights that can inform robot design and deployment.
+                The MoFASA framework and this desktop application are designed to help HRI practitioners 
+                systematically analyze social behavior in HRI studies, making it easier to 
+                identify patterns and generate insights that can inform HRI design and deployment.
               </p>
             </div>
             
@@ -466,8 +487,45 @@ const Home = () => {
               </p>
               <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
                 For more information about our research and the MoFASA framework, 
-                please visit our lab website or contact us directly.
+                please visit our lab website: 
+                <a href="https://www.raiselab.ca/" target="_blank" style={{ color: '#3498db', textDecoration: 'underline' }}> https://www.raiselab.ca/</a>
               </p>
+            </div>
+
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: '40px', 
+              marginTop: '30px',
+              marginBottom: '30px',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <img 
+                  src={require('../images/raise_logo.png')} 
+                  alt="RAISE Lab Logo" 
+                  style={{ 
+                    maxWidth: '200px', 
+                    height: 'auto',
+                    marginBottom: '10px'
+                  }} 
+                />
+                
+              </div>
+              
+              <div style={{ textAlign: 'center' }}>
+                <img 
+                  src={require('../images/mcgill_logo.png')} 
+                  alt="McGill University Logo" 
+                  style={{ 
+                    maxWidth: '200px', 
+                    height: 'auto',
+                    marginBottom: '10px'
+                  }} 
+                />
+                
+              </div>
             </div>
           </div>
         );
@@ -522,19 +580,17 @@ const Home = () => {
           </button>
 
           <button
-            onClick={() => setSelectedSection(selectedSection === 'LLM-configuration' ? '' : 'LLM-configuration')}
-            className={`left-panel-button ${selectedSection === 'LLM-configuration' ? 'selected' : ''}`}
-          >
-            LLM Configuration
-          </button>
-
-         
-
-          <button
             onClick={() => setSelectedSection(selectedSection === 'practice-mofasa' ? '' : 'practice-mofasa')}
             className={`left-panel-button ${selectedSection === 'practice-mofasa' ? 'selected' : ''}`}
           >
             Practice MoFASA Tools
+          </button>
+
+          <button
+            onClick={() => setSelectedSection(selectedSection === 'LLM-configuration' ? '' : 'LLM-configuration')}
+            className={`left-panel-button ${selectedSection === 'LLM-configuration' ? 'selected' : ''}`}
+          >
+            LLM Configuration
           </button>
 
           <button
@@ -550,6 +606,70 @@ const Home = () => {
           >
             About Us
           </button>
+        </div>
+
+        {/* Thin line */}
+        <div style={{ borderBottom: '1px solid #dcdde1', margin: '24px 0 16px 0' }}></div>
+
+        {/* Projects Section */}
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ 
+            color: '#2c3e50', 
+            marginBottom: '16px', 
+            fontSize: '1.2em',
+            fontWeight: '600',
+            fontFamily: 'Lexend, sans-serif'
+          }}>
+            Projects
+          </h3>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
+            <button
+              onClick={() => {
+                // Navigate to projects page
+                window.location.hash = '#/projects';
+              }}
+              style={{
+                padding: '16px 12px',
+                backgroundColor: '#e6e6e6',
+                color: '#000000',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '0.9em',
+                fontFamily: 'Lexend, sans-serif',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 4px rgba(52, 152, 219, 0.2)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                minHeight: '80px',
+                justifyContent: 'center'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = '#b5b5b5';
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 4px 8px rgba(120, 162, 190, 0.3)';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = '#e6e6e6';
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 2px 4px rgba(52, 152, 219, 0.2)';
+              }}
+            >
+              <span style={{ fontSize: '1.5em' }}>📁</span>
+              Open Project
+            </button>
+
+            
+          </div>
         </div>
       </div>
       <div className="right-panel" style={{ flex: 1, borderLeft: '1px solid #e9ecef', overflowY: 'auto' }}>
