@@ -164,19 +164,19 @@ const App = () => {
         });
       } else {
         // Update only in the selected scope for non-demographic fields
-        if (updatedScopes.length > selectedScopeIndex) {
-          const updatedParticipants = (updatedScopes[selectedScopeIndex].participants || []).map(part => {
-            if (part.id !== participantId) return part;
-            const answers = { ...part.answers };
-            if (!answers[section]) answers[section] = {};
-            answers[section][question] = value;
-            return { ...part, answers };
-          });
-          
-          updatedScopes[selectedScopeIndex] = {
-            ...updatedScopes[selectedScopeIndex],
-            participants: updatedParticipants
-          };
+      if (updatedScopes.length > selectedScopeIndex) {
+        const updatedParticipants = (updatedScopes[selectedScopeIndex].participants || []).map(part => {
+          if (part.id !== participantId) return part;
+          const answers = { ...part.answers };
+          if (!answers[section]) answers[section] = {};
+          answers[section][question] = value;
+          return { ...part, answers };
+        });
+        
+        updatedScopes[selectedScopeIndex] = {
+          ...updatedScopes[selectedScopeIndex],
+          participants: updatedParticipants
+        };
         }
       }
       

@@ -274,30 +274,30 @@ const SituationDesignView = ({
                           
                           {/* Summary section */}
                           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e9ecef' }}>
-                            <h5 style={{
-                              margin: '0 0 12px 0',
-                              fontFamily: 'Lexend, sans-serif',
+                          <h5 style={{
+                            margin: '0 0 12px 0',
+                            fontFamily: 'Lexend, sans-serif',
                               fontSize: '1em',
-                              color: '#2c3e50',
+                            color: '#2c3e50',
                               fontWeight: '600',
                               borderBottom: '2px solid #27ae60',
                               paddingBottom: '4px'
-                            }}>
-                              Summary:
-                            </h5>
-                            <p style={{
-                              margin: 0,
-                              fontFamily: 'Lexend, sans-serif',
-                              fontSize: '0.9em',
-                              color: '#495057',
-                              lineHeight: 1.6,
+                          }}>
+                            Summary:
+                          </h5>
+                          <p style={{
+                            margin: 0,
+                            fontFamily: 'Lexend, sans-serif',
+                            fontSize: '0.9em',
+                            color: '#495057',
+                            lineHeight: 1.6,
                               whiteSpace: 'pre-wrap',
                               fontStyle: !participant.summary || participant.summary.trim() === '' ? 'italic' : 'normal'
-                            }}>
+                          }}>
                               {participant.summary && participant.summary.trim() !== '' 
                                 ? participant.summary 
                                 : 'No summary available for this participant.'}
-                            </p>
+                          </p>
                           </div>
                         </div>
                       )}

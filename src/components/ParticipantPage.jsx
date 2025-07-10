@@ -1662,7 +1662,7 @@ Please provide a concise, direct answer to the question based on the interview c
             left: 0,
             right: '16px', // Leave space for scrollbar
             height: 'calc(100% - 60px)',
-            pointerEvents: 'auto',
+            pointerEvents: 'none',
             overflow: 'visible',
             zIndex: 100
           }}
@@ -1755,7 +1755,33 @@ Please provide a concise, direct answer to the question based on the interview c
                 
                 {/* Label in the middle of the line */}
                 {label && (
-                  <g style={{ pointerEvents: 'auto' }}>
+                  <g 
+                    style={{ pointerEvents: 'auto' }}
+                    onMouseEnter={(e) => {
+                      const group = e.currentTarget;
+                      const circle = group.querySelector('circle');
+                      const text = group.querySelector('text');
+                      if (circle) {
+                        circle.setAttribute('fill', 'rgba(52, 152, 219, 0.9)');
+                        circle.setAttribute('stroke', 'rgba(52, 152, 219, 1)');
+                      }
+                      if (text) {
+                        text.setAttribute('fill', '#fff');
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      const group = e.currentTarget;
+                      const circle = group.querySelector('circle');
+                      const text = group.querySelector('text');
+                      if (circle) {
+                        circle.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
+                        circle.setAttribute('stroke', 'rgba(52, 152, 219, 0.8)');
+                      }
+                      if (text) {
+                        text.setAttribute('fill', '#2c3e50');
+                      }
+                    }}
+                  >
                     {/* Background circle for label */}
                     <circle
                       cx={midX}
@@ -1765,7 +1791,7 @@ Please provide a concise, direct answer to the question based on the interview c
                       stroke="rgba(52, 152, 219, 0.8)"
                       strokeWidth="1"
                       filter="url(#dotGlow)"
-                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                      style={{ cursor: 'pointer', pointerEvents: 'auto', transition: 'all 0.2s ease' }}
                       onClick={() => handleConnectionClick(label)}
                     />
                     {/* Label text */}
@@ -1778,7 +1804,7 @@ Please provide a concise, direct answer to the question based on the interview c
                       fontWeight="600"
                       fontFamily="Lexend, sans-serif"
                       fill="#2c3e50"
-                      style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                      style={{ cursor: 'pointer', pointerEvents: 'auto', transition: 'all 0.2s ease' }}
                       onClick={() => handleConnectionClick(label)}
                     >
                       {label}

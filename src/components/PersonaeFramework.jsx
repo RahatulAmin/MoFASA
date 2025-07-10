@@ -195,7 +195,7 @@ const PersonaeFramework = ({
           left: 0,
           right: '16px', // Leave space for scrollbar
           height: '100%',
-          pointerEvents: 'auto',
+          pointerEvents: 'none',
           overflow: 'visible',
           zIndex: 100
         }}
@@ -262,33 +262,59 @@ const PersonaeFramework = ({
           const label = pair?.label || '';
           
           return (
-            <g key={index}>
-              {/* Connection line */}
-              <path
-                d={connection.path}
-                stroke="url(#lineGradient)"
-                strokeWidth="1"
-                fill="none"
-                opacity="2"
-                markerEnd="url(#arrowhead)"
+          <g key={index}>
+            {/* Connection line */}
+            <path
+              d={connection.path}
+              stroke="url(#lineGradient)"
+              strokeWidth="1"
+              fill="none"
+              opacity="2"
+              markerEnd="url(#arrowhead)"
                 style={{ pointerEvents: 'none' }}
-              />
-              
-              {/* Start point dot */}
-              <circle
-                cx={connection.startPoint.x}
-                cy={connection.startPoint.y}
-                r="4"
-                fill="rgba(210, 233, 255, 0.9)"
-                stroke="rgba(124, 193, 240, 0.8)"
-                strokeWidth="1"
-                filter="url(#dotGlow)"
+            />
+            
+            {/* Start point dot */}
+            <circle
+              cx={connection.startPoint.x}
+              cy={connection.startPoint.y}
+              r="4"
+              fill="rgba(210, 233, 255, 0.9)"
+              stroke="rgba(124, 193, 240, 0.8)"
+              strokeWidth="1"
+              filter="url(#dotGlow)"
                 style={{ pointerEvents: 'none' }}
               />
               
               {/* Label in the middle of the line */}
               {label && (
-                <g style={{ pointerEvents: 'auto' }}>
+                <g 
+                  style={{ pointerEvents: 'auto' }}
+                  onMouseEnter={(e) => {
+                    const group = e.currentTarget;
+                    const circle = group.querySelector('circle');
+                    const text = group.querySelector('text');
+                    if (circle) {
+                      circle.setAttribute('fill', 'rgba(52, 152, 219, 0.9)');
+                      circle.setAttribute('stroke', 'rgba(52, 152, 219, 1)');
+                    }
+                    if (text) {
+                      text.setAttribute('fill', '#fff');
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    const group = e.currentTarget;
+                    const circle = group.querySelector('circle');
+                    const text = group.querySelector('text');
+                    if (circle) {
+                      circle.setAttribute('fill', 'rgba(255, 255, 255, 0.9)');
+                      circle.setAttribute('stroke', 'rgba(52, 152, 219, 0.8)');
+                    }
+                    if (text) {
+                      text.setAttribute('fill', '#2c3e50');
+                    }
+                  }}
+                >
                   {/* Background circle for label */}
                   <circle
                     cx={midX}
@@ -298,7 +324,7 @@ const PersonaeFramework = ({
                     stroke="rgba(52, 152, 219, 0.8)"
                     strokeWidth="1"
                     filter="url(#dotGlow)"
-                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                    style={{ cursor: 'pointer', pointerEvents: 'auto', transition: 'all 0.2s ease' }}
                     onClick={() => handleConnectionClick(label)}
                   />
                   {/* Label text */}
@@ -311,7 +337,7 @@ const PersonaeFramework = ({
                     fontWeight="600"
                     fontFamily="Lexend, sans-serif"
                     fill="#2c3e50"
-                    style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                    style={{ cursor: 'pointer', pointerEvents: 'auto', transition: 'all 0.2s ease' }}
                     onClick={() => handleConnectionClick(label)}
                   >
                     {label}
