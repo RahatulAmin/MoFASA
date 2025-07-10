@@ -1481,97 +1481,144 @@ Please provide a concise, direct answer to the question based on the interview c
 
           {/* Generate Summary Section */}
           <div style={{ marginBottom: 32 }}>
-            <h3 style={{ 
-              fontFamily: 'Lexend, sans-serif',
-              fontSize: '1.1em',
-              marginBottom: 16,
-              color: '#2c3e50'
-            }}>
-              Summary
-            </h3>
             <div style={{ 
-              padding: '16px',
-              backgroundColor: '#f8f9fa',
-              borderRadius: '8px',
-              border: '1px solid #e9ecef'
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px',
+              marginBottom: '16px'
             }}>
-              <div style={{ marginBottom: '16px' }}>
-                <textarea
-                  value={summary}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setSummary(newValue);
-                    
-                    // Clear any existing timer
-                    if (summaryChangeTimer.current) {
-                      clearTimeout(summaryChangeTimer.current);
-                    }
-                    
-                    // Set a new timer to debounce the database update
-                    summaryChangeTimer.current = setTimeout(() => {
-                      updateParticipantSummary(idx, participantId, newValue);
-                    }, 500); // 500ms delay
-                  }}
-                  placeholder="Participant Summary..."
-                  style={{
-                    width: '100%',
-                    minHeight: '150px',
-                    padding: '12px',
-                    borderRadius: '4px',
-                    border: '1px solid #dcdde1',
-                    fontSize: '0.95em',
-                    fontFamily: 'Lexend, sans-serif',
-                    resize: 'vertical',
-                    marginBottom: '12px'
-                  }}
+              <label style={{ 
+                position: 'relative',
+                display: 'inline-block',
+                width: '50px',
+                height: '24px'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={showSummary}
+                  onChange={() => setShowSummary(!showSummary)}
+                  style={{ opacity: 0, width: 0, height: 0 }}
                 />
-                <button
-                  onClick={generateSummary}
-                  disabled={isGenerating}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: isGenerating ? '#bbb' : '#3498db',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isGenerating ? 'default' : 'pointer',
-                    fontFamily: 'Lexend, sans-serif'
-                  }}
-                >
-                  {isGenerating ? 'Generating...' : 'Generate Summary using LLM'}
-                </button>
-                {isGenerating && (
-                  <div style={{ marginTop: '8px' }}>
-                    <div style={{ 
-                      width: '100%', 
-                      height: '4px', 
-                      backgroundColor: '#eee',
-                      borderRadius: '2px',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{
-                        width: `${progress}%`,
-                        height: '100%',
-                        backgroundColor: '#3498db',
-                        transition: 'width 0.3s ease'
-                      }} />
-                    </div>
-                  </div>
-                )}
-                {error && (
-                  <div style={{
-                    marginTop: '8px',
-                    padding: '8px 12px',
-                    backgroundColor: '#fee',
-                    color: '#e74c3c',
-                    borderRadius: '4px',
-                    fontSize: '0.9em'
-                  }}>
-                    {error}
-                  </div>
-                )}
-              </div>
+                <span style={{
+                  position: 'absolute',
+                  cursor: 'pointer',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: showSummary ? '#3498db' : '#ccc',
+                  transition: '.4s',
+                  borderRadius: '24px'
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    content: '""',
+                    height: '18px',
+                    width: '18px',
+                    left: '3px',
+                    bottom: '3px',
+                    backgroundColor: 'white',
+                    transition: '.4s',
+                    borderRadius: '50%',
+                    transform: showSummary ? 'translateX(26px)' : 'translateX(0)'
+                  }} />
+                </span>
+              </label>
+              <h3 style={{ 
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1.1em',
+                margin: 0,
+                color: '#2c3e50'
+              }}>
+                Write/Generate a Summary (Optional)
+              </h3>
             </div>
+            
+            {showSummary && (
+              <div style={{ 
+                padding: '16px',
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <textarea
+                    value={summary}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setSummary(newValue);
+                      
+                      // Clear any existing timer
+                      if (summaryChangeTimer.current) {
+                        clearTimeout(summaryChangeTimer.current);
+                      }
+                      
+                      // Set a new timer to debounce the database update
+                      summaryChangeTimer.current = setTimeout(() => {
+                        updateParticipantSummary(idx, participantId, newValue);
+                      }, 500); // 500ms delay
+                    }}
+                    placeholder="Participant Summary..."
+                    style={{
+                      width: '100%',
+                      minHeight: '150px',
+                      padding: '12px',
+                      borderRadius: '4px',
+                      border: '1px solid #dcdde1',
+                      fontSize: '0.95em',
+                      fontFamily: 'Lexend, sans-serif',
+                      resize: 'vertical',
+                      marginBottom: '12px'
+                    }}
+                  />
+                  <button
+                    onClick={generateSummary}
+                    disabled={isGenerating}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: isGenerating ? '#bbb' : '#3498db',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: isGenerating ? 'default' : 'pointer',
+                      fontFamily: 'Lexend, sans-serif'
+                    }}
+                  >
+                    {isGenerating ? 'Generating...' : 'Generate Summary using LLM'}
+                  </button>
+                  {isGenerating && (
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ 
+                        width: '100%', 
+                        height: '4px', 
+                        backgroundColor: '#eee',
+                        borderRadius: '2px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${progress}%`,
+                          height: '100%',
+                          backgroundColor: '#3498db',
+                          transition: 'width 0.3s ease'
+                        }} />
+                      </div>
+                    </div>
+                  )}
+                  {error && (
+                    <div style={{
+                      marginTop: '8px',
+                      padding: '8px 12px',
+                      backgroundColor: '#fee',
+                      color: '#e74c3c',
+                      borderRadius: '4px',
+                      fontSize: '0.9em'
+                    }}>
+                      {error}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
