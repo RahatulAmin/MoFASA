@@ -316,7 +316,7 @@ const Home = () => {
               <h3 style={{ marginTop: '24px' }}>🤖 What is the MoFASA Framework?</h3>
               <p><strong>MoFASA</strong>, short for <strong>Modified Factors of Social Appropriateness</strong>, is a human-centered framework designed for HRI practitioners who 
               want to understand the <em>why</em> behind human behavior in human-robot interaction. MoFASA helps you analyze the <em>social and contextual logic</em> that drives 
-              people's reactions. It is built on and extends two foundational models: <strong>FASA</strong> (Five Factors of Social Appropriateness) and <strong>LOA</strong> 
+              people's reactions. It is built on and extends two foundational models: <strong>FASA</strong> (Five Factors of Social Appropriateness) and <strong>LOA </strong> 
               (Logic of Appropriateness). By combining theoretical depth with practical relevance, MoFASA offers a streamlined, HRI-focused framework for interpreting human behavior.</p>
               <br />
               <p>At the heart of MoFASA are three key analytical lenses:</p>
