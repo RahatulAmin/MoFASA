@@ -129,21 +129,55 @@ const App = () => {
       
       const selectedScopeIndex = getSelectedScopeIndex();
       
-      // Update participants in the selected scope
+      // Define demographic fields that should be synchronized across all scopes
+      const demographicFields = {
+        'Identity': [
+          'age', // dropdown
+          'gender', // dropdown
+          'Nationality of the participant(s)', // text
+          'Education level of the participant(s)', // text
+          'Occupation of the participant(s)' // text
+        ]
+      };
+      
+      // Check if this is a demographic field that should be synchronized
+      const isDemographicField = section === 'Identity' && 
+        demographicFields['Identity'].includes(question);
+      
       const updatedScopes = [...(p.scopes || [])];
-      if (updatedScopes.length > selectedScopeIndex) {
-        const updatedParticipants = (updatedScopes[selectedScopeIndex].participants || []).map(part => {
-          if (part.id !== participantId) return part;
-          const answers = { ...part.answers };
-          if (!answers[section]) answers[section] = {};
-          answers[section][question] = value;
-          return { ...part, answers };
+      
+      if (isDemographicField) {
+        // Update this demographic field across ALL scopes for this participant
+        updatedScopes.forEach((scope, scopeIndex) => {
+          const updatedParticipants = (scope.participants || []).map(part => {
+            if (part.id !== participantId) return part;
+            const answers = { ...part.answers };
+            if (!answers[section]) answers[section] = {};
+            answers[section][question] = value;
+            return { ...part, answers };
+          });
+          
+          updatedScopes[scopeIndex] = {
+            ...updatedScopes[scopeIndex],
+            participants: updatedParticipants
+          };
         });
-        
-        updatedScopes[selectedScopeIndex] = {
-          ...updatedScopes[selectedScopeIndex],
-          participants: updatedParticipants
-        };
+      } else {
+        // Update only in the selected scope for non-demographic fields
+        if (updatedScopes.length > selectedScopeIndex) {
+          const updatedParticipants = (updatedScopes[selectedScopeIndex].participants || []).map(part => {
+            if (part.id !== participantId) return part;
+            const answers = { ...part.answers };
+            if (!answers[section]) answers[section] = {};
+            answers[section][question] = value;
+            return { ...part, answers };
+          });
+          
+          updatedScopes[selectedScopeIndex] = {
+            ...updatedScopes[selectedScopeIndex],
+            participants: updatedParticipants
+          };
+        }
       }
       
       return {
