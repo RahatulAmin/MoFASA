@@ -249,13 +249,13 @@ const App = () => {
         >
           Settings
         </Link>
-        <Link 
+        {/* <Link 
           to="/about" 
           className="sidebar-item"
           style={{ background: location.pathname === "/about" ? '#34495e' : undefined }}
         >
           About MoFASA
-        </Link>
+        </Link> */}
       </div>
     );
   }

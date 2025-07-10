@@ -10,7 +10,8 @@ const SituationDesignView = ({
   project,
   selectedScope,
   editProject,
-  idx
+  idx,
+  questions = {}
 }) => {
   const [selectedRule, setSelectedRule] = useState(null);
   const [expandedParticipants, setExpandedParticipants] = useState(new Set());
@@ -207,25 +208,97 @@ const SituationDesignView = ({
                           backgroundColor: '#f8f9fa',
                           borderTop: '1px solid #e9ecef'
                         }}>
-                          <h5 style={{
-                            margin: '0 0 12px 0',
-                            fontFamily: 'Lexend, sans-serif',
-                            fontSize: '0.95em',
-                            color: '#2c3e50',
-                            fontWeight: '600'
-                          }}>
-                            Summary:
-                          </h5>
-                          <p style={{
-                            margin: 0,
-                            fontFamily: 'Lexend, sans-serif',
-                            fontSize: '0.9em',
-                            color: '#495057',
-                            lineHeight: 1.6,
-                            whiteSpace: 'pre-wrap'
-                          }}>
-                            {participant.summary || 'No summary available for this participant.'}
-                          </p>
+                          {/* Display all answers organized by section */}
+                          {Object.entries(participant.answers || {}).map(([sectionName, sectionAnswers]) => {
+                            if (sectionName === 'Rule Selection') return null; // Skip Rule Selection section
+                            
+                            return (
+                              <div key={sectionName} style={{ marginBottom: '20px' }}>
+                                <h5 style={{
+                                  margin: '0 0 12px 0',
+                                  fontFamily: 'Lexend, sans-serif',
+                                  fontSize: '1em',
+                                  color: '#2c3e50',
+                                  fontWeight: '600',
+                                  borderBottom: '2px solid #3498db',
+                                  paddingBottom: '4px'
+                                }}>
+                                  {sectionName}:
+                                </h5>
+                                
+                                {Object.entries(sectionAnswers || {}).map(([questionText, answer]) => {
+                                  if (!answer || answer.trim() === '') return null;
+                                  
+                                  // Find the question to get its factors
+                                  const sectionQuestions = questions[sectionName] || [];
+                                  // For dropdown questions, match by id; for text questions, match by text
+                                  const question = sectionQuestions.find(q => 
+                                    q.id === questionText || q.text === questionText
+                                  );
+                                  const factors = question?.factors;
+                                  
+                                  // Handle factors - it's stored as a string in the database, not an array
+                                  let factorDisplay = 'Question';
+                                  if (factors && typeof factors === 'string' && factors.trim() !== '') {
+                                    factorDisplay = factors;
+                                  } else if (Array.isArray(factors) && factors.length > 0) {
+                                    factorDisplay = factors.join(', ');
+                                  }
+                                  
+                                  console.log('Final factorDisplay for render:', factorDisplay);
+                                  
+                                  return (
+                                    <div key={questionText} style={{ marginBottom: '8px' }}>
+                                      <span style={{
+                                        fontFamily: 'Lexend, sans-serif',
+                                        fontSize: '0.9em',
+                                        color: '#34495e',
+                                        fontWeight: '500'
+                                      }}>
+                                        {factorDisplay} - 
+                                      </span>
+                                      <span style={{
+                                        fontFamily: 'Lexend, sans-serif',
+                                        fontSize: '0.9em',
+                                        color: '#495057',
+                                        marginLeft: '4px'
+                                      }}>
+                                        {answer}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                          
+                          {/* Summary section */}
+                          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e9ecef' }}>
+                            <h5 style={{
+                              margin: '0 0 12px 0',
+                              fontFamily: 'Lexend, sans-serif',
+                              fontSize: '1em',
+                              color: '#2c3e50',
+                              fontWeight: '600',
+                              borderBottom: '2px solid #27ae60',
+                              paddingBottom: '4px'
+                            }}>
+                              Summary:
+                            </h5>
+                            <p style={{
+                              margin: 0,
+                              fontFamily: 'Lexend, sans-serif',
+                              fontSize: '0.9em',
+                              color: '#495057',
+                              lineHeight: 1.6,
+                              whiteSpace: 'pre-wrap',
+                              fontStyle: !participant.summary || participant.summary.trim() === '' ? 'italic' : 'normal'
+                            }}>
+                              {participant.summary && participant.summary.trim() !== '' 
+                                ? participant.summary 
+                                : 'No summary available for this participant.'}
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>

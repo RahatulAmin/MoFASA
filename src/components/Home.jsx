@@ -213,7 +213,7 @@ const Home = () => {
              <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Practice using MoFASA Tools with a sample project</h2>
              <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '24px' }}>
                Click the button below to download the MoFASA practice study document. 
-               In this document you will find a simple HRI project and 10 participant interview data. 
+               In this document you will find a simple HRI project and 12 participant interview data. 
                You can follow the steps in the tutorial to analyze this project.
              </p>
              <div style={{ 
@@ -226,7 +226,7 @@ const Home = () => {
              }}>
                <h3 style={{ color: 'white', marginBottom: '16px', fontSize: '18px' }}>MoFASA Practice Study</h3>
                <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '20px', fontSize: '14px' }}>
-                 Contains: 1 HRI project with 10 participant interviews
+                 Contains: 1 HRI project with 12 participant interviews
                </p>
                <button 
                  onClick={() => {
@@ -627,7 +627,7 @@ const Home = () => {
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
             gap: '12px',
-            marginBottom: '16px'
+            marginBottom: '16px',
           }}>
             <button
               onClick={() => {
@@ -636,7 +636,7 @@ const Home = () => {
               }}
               style={{
                 padding: '16px 12px',
-                backgroundColor: '#e6e6e6',
+                backgroundColor: '#f8f9fa',
                 color: '#000000',
                 border: 'none',
                 borderRadius: '8px',
@@ -645,7 +645,7 @@ const Home = () => {
                 fontSize: '0.9em',
                 fontFamily: 'Lexend, sans-serif',
                 transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(52, 152, 219, 0.2)',
+                boxShadow: '0 2px 4px rgba(151, 151, 151, 0.2)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -654,18 +654,18 @@ const Home = () => {
                 justifyContent: 'center'
               }}
               onMouseOver={(e) => {
-                e.target.style.backgroundColor = '#b5b5b5';
+                e.target.style.backgroundColor = '#e6e6e6';
                 e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 4px 8px rgba(120, 162, 190, 0.3)';
+                e.target.style.boxShadow = '0 4px 8px rgba(151, 151, 151, 0.3)';
               }}
               onMouseOut={(e) => {
-                e.target.style.backgroundColor = '#e6e6e6';
+                e.target.style.backgroundColor = '#f8f9fa';
                 e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 2px 4px rgba(52, 152, 219, 0.2)';
+                e.target.style.boxShadow = '0 2px 4px rgba(151, 151, 151, 0.2)';
               }}
             >
-              <span style={{ fontSize: '1.5em' }}>📁</span>
-              Open Project
+              <span style={{fontSize: '1.5em', margin: 0, padding: 0, pointerEvents: 'none'}}>📁</span>
+              Open Project 
             </button>
 
             

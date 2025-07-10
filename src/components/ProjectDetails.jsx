@@ -1826,6 +1826,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               selectedScope={selectedScope}
               editProject={editProject}
               idx={idx}
+              questions={questions}
             />
           </>
         ) : (

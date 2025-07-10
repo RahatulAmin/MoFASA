@@ -480,7 +480,7 @@ Guidelines:
 
   const renderTechSettings = () => (
     <div>
-      <h2>Technical Settings</h2>
+      <h2>LLM Settings</h2>
       <div style={{ marginTop: 20 }}>
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', marginBottom: 8 }}>LLM URL</label>
@@ -628,7 +628,7 @@ Guidelines:
               fontSize: '1em'
             }}
           >
-            Technical Settings
+            LLM Settings
           </button>
         </div>
       </div>
