@@ -637,7 +637,7 @@ const Home = () => {
               style={{
                 padding: '16px 12px',
                 backgroundColor: '#f8f9fa',
-                color: '#000000',
+                color: '#7f8c8d',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
@@ -657,11 +657,13 @@ const Home = () => {
                 e.target.style.backgroundColor = '#e6e6e6';
                 e.target.style.transform = 'translateY(-2px)';
                 e.target.style.boxShadow = '0 4px 8px rgba(151, 151, 151, 0.3)';
+                e.target.style.color = '#000000';
               }}
               onMouseOut={(e) => {
                 e.target.style.backgroundColor = '#f8f9fa';
                 e.target.style.transform = 'translateY(0)';
                 e.target.style.boxShadow = '0 2px 4px rgba(151, 151, 151, 0.2)';
+                e.target.style.color = '#7f8c8d';
               }}
             >
               <span style={{fontSize: '1.5em', margin: 0, padding: 0, pointerEvents: 'none'}}>📁</span>

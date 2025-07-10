@@ -80,6 +80,35 @@ const SituationDesignView = ({
             ))}
           </div>
 
+          {/* No rules message */}
+          {(!currentScope?.rules || currentScope.rules.length === 0) && (
+            <div style={{
+              background: 'white',
+              borderRadius: '8px',
+              border: '1px solid #e9ecef',
+              padding: '24px',
+              textAlign: 'center',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                fontSize: '2em',
+                marginBottom: '12px',
+                color: '#95a5a6'
+              }}>
+                📋
+              </div>
+              <p style={{
+                margin: 0,
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1em',
+                color: '#7f8c8d',
+                fontWeight: '500'
+              }}>
+                No rules generated yet
+              </p>
+            </div>
+          )}
+
           {/* Participant Cards for Selected Rule */}
           {selectedRule && (
             <div style={{ 
