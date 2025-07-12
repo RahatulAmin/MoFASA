@@ -1,7 +1,7 @@
 import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import FactorDetailsModal from './FactorDetailsModal';
-import { handleFactorClick } from '../utils/factorUtils';
+import { handleFactorClick, parseFactors } from '../utils/factorUtils';
 
 const SECTIONS = [
   {
@@ -156,6 +156,21 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   // Reference for connection calculation function
   const refreshConnections = useRef(() => {});
   
+  // Debounce timer for connection refresh
+  const connectionRefreshTimer = useRef(null);
+  
+  // Function to manually trigger connection refresh with debouncing
+  const triggerConnectionRefresh = () => {
+    if (connectionRefreshTimer.current) {
+      clearTimeout(connectionRefreshTimer.current);
+    }
+    connectionRefreshTimer.current = setTimeout(() => {
+      if (refreshConnections.current) {
+        refreshConnections.current();
+      }
+    }, 150); // Debounce to 150ms
+  };
+  
   // Debounce timer for answer changes
   const answerChangeTimer = useRef(null);
   // Debounce timer for summary changes
@@ -201,6 +216,16 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     
     loadQuestions();
   }, [actualProjectId]);
+
+  // Trigger connection refresh when questions are loaded
+  useEffect(() => {
+    if (!questionsLoading && Object.keys(questions).length > 0) {
+      // Use a longer delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        triggerConnectionRefresh();
+      }, 200);
+    }
+  }, [questionsLoading, questions]);
 
   // Add focus event listener to reload questions when returning to the page
   useEffect(() => {
@@ -296,6 +321,9 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       }
       if (summaryChangeTimer.current) {
         clearTimeout(summaryChangeTimer.current);
+      }
+      if (connectionRefreshTimer.current) {
+        clearTimeout(connectionRefreshTimer.current);
       }
     };
   }, []);
@@ -414,17 +442,25 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     // Recalculate after a short delay to ensure DOM is fully rendered
     const timeoutId = setTimeout(calculateConnections, 100);
 
-    // Recalculate on window resize
+    // Recalculate on window resize with debouncing
+    let resizeTimeout;
     const handleResize = () => {
-      setTimeout(calculateConnections, 50);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = setTimeout(calculateConnections, 100);
     };
     window.addEventListener('resize', handleResize);
 
-    // Use ResizeObserver to detect content changes
+    // Use ResizeObserver to detect content changes with debouncing
     let resizeObserver;
     if (window.ResizeObserver) {
+      let resizeObserverTimeout;
       resizeObserver = new ResizeObserver(() => {
-        setTimeout(calculateConnections, 50);
+        if (resizeObserverTimeout) {
+          clearTimeout(resizeObserverTimeout);
+        }
+        resizeObserverTimeout = setTimeout(calculateConnections, 100);
       });
       
       // Observe the right panel
@@ -437,6 +473,9 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     // Cleanup function
     return () => {
       clearTimeout(timeoutId);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
       window.removeEventListener('resize', handleResize);
       if (resizeObserver) {
         resizeObserver.disconnect();
@@ -449,7 +488,8 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     selectedRules, 
     showInterview, 
     showSummary,
-    currentScope
+    currentScope,
+    questions
   ]);
 
 
@@ -784,6 +824,11 @@ Please provide a concise, direct answer to the question based on the interview c
     answerChangeTimer.current = setTimeout(() => {
       updateParticipantAnswers(idx, participantId, section, question, value);
     }, 500); // 500ms delay
+    
+    // Trigger connection refresh after a delay to allow DOM to update
+    setTimeout(() => {
+      triggerConnectionRefresh();
+    }, 200);
   };
 
   return (
@@ -1409,28 +1454,32 @@ Please provide a concise, direct answer to the question based on the interview c
                           }}>
                             {questionText}
                             {question.factors && (
-                              <span 
-                                onClick={() => handleFactorClickLocal(question, question.factors)}
-                                style={{
-                                  fontSize: '0.8em',
-                                  color: '#000000',
-                                  background: '#cceeff',
-                                  borderRadius: '8px',
-                                  padding: '2px 8px',
-                                  marginLeft: '6px',
-                                  fontWeight: 400,
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
-                                }}
-                                onMouseOver={(e) => {
-                                  e.target.style.background = '#99ddff';
-                                }}
-                                onMouseOut={(e) => {
-                                  e.target.style.background = '#cceeff';
-                                }}
-                              >
-                                {question.factors}
-                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '6px' }}>
+                                {parseFactors(question.factors).map((factor, index) => (
+                                  <span 
+                                    key={index}
+                                    onClick={() => handleFactorClickLocal(question, factor)}
+                                    style={{
+                                      fontSize: '0.8em',
+                                      color: '#000000',
+                                      background: '#cceeff',
+                                      borderRadius: '8px',
+                                      padding: '2px 8px',
+                                      fontWeight: 400,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseOver={(e) => {
+                                      e.target.style.background = '#99ddff';
+                                    }}
+                                    onMouseOut={(e) => {
+                                      e.target.style.background = '#cceeff';
+                                    }}
+                                  >
+                                    {factor}
+                                  </span>
+                                ))}
+                              </div>
                             )}
                           </label>
                           {isDropdown ? (
@@ -1934,28 +1983,32 @@ Please provide a concise, direct answer to the question based on the interview c
                       <div key={questionId} style={{ marginBottom: 12 }}>
                         <span style={{ fontWeight: 400 }}>{answer}</span>
                         {factors && (
-                          <span 
-                            onClick={() => handleFactorClickLocal(question, question.factors)}
-                            style={{
-                              fontSize: '0.8em',
-                              color: '#000000',
-                              background: '#cceeff',
-                              borderRadius: '8px',
-                              padding: '2px 8px',
-                              marginLeft: '6px',
-                              fontWeight: 400,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseOver={(e) => {
-                              e.target.style.background = '#99ddff';
-                            }}
-                            onMouseOut={(e) => {
-                              e.target.style.background = '#cceeff';
-                            }}
-                          >
-                            {question.factors}
-                          </span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '6px' }}>
+                            {parseFactors(question.factors).map((factor, index) => (
+                              <span 
+                                key={index}
+                                onClick={() => handleFactorClickLocal(question, factor)}
+                                style={{
+                                  fontSize: '0.8em',
+                                  color: '#000000',
+                                  background: '#cceeff',
+                                  borderRadius: '8px',
+                                  padding: '2px 8px',
+                                  fontWeight: 400,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseOver={(e) => {
+                                  e.target.style.background = '#99ddff';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.target.style.background = '#cceeff';
+                                }}
+                              >
+                                {factor}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     ) : null;

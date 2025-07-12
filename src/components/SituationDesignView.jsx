@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { parseFactors } from '../utils/factorUtils';
 
 const SituationDesignView = ({ 
   currentScope, 
@@ -215,8 +216,8 @@ const SituationDesignView = ({
                             {participant.answers?.Identity?.gender && (
                               <span>Gender: {participant.answers.Identity.gender}</span>
                             )}
-                            {participant.answers?.Identity?.nationality && (
-                              <span>Nationality: {participant.answers.Identity.nationality}</span>
+                            {participant.answers?.Identity?.['Nationality of the participant(s)'] && (
+                              <span>Nationality: {participant.answers.Identity['Nationality of the participant(s)']}</span>
                             )}
                           </div>
                         </div>
@@ -266,12 +267,13 @@ const SituationDesignView = ({
                                   );
                                   const factors = question?.factors;
                                   
-                                  // Handle factors - it's stored as a string in the database, not an array
+                                  // Handle factors - parse into array and join for display
                                   let factorDisplay = 'Question';
-                                  if (factors && typeof factors === 'string' && factors.trim() !== '') {
-                                    factorDisplay = factors;
-                                  } else if (Array.isArray(factors) && factors.length > 0) {
-                                    factorDisplay = factors.join(', ');
+                                  if (factors) {
+                                    const factorArray = parseFactors(factors);
+                                    if (factorArray.length > 0) {
+                                      factorDisplay = factorArray.join(', ');
+                                    }
                                   }
                                   
                                   console.log('Final factorDisplay for render:', factorDisplay);

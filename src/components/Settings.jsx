@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ProjectQuestionnaireSettings from './ProjectQuestionnaireSettings';
+import FactorManagement from './FactorManagement';
 
 const Settings = ({ projects }) => {
-  const [activeTab, setActiveTab] = useState('projects'); // 'projects' or 'tech'
+  const [activeTab, setActiveTab] = useState('projects'); // 'projects', 'tech', or 'factors'
   const [settings, setSettings] = useState({
     llmUrl: 'http://127.0.0.1:11434',
     modelName: 'deepseek-coder',
@@ -618,6 +619,7 @@ Guidelines:
             style={{
               width: '100%',
               padding: '12px',
+              marginBottom: 8,
               background: activeTab === 'tech' ? '#3498db' : '#f8f9fa',
               color: activeTab === 'tech' ? '#fff' : '#333',
               border: 'none',
@@ -630,10 +632,29 @@ Guidelines:
           >
             LLM Settings
           </button>
+          {/* <button
+            onClick={() => setActiveTab('factors')}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: activeTab === 'factors' ? '#3498db' : '#f8f9fa',
+              color: activeTab === 'factors' ? '#fff' : '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              textAlign: 'left',
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1em'
+            }}
+          >
+            Factor Management
+          </button> */}
         </div>
       </div>
-      <div className="right-panel" style={{ width: '70%', padding: '20px' }}>
-        {activeTab === 'projects' ? renderProjectsSettings() : renderTechSettings()}
+      <div className="right-panel" style={{ width: '70%', padding: activeTab === 'factors' ? '0' : '20px' }}>
+        {activeTab === 'projects' ? renderProjectsSettings() : 
+         activeTab === 'tech' ? renderTechSettings() : 
+         activeTab === 'factors' ? <FactorManagement /> : null}
       </div>
     </div>
   );

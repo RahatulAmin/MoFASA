@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { SECTIONS, connectionPairs } from '../constants/frameAnalysis';
+import { parseFactors } from '../utils/factorUtils';
 
 const CONNECTION_EXPLANATIONS = {
   'A': {
@@ -454,28 +455,32 @@ const PersonaeFramework = ({
                     <div key={questionId} style={{ marginBottom: 12 }}>
                       <span style={{ fontWeight: 500 }}>{answer}</span>
                       {factors && (
-                        <span 
-                          onClick={() => onFactorClick(question, question.factors)}
-                          style={{
-                            fontSize: '0.8em',
-                            color: '#000000',
-                            background: '#cceeff',
-                            borderRadius: '8px',
-                            padding: '2px 8px',
-                            marginLeft: '6px',
-                            fontWeight: 400,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseOver={(e) => {
-                            e.target.style.background = '#99ddff';
-                          }}
-                          onMouseOut={(e) => {
-                            e.target.style.background = '#cceeff';
-                          }}
-                        >
-                          {question.factors}
-                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '6px' }}>
+                          {parseFactors(question.factors).map((factor, index) => (
+                            <span 
+                              key={index}
+                              onClick={() => onFactorClick(question, factor)}
+                              style={{
+                                fontSize: '0.8em',
+                                color: '#000000',
+                                background: '#cceeff',
+                                borderRadius: '8px',
+                                padding: '2px 8px',
+                                fontWeight: 400,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseOver={(e) => {
+                                e.target.style.background = '#99ddff';
+                              }}
+                              onMouseOut={(e) => {
+                                e.target.style.background = '#cceeff';
+                              }}
+                            >
+                              {factor}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
                   ) : null;

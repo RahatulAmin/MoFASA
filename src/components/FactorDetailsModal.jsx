@@ -35,21 +35,32 @@ const FactorDetailsModal = ({
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           marginBottom: '24px',
           borderBottom: '2px solid #e9ecef',
           paddingBottom: '16px'
         }}>
           <div>
             <h2 style={{ 
-              margin: 0, 
+              margin: '0 0 8px 0', 
               color: '#2c3e50',
               fontSize: '1.4em',
               fontWeight: '600'
             }}>
               {factorDetails.factor}
             </h2>
+            <span style={{
+              fontSize: '0.9em',
+              color: '#fff',
+              backgroundColor: '#3498db',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontWeight: '500'
+            }}>
+              {factorDetails.section}
+            </span>
           </div>
+        
           <button
             onClick={onClose}
             style={{
@@ -68,6 +79,8 @@ const FactorDetailsModal = ({
             ×
           </button>
         </div>
+
+        
 
         <div style={{ marginBottom: '24px' }}>
           <h3 style={{ 
@@ -111,7 +124,7 @@ const FactorDetailsModal = ({
           </p>
         </div>
 
-        {/* <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '24px' }}>
           <h3 style={{ 
             margin: '0 0 12px 0', 
             color: '#34495e',
@@ -133,9 +146,9 @@ const FactorDetailsModal = ({
               </li>
             ))}
           </ul>
-        </div> */}
+        </div>
 
-        {/* <div style={{ marginBottom: '24px' }}>
+        <div style={{ marginBottom: '24px' }}>
           <h3 style={{ 
             margin: '0 0 12px 0', 
             color: '#34495e',
@@ -160,7 +173,7 @@ const FactorDetailsModal = ({
           </div>
         </div>
 
-        <div style={{ marginBottom: '24px' }}>
+        {/* <div style={{ marginBottom: '24px' }}>
           <h3 style={{ 
             margin: '0 0 12px 0', 
             color: '#34495e',

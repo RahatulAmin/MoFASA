@@ -4,7 +4,7 @@ import editIcon from '../images/edit.png';
 import deleteIcon from '../images/trash.png';
 import { encryptData, decryptData } from '../utils/crypto';
 import FactorDetailsModal from './FactorDetailsModal';
-import { handleFactorClick } from '../utils/factorUtils';
+import { handleFactorClick, parseFactors } from '../utils/factorUtils';
 
 const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const navigate = useNavigate();
@@ -963,29 +963,34 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                                         {question.questionType}
                                       </span>
                                       {question.factors && (
-                                        <span 
-                                          onClick={() => handleFactorClickLocal(question, question.factors)}
-                                          style={{
-                                            fontSize: '0.7em',
-                                            color: '#000000',
-                                            backgroundColor: '#cceeff',
-                                            borderRadius: '8px',
-                                            padding: '1px 8px',
-                                            fontWeight: 400,
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease'
-                                          }}
-                                          onMouseOver={(e) => {
-                                            e.target.style.background = '#99ddff';
-                                            e.target.style.transform = 'scale(1.05)';
-                                          }}
-                                          onMouseOut={(e) => {
-                                            e.target.style.background = '#cceeff';
-                                            e.target.style.transform = 'scale(1)';
-                                          }}
-                                        >
-                                          {question.factors}
-                                        </span>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                          {parseFactors(question.factors).map((factor, index) => (
+                                            <span 
+                                              key={index}
+                                              onClick={() => handleFactorClickLocal(question, factor)}
+                                              style={{
+                                                fontSize: '0.7em',
+                                                color: '#000000',
+                                                backgroundColor: '#cceeff',
+                                                borderRadius: '8px',
+                                                padding: '1px 8px',
+                                                fontWeight: 400,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease'
+                                              }}
+                                              onMouseOver={(e) => {
+                                                e.target.style.background = '#99ddff';
+                                                e.target.style.transform = 'scale(1.05)';
+                                              }}
+                                              onMouseOut={(e) => {
+                                                e.target.style.background = '#cceeff';
+                                                e.target.style.transform = 'scale(1)';
+                                              }}
+                                            >
+                                              {factor}
+                                            </span>
+                                          ))}
+                                        </div>
                                       )}
                                       {question.options && (
                                         <span style={{ 

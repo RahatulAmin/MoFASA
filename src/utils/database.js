@@ -301,7 +301,9 @@ function performMigration() {
       { id: 'where', text: 'Where did it take place?', type: 'text', factors: 'Place', order: 1 },
       { id: 'agents_count', text: 'How many interacting agents (Humans and Robots) were there?', type: 'text', factors: 'Participants', order: 2 },
       { id: 'in_group', text: 'Were they in a group?', type: 'text', factors: 'Group Size', order: 3 },
-      { id: 'roles', text: 'What were the roles of the interacting agents?', type: 'text', factors: 'Role Identities', order: 4 }
+      { id: 'roles', text: 'What were the roles of the interacting agents?', type: 'text', factors: 'Role Identities', order: 4 },
+      { id: 'intention', text: 'What was the intention of the interacting agents?', type: 'text', factors: 'Intention', order: 5 },
+      { id: 'social_motive', text: 'What was their social motive for interacting with the robot?', type: 'text', factors: 'Social Motive', order: 5 },
     ];
     
     // Identity questions
@@ -311,21 +313,25 @@ function performMigration() {
       { id: 'nationality', text: 'Nationality of the participant(s)', type: 'text', factors: 'Nationality', order: 2 },
       { id: 'occupation', text: 'Occupation of the participant(s)', type: 'text', factors: 'Occupation', order: 3 },
       { id: 'education', text: 'Education level of the participant(s)', type: 'text', factors: 'Background', order: 4 },
-      { id: 'social_motive', text: 'What was their social motive for interacting with the robot?', type: 'text', factors: 'Social Motive', order: 5 },
-      { id: 'experience', text: 'Do they have previous experience of interacting with robots?', type: 'text', factors: 'Experience', order: 6 },
-      { id: 'perception', text: 'What was the participant(s) perception of the robot and their interaction with it? Is the robot disrupting, negative, supportive, positive, or neutral?', type: 'text', factors: 'Individual Specifics', order: 7 }
+      { id: 'personal_history', text: 'Do they have previous experience of interacting with robots?', type: 'text', factors: 'Personal History', order: 5 },
+      { id: 'perception', text: 'What was the participant(s) perception of the robot and their interaction with it? Is the robot disrupting, negative, supportive, positive, or neutral?', type: 'text', factors: 'Individual Specifics', order: 6 }
     ];
     
     // Definition of Situation questions
     const definitionQuestions = [
       { id: 'uncertainty', text: 'Were the participants uncertain about the situation?', type: 'text', factors: 'Uncertainty', order: 0 },
       { id: 'consequences', text: 'Were the participants unsure about the consequences of their actions?', type: 'text', factors: 'Consequences', order: 1 },
-      { id: 'familiarity', text: 'How well does the interacting agents know each other?', type: 'text', factors: 'Personal History', order: 2 },
+      { id: 'familiarity', text: 'How well does the interacting agents know each other?', type: 'text', factors: 'Familiarity and Relationship Aspect', order: 2 },
       { id: 'context_perception', text: 'How did the participants perceive the context of the interaction?', type: 'text', factors: 'Context', order: 3 },
-      { id: 'power_dynamics', text: 'What does the power dynamic look like in this interaction?', type: 'text', factors: 'Power Dynamics', order: 4 },
+      { id: 'power_dynamics', text: 'What does the power dynamic look like in this interaction?', type: 'text', factors: 'Power and Status', order: 4 },
       { id: 'group_interaction', text: 'If multiple participants were involved, how did they interact with the robot? Did they communicate with each other?', type: 'text', factors: 'Context', order: 5 },
-      { id: 'social_rules', text: 'Are there any social rules or cultural norms that the participants are following?', type: 'text', factors: 'Standards of Customary Practices', order: 6 },
-      { id: 'emotional_state', text: 'Did the emotional state of the participant at that very moment influence the interaction in any way?', type: 'text', factors: 'Emotional State', order: 7 }
+      { id: 'social_rules', text: 'Are there any social rules or cultural norms that the participants are following?', type: 'text', factors: 'Standards of Customary Practices, Causes', order: 6 },
+      { id: 'emotional_state', text: 'Did the emotional state of the participant at that very moment influence the interaction in any way?', type: 'text', factors: 'Emotional State', order: 7 },
+      { id: 'robot_specifics', text: 'What is the robot\'s specific characteristics?', type: 'text', factors: 'Robot Specifics', order: 8 },
+      { id: 'media', text: 'How does the robot\'s presence and performance construct meaning in the interaction?', type: 'text', factors: 'Media-Based and Performative Mediation', order: 9 },
+      { id: 'communication', text: 'How does the participant communicate with the robot?', type: 'text', factors: 'Communication', order: 10 },
+      { id: 'causes', text: 'Why is the participant behaving the way they are?', type: 'text', factors: 'Causes', order: 11 },
+      { id: 'expectations', text: 'What does the participant expect from the interaction?', type: 'text', factors: 'Expectations', order: 12 },
     ];
     
     // Rule Selection questions
@@ -377,7 +383,7 @@ function performMigration() {
           'Late evening visits might encourage relaxed behavior',
           'Time pressure affects how quickly decisions are made'
         ],
-        relatedFactors: ['Context', 'Urgency', 'Schedule'],
+        relatedFactors: ['Context', 'Schedule'],
         researchNotes: 'Time influences social expectations and behavioral patterns in HRI, including perceived urgency or appropriateness.',
         section: 'Situation'
       },
@@ -525,7 +531,7 @@ function performMigration() {
         section: 'Definition of Situation'
       },
       {
-        name: 'Power Dynamics',
+        name: 'Power and Status',
         category: 'Definition of Situation',
         description: 'Perceived authority, control, or influence within the interaction.',
         examples: [
@@ -591,22 +597,28 @@ function performMigration() {
       { questionId: 'agents_count', factorName: 'Participants' },
       { questionId: 'in_group', factorName: 'Group Size' },
       { questionId: 'roles', factorName: 'Role Identities' },
-      { questionId: 'age', factorName: 'Background' },
-      { questionId: 'gender', factorName: 'Background' },
-      { questionId: 'nationality', factorName: 'Background' },
-      { questionId: 'occupation', factorName: 'Background' },
+      { questionId: 'age', factorName: 'Age-Range' },
+      { questionId: 'gender', factorName: 'Gender' },
+      { questionId: 'nationality', factorName: 'Nationality' },
+      { questionId: 'occupation', factorName: 'Occupation' },
       { questionId: 'education', factorName: 'Background' },
       { questionId: 'social_motive', factorName: 'Social Motive' },
-      { questionId: 'experience', factorName: 'Experience' },
+      { questionId: 'personal_history', factorName: 'Personal History' },
       { questionId: 'perception', factorName: 'Individual Specifics' },
       { questionId: 'uncertainty', factorName: 'Uncertainty' },
       { questionId: 'consequences', factorName: 'Consequences' },
-      { questionId: 'familiarity', factorName: 'Personal History' },
+      { questionId: 'familiarity', factorName: 'Familiarity and Relationship Aspect' },
       { questionId: 'context_perception', factorName: 'Context' },
-      { questionId: 'power_dynamics', factorName: 'Power Dynamics' },
+      { questionId: 'power_dynamics', factorName: 'Power and Status' },
       { questionId: 'group_interaction', factorName: 'Context' },
-      { questionId: 'social_rules', factorName: 'Standards of Customary Practices' },
-      { questionId: 'emotional_state', factorName: 'Emotional State' }
+      { questionId: 'social_rules', factorName: 'Standards of Customary Practices, Causes' },
+      { questionId: 'emotional_state', factorName: 'Emotional State' },
+      { questionId: 'robot_specifics', factorName: 'Robot Specifics' },
+      { questionId: 'media', factorName: 'Media-Based and Performative Mediation' },
+      { questionId: 'communication', factorName: 'Communication' },
+      { questionId: 'causes', factorName: 'Causes' },
+      { questionId: 'expectations', factorName: 'Expectations' },
+      { questionID: 'intention', factorName: 'Intention'}
       // { questionId: 'options', factorName: 'Rules' },
       // { questionId: 'final_decision', factorName: 'Decision' }
     ];
@@ -627,23 +639,31 @@ function updateQuestionFactorMappings() {
   try {
     // console.log('Database: Updating question-factor mappings...'); // Commented out verbose logging
     
-    // Update the social_rules question to use "Standards of Customary Practices"
-    const updateMapping = db.prepare(`
-      UPDATE question_factors 
-      SET factor_name = ? 
-      WHERE question_id = ?
-    `);
+    // // Check what factor is currently set for social_rules in the database
+    // const currentFactor = db.prepare(`
+    //   SELECT factors FROM questionnaire WHERE questionId = ?
+    // `).get('social_rules');
     
-    updateMapping.run('Standards of Customary Practices', 'social_rules');
-    
-    // Also update the question itself to have the correct factors field
-    const updateQuestion = db.prepare(`
-      UPDATE questionnaire 
-      SET factors = ? 
-      WHERE questionId = ?
-    `);
-    
-    updateQuestion.run('Standards of Customary Practices', 'social_rules');
+    // // Only update if the factor is not already set correctly
+    // if (currentFactor && currentFactor.factors !== 'Place') {
+    //   // Update the social_rules question to use "Place" (as per user's preference)
+    //   const updateMapping = db.prepare(`
+    //     UPDATE question_factors 
+    //     SET factor_name = ? 
+    //     WHERE question_id = ?
+    //   `);
+      
+    //   updateMapping.run('Place', 'social_rules');
+      
+    //   // Also update the question itself to have the correct factors field
+    //   const updateQuestion = db.prepare(`
+    //     UPDATE questionnaire 
+    //     SET factors = ? 
+    //     WHERE questionId = ?
+    //   `);
+      
+    //   updateQuestion.run('Place', 'social_rules');
+    // }
     
     // console.log('Database: Question-factor mappings updated successfully'); // Commented out verbose logging
   } catch (error) {
@@ -677,16 +697,22 @@ function updateFactorsWithSections() {
       'Nationality': 'Identity',
       'Occupation': 'Identity',
       'Background': 'Identity',
-      'Social Motive': 'Identity',
-      'Experience': 'Identity',
+      'Social Motive': 'Situation',
       'Personal History': 'Identity',
       'Individual Specifics': 'Identity',
       'Uncertainty': 'Definition of Situation',
       'Consequences': 'Definition of Situation',
       'Context': 'Definition of Situation',
-      'Power Dynamics': 'Definition of Situation',
+      'Power and Status': 'Definition of Situation',
       'Standards of Customary Practices': 'Definition of Situation',
-      'Emotional State': 'Identity'
+      'Emotional State': 'Identity',
+      'Robot Specifics': 'Definition of Situation',
+      'Media-Based and Performative Mediation': 'Definition of Situation',
+      'Communication': 'Definition of Situation',
+      'Causes': 'Definition of Situation',
+      'Expectations': 'Definition of Situation',
+      'Intention': 'Situation',
+      'Familiarity and Relationship Aspect': 'Definition of Situation',
     };
     
     const now = new Date().toISOString();
@@ -703,7 +729,7 @@ function updateFactorsWithSections() {
         name: 'Age-Range',
         description: 'The age group or demographic range of the participant.',
         examples: ['Younger participants may be more tech-savvy', 'Older adults may prefer traditional interactions'],
-        relatedFactors: ['Background', 'Experience'],
+        relatedFactors: ['Background', 'Personal History'],
         researchNotes: 'Age influences comfort level and expectations with technology.'
       },
       {
@@ -724,7 +750,7 @@ function updateFactorsWithSections() {
         name: 'Occupation',
         description: 'Professional background that influences interaction approach and expectations.',
         examples: ['Engineers may be more analytical', 'Teachers may be more patient'],
-        relatedFactors: ['Background', 'Experience'],
+        relatedFactors: ['Background', 'Personal History'],
         researchNotes: 'Professional experience shapes how people approach new technology.'
       },
       {
@@ -742,7 +768,7 @@ function updateFactorsWithSections() {
         researchNotes: 'Motives influence engagement depth and perceived outcomes.'
       },
       {
-        name: 'Experience',
+        name: 'Personal History',
         description: 'Previous exposure to robots, technology, or similar interactions.',
         examples: ['First-time users may be cautious', 'Experienced users have clear expectations'],
         relatedFactors: ['Personal History', 'Familiarity'],

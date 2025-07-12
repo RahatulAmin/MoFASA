@@ -16,11 +16,12 @@ const INFO_CONTENT = {
           marginBottom: '16px',
           fontWeight: '600'
         }}>
-          About Personae Mapping
+          Personae Mapping
         </h3>
         
         <p style={{ marginBottom: '16px' }}>
-          The Personae Mapping section provides two different views to analyze participant responses and create comprehensive personae for your human-robot interaction study.
+        The Personae Mapping section offers two complementary views for analyzing participant responses and building a 
+        comprehensive understanding of how individuals perceive and act within a given HRI scenario. 
         </p>
         
         <div style={{ marginBottom: '20px' }}>
@@ -33,19 +34,9 @@ const INFO_CONTENT = {
             Framework View
           </h4>
           <p style={{ marginBottom: '12px' }}>
-            Visualize individual participant responses through the Personae Framework, showing how each participant navigates through:
+          Visualize each participant’s responses through the lens of the MoFASA Framework. This view highlights how participants 
+          define the situation based on their identity, and how those interpretations shape the decisions they perceive as appropriate.
           </p>
-          <ul style={{ 
-            marginLeft: '20px', 
-            marginBottom: '12px',
-            listStyleType: 'disc'
-          }}>
-            <li>Situation understanding and context</li>
-            <li>Identity and personal characteristics</li>
-            <li>Definition of the interaction situation</li>
-            <li>Rule selection and decision-making</li>
-            <li>Final decisions and actions</li>
-          </ul>
         </div>
         
         <div style={{ marginBottom: '20px' }}>
@@ -58,46 +49,10 @@ const INFO_CONTENT = {
             Summary View
           </h4>
           <p style={{ marginBottom: '12px' }}>
-            Access AI-generated summaries of each participant's responses, providing insights into:
-          </p>
-          <ul style={{ 
-            marginLeft: '20px', 
-            marginBottom: '12px',
-            listStyleType: 'disc'
-          }}>
-            <li>Key behavioral patterns and preferences</li>
-            <li>Decision-making processes and rationale</li>
-            <li>Individual characteristics and traits</li>
-            <li>Potential interaction preferences</li>
-            <li>Areas for robot adaptation</li>
-          </ul>
-        </div>
-        
-        <div style={{
-          background: '#f8f9fa',
-          padding: '16px',
-          borderRadius: '8px',
-          border: '1px solid #e9ecef',
-          marginTop: '20px'
-        }}>
-          <h4 style={{
-            fontSize: '1.1em',
-            color: '#e67e22',
-            marginBottom: '8px',
-            fontWeight: '600'
-          }}>
-            💡 Tips for Effective Personae Mapping
-          </h4>
-          <ul style={{ 
-            marginLeft: '20px',
-            listStyleType: 'disc'
-          }}>
-            <li>Use the Framework View to understand individual decision-making patterns</li>
-            <li>Compare participants using the sorting options (age, gender)</li>
-            <li>Review summaries to identify common themes across participants</li>
-            <li>Look for patterns that could inform robot behavior design</li>
-            <li>Use the PDF export feature to share findings with your team</li>
-          </ul>
+          This view allows you to review concise summaries of all participant responses. It is especially useful for identifying 
+          commonalities and differences across participants — helping you spot patterns in how various individuals interpret and 
+          engage with the same robot behavior.
+          </p>          
         </div>
       </div>
     )
@@ -118,60 +73,13 @@ const INFO_CONTENT = {
           marginBottom: '16px',
           fontWeight: '600'
         }}>
-          About Behavioral Diversity Analysis
+          Behavioral Diversity
         </h3>
         
         <p style={{ marginBottom: '16px' }}>
-          The Behavioral Diversity section analyzes the variety of behaviors and responses across all participants in your study, helping you understand the range of human reactions to robot interactions.
-        </p>
-        
-        <div style={{ marginBottom: '20px' }}>
-          <h4 style={{
-            fontSize: '1.1em',
-            color: '#27ae60',
-            marginBottom: '8px',
-            fontWeight: '600'
-          }}>
-            Key Features
-          </h4>
-          <ul style={{ 
-            marginLeft: '20px', 
-            marginBottom: '12px',
-            listStyleType: 'disc'
-          }}>
-            <li>Diversity metrics across different behavioral dimensions</li>
-            <li>Comparison of response patterns between participants</li>
-            <li>Identification of common and unique behavioral traits</li>
-            <li>Statistical analysis of behavioral variations</li>
-            <li>Visual representation of diversity patterns</li>
-          </ul>
-        </div>
-        
-        <div style={{
-          background: '#f8f9fa',
-          padding: '16px',
-          borderRadius: '8px',
-          border: '1px solid #e9ecef',
-          marginTop: '20px'
-        }}>
-          <h4 style={{
-            fontSize: '1.1em',
-            color: '#e67e22',
-            marginBottom: '8px',
-            fontWeight: '600'
-          }}>
-            💡 Tips for Behavioral Diversity Analysis
-          </h4>
-          <ul style={{ 
-            marginLeft: '20px',
-            listStyleType: 'disc'
-          }}>
-            <li>Look for patterns in how different groups respond to robots</li>
-            <li>Identify outliers that might represent unique use cases</li>
-            <li>Use diversity metrics to inform robot adaptation strategies</li>
-            <li>Compare diversity across different interaction contexts</li>
-          </ul>
-        </div>
+          The Behavioral Diversity section lets user analyze the spectrum of behaviors and responses across all participants in the study. 
+          It also gives a visual representation of the participant's responses in a statistical view. 
+        </p>   
       </div>
     )
   },
@@ -191,34 +99,14 @@ const INFO_CONTENT = {
           marginBottom: '16px',
           fontWeight: '600'
         }}>
-          About Situation Design Analysis
+          Situation Design
         </h3>
         
         <p style={{ marginBottom: '16px' }}>
-          The Situation Design section helps you analyze how different participants respond to various rules and situations, providing insights for designing better human-robot interaction scenarios.
+        The Situation Design section helps you identify undesirable behavioral rules from the generated list. 
+        These rules can then be mapped back to specific participants, allowing you to trace the underlying 
+        MoFASA factors that influenced those decisions.  
         </p>
-        
-        <div style={{ marginBottom: '20px' }}>
-          <h4 style={{
-            fontSize: '1.1em',
-            color: '#27ae60',
-            marginBottom: '8px',
-            fontWeight: '600'
-          }}>
-            Key Features
-          </h4>
-          <ul style={{ 
-            marginLeft: '20px', 
-            marginBottom: '12px',
-            listStyleType: 'disc'
-          }}>
-            <li>Rule-based analysis of participant responses</li>
-            <li>Situation-specific behavior patterns</li>
-            <li>Participant grouping by rule selection</li>
-            <li>Detailed response analysis for each situation</li>
-            <li>Export capabilities for further analysis</li>
-          </ul>
-        </div>
         
         <div style={{
           background: '#f8f9fa',
@@ -239,10 +127,14 @@ const INFO_CONTENT = {
             marginLeft: '20px',
             listStyleType: 'disc'
           }}>
-            <li>Click on rules to see which participants selected them</li>
-            <li>Analyze participant responses to understand decision-making</li>
-            <li>Look for patterns in how rules are applied across situations</li>
-            <li>Use insights to design more effective interaction scenarios</li>
+            <li>Click on a rule to see which participants followed it.</li>
+            <li>Use the participant accordion to explore relevant factors across the three MoFASA dimensions: <em>Situation, Identity, and Definition of the Situation.</em></li>
+            <li>Based on your analysis of patterns in rule selection, brainstorm ways to either:
+              <ul style={{ marginLeft: '20px' }}>
+                <li>Redesign robot behavior to better match participants’ expectations.</li>
+                <li>Modify the environment to support more socially appropriate engagement.</li>
+              </ul>
+            </li>            
           </ul>
         </div>
       </div>

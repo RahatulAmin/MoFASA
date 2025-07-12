@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import FactorDetailsModal from './FactorDetailsModal';
-import { handleFactorClick } from '../utils/factorUtils';
+import { handleFactorClick, parseFactors } from '../utils/factorUtils';
 
 const SECTIONS = [
   { name: 'Situation', color: '#f9f3f2' },
@@ -233,27 +233,32 @@ const ProjectQuestionnaireSettings = ({ projectId, projectName }) => {
                           {question.questionType}
                         </span>
                         {question.factors && (
-                          <span 
-                            onClick={() => handleFactorClickLocal(question, question.factors)}
-                            style={{
-                              fontSize: '0.75em',
-                              color: '#000000',
-                              backgroundColor: '#cceeff',
-                              borderRadius: '10px',
-                              padding: '2px 8px',
-                              fontWeight: 400,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseOver={(e) => {
-                              e.target.style.background = '#99ddff';
-                            }}
-                            onMouseOut={(e) => {
-                              e.target.style.background = '#cceeff';
-                            }}
-                          >
-                            {question.factors}
-                          </span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {parseFactors(question.factors).map((factor, index) => (
+                              <span 
+                                key={index}
+                                onClick={() => handleFactorClickLocal(question, factor)}
+                                style={{
+                                  fontSize: '0.75em',
+                                  color: '#000000',
+                                  backgroundColor: '#cceeff',
+                                  borderRadius: '10px',
+                                  padding: '2px 8px',
+                                  fontWeight: 400,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseOver={(e) => {
+                                  e.target.style.background = '#99ddff';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.target.style.background = '#cceeff';
+                                }}
+                              >
+                                {factor}
+                              </span>
+                            ))}
+                          </div>
                         )}
                         {question.options && (
                           <span style={{ 

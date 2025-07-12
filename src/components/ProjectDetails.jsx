@@ -9,10 +9,11 @@ import SituationDesignView from './SituationDesignView';
 import FactorDetailsModal from './FactorDetailsModal';
 import InfoModal from './InfoModal';
 import InfoButton from './InfoButton';
-import { handleFactorClick } from '../utils/factorUtils';
+import { handleFactorClick, parseFactors } from '../utils/factorUtils';
 import { SECTIONS, connectionPairs } from '../constants/frameAnalysis';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { getProjects, saveProjects } from '../store';
 
 const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
