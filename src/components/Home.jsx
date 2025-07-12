@@ -115,7 +115,8 @@ const Home = () => {
             <h3 style={{ marginTop: '32px', fontSize: '20px' }}>3. Adding Participant Observations</h3>
             <p>
               On the project details page, you'll see all your defined scopes and participants listed. To start adding observations, just click on a scope (like "Scope 1"), then select a participant (like "P1").
-              This will take you to the participant entry page, where you can answer MoFASA questions specific to that scope and person.
+              This will take you to the participant entry page, where you can answer MoFASA questions specific to that scope and person. The associated factors will be displayed below the questions.
+              You can click on the factors to see more information about them.
             </p>
 
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
@@ -378,6 +379,8 @@ const Home = () => {
                 <li><strong>Identity</strong> - Internal context (background, role, social motives, etc.)</li>
                 <li><strong>Definition of the Situation</strong> - Interpretation of the moment (framing, uncertainty, consequences, etc.)</li>
               </ul>
+
+              <p>Below is a diagram of the MoFASA Framework.</p>
                
               <div style={{ textAlign: 'center', margin: '20px 0' }}>
                 <img src={require('../images/framework.png')} alt="MoFASA Framework" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
@@ -413,7 +416,8 @@ const Home = () => {
                 </div>
               </div>
 
-              <p>These lenses help you understand why Emilia found the robot unsettling, while Tony simply tuned it out. But MoFASA goes further by offering three practical affordances to guide design and reflection:</p>
+              <p>These lenses, with the help of the associated factors, help you understand why Emilia found the robot unsettling, while Tony simply tuned it out. 
+                But MoFASA goes further by offering three practical affordances to guide design and reflection:</p>
               <br />
               <ul style={{ paddingLeft: '20px' }}>
                 <li><strong>Personae Mapping</strong> - Understand how participants see themselves in the interaction.</li>
