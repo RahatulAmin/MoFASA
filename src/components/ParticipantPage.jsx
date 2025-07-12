@@ -81,19 +81,19 @@ const CONNECTION_EXPLANATIONS = {
   },
   'B': {
     title: 'Connection B: Situation → Definition of Situation',
-    explanation: 'The situation influences how individuals define and interpret the context.'
+    explanation: 'Connection B and C work together to define the situation.'
   },
   'C': {
     title: 'Connection C: Identity → Definition of Situation',
-    explanation: 'An individual\'s identity shapes how they define and understand the situation.'
+    explanation: 'An individual\'s identity shapes how they define and understand the situation. (Connection B + Connection C)'
   },
   'D': {
     title: 'Connection D: Identity → Rule Selection',
-    explanation: 'Personal identity influences which rules or norms individuals choose to follow.'
+    explanation: 'Connection D and E work together to determine which rules or norms individuals choose to follow.'
   },
   'E': {
     title: 'Connection E: Definition of Situation → Rule Selection',
-    explanation: 'How individuals define the situation determines which rules they consider applicable.'
+    explanation: 'How individuals define the situation determines which rules they consider applicable. (Connection D + Connection E)'
   },
   'F': {
     title: 'Connection F: Rule Selection → Decision',
@@ -152,6 +152,10 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const [selectedFactor, setSelectedFactor] = useState(null);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState(null);
+  
+  // Store scroll position to preserve it during re-renders
+  const scrollPositionRef = useRef({ top: 0, left: 0 });
+  const shouldRestoreScroll = useRef(false);
 
   // Reference for connection calculation function
   const refreshConnections = useRef(() => {});
@@ -169,6 +173,28 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         refreshConnections.current();
       }
     }, 150); // Debounce to 150ms
+  };
+  
+  // Function to save current scroll position
+  const saveScrollPosition = () => {
+    const rightPanel = document.querySelector('.right-panel');
+    if (rightPanel) {
+      scrollPositionRef.current = {
+        top: rightPanel.scrollTop,
+        left: rightPanel.scrollLeft
+      };
+      shouldRestoreScroll.current = true;
+    }
+  };
+  
+  // Function to restore scroll position
+  const restoreScrollPosition = () => {
+    const rightPanel = document.querySelector('.right-panel');
+    if (rightPanel && scrollPositionRef.current && shouldRestoreScroll.current) {
+      rightPanel.scrollTop = scrollPositionRef.current.top;
+      rightPanel.scrollLeft = scrollPositionRef.current.left;
+      shouldRestoreScroll.current = false;
+    }
   };
   
   // Debounce timer for answer changes
@@ -226,6 +252,29 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       }, 200);
     }
   }, [questionsLoading, questions]);
+
+  // Add scroll event listener to continuously save scroll position
+  useEffect(() => {
+    const rightPanel = document.querySelector('.right-panel');
+    if (rightPanel) {
+      const handleScroll = () => {
+        saveScrollPosition();
+      };
+      
+      rightPanel.addEventListener('scroll', handleScroll);
+      
+      return () => {
+        rightPanel.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, []);
+
+  // Restore scroll position after every render using useLayoutEffect
+  useLayoutEffect(() => {
+    if (shouldRestoreScroll.current) {
+      restoreScrollPosition();
+    }
+  });
 
   // Add focus event listener to reload questions when returning to the page
   useEffect(() => {
@@ -362,6 +411,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       if (!rightPanel) return [];
       
       const panelRect = rightPanel.getBoundingClientRect();
+      const scrollTop = rightPanel.scrollTop;
       
       // Account for the scope header height (60px)
       const headerHeight = 60;
@@ -370,23 +420,22 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       // First, calculate how many connections go to each box side
       const connectionCounts = {};
       connectionPairs.forEach(pair => {
-        // Format: "boxIndex-side" (e.g., "2-left")
         const toKey = `${pair.to}-${pair.toSide}`;
         connectionCounts[toKey] = (connectionCounts[toKey] || 0) + 1;
       });
 
-      // Calculate paths with proper spacing
+      // Calculate paths with proper spacing and scroll adjustment
       const paths = connectionPairs.map((pair, index) => {
         const fromBox = boxes[pair.from];
         const toBox = boxes[pair.to];
         
-        // Calculate start point (no scroll adjustment needed)
+        // Calculate start point with scroll adjustment
         const startX = pair.fromSide === 'right' 
           ? fromBox.left - panelRect.left + fromBox.width 
           : fromBox.left - panelRect.left;
-        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3); 
+        const startY = fromBox.top - adjustedTop + (fromBox.height * 2/3) + scrollTop; 
 
-        // Calculate end point with proper spacing
+        // Calculate end point with proper spacing and scroll adjustment
         const toKey = `${pair.to}-${pair.toSide}`;
         const totalConnections = connectionCounts[toKey];
         const connectionIndex = connectionPairs
@@ -397,19 +446,17 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
           ? toBox.left - panelRect.left
           : toBox.left - panelRect.left + toBox.width;
 
-        // Calculate vertical offset for multiple connections
-        let endY = toBox.top - adjustedTop + toBox.height / 3;
+        // Calculate vertical offset for multiple connections with scroll adjustment
+        let endY = toBox.top - adjustedTop + toBox.height / 3 + scrollTop;
         if (totalConnections > 1) {
-          const spacing = 20; // Gap between lines
+          const spacing = 20;
           const totalHeight = (totalConnections - 1) * spacing;
           const startOffset = -totalHeight / 2;
           endY += startOffset + (connectionIndex * spacing);
         }
 
-        // Calculate horizontal offset based on vertical distance
-        const horizontalOffset = pair.horizontalOffset || 20; // Default to 20 if not specified
+        const horizontalOffset = pair.horizontalOffset || 20;
 
-        // Create path with proper offsets
         return {
           path: `
             M ${startX} ${startY}
@@ -442,44 +489,39 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     // Recalculate after a short delay to ensure DOM is fully rendered
     const timeoutId = setTimeout(calculateConnections, 100);
 
-    // Recalculate on window resize with debouncing
-    let resizeTimeout;
-    const handleResize = () => {
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
-      resizeTimeout = setTimeout(calculateConnections, 100);
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Use ResizeObserver to detect content changes with debouncing
-    let resizeObserver;
-    if (window.ResizeObserver) {
-      let resizeObserverTimeout;
-      resizeObserver = new ResizeObserver(() => {
-        if (resizeObserverTimeout) {
-          clearTimeout(resizeObserverTimeout);
+    // Add scroll event listener to recalculate connections
+    const rightPanel = document.querySelector('.right-panel');
+    if (rightPanel) {
+      let scrollTimeout;
+      const handleScroll = () => {
+        if (scrollTimeout) {
+          clearTimeout(scrollTimeout);
         }
-        resizeObserverTimeout = setTimeout(calculateConnections, 100);
-      });
-      
-      // Observe the right panel
-      const rightPanel = document.querySelector('.right-panel');
-      if (rightPanel) {
+        scrollTimeout = setTimeout(calculateConnections, 10);
+      };
+      rightPanel.addEventListener('scroll', handleScroll);
+
+      // Use ResizeObserver to detect content changes
+      let resizeObserver;
+      if (window.ResizeObserver) {
+        resizeObserver = new ResizeObserver(() => {
+          calculateConnections();
+        });
         resizeObserver.observe(rightPanel);
       }
+
+      // Cleanup function
+      return () => {
+        rightPanel.removeEventListener('scroll', handleScroll);
+        clearTimeout(scrollTimeout);
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
+      };
     }
 
-    // Cleanup function
     return () => {
       clearTimeout(timeoutId);
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
-      window.removeEventListener('resize', handleResize);
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
     };
   }, [
     projects, 
@@ -491,8 +533,6 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     currentScope,
     questions
   ]);
-
-
 
   const generateSummary = async () => {
     if (!participant) return;
@@ -758,6 +798,9 @@ Please provide a concise, direct answer to the question based on the interview c
   };
 
   const handleRuleSelection = (rule) => {
+    // Save scroll position before making changes
+    saveScrollPosition();
+    
     const updatedRules = selectedRules.includes(rule)
       ? selectedRules.filter(r => r !== rule)
       : [...selectedRules, rule];
@@ -806,6 +849,9 @@ Please provide a concise, direct answer to the question based on the interview c
   }
 
   const handleAnswerChange = (section, question, value) => {
+    // Save scroll position before making changes
+    saveScrollPosition();
+    
     // Update local state immediately for responsive UI
     setLocalAnswers(prev => ({
       ...prev,
@@ -824,11 +870,6 @@ Please provide a concise, direct answer to the question based on the interview c
     answerChangeTimer.current = setTimeout(() => {
       updateParticipantAnswers(idx, participantId, section, question, value);
     }, 500); // 500ms delay
-    
-    // Trigger connection refresh after a delay to allow DOM to update
-    setTimeout(() => {
-      triggerConnectionRefresh();
-    }, 200);
   };
 
   return (
@@ -1273,16 +1314,33 @@ Please provide a concise, direct answer to the question based on the interview c
           {/* Question Sections */}
           <div>
             {SECTIONS.map(section => (
-              <div key={section.name} style={{ marginBottom: 32 }}>
+              <div key={section.name} style={{ 
+                marginBottom: 32,
+                padding: '24px',
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                border: '1px solid #e9ecef'
+              }}>
                 <h3 style={{ 
                   fontFamily: 'Lexend, sans-serif',
-                  fontSize: '1.1em',
-                  marginBottom: 16,
-                  color: '#2c3e50'
+                  fontSize: '1.2em',
+                  marginBottom: 20,
+                  color: '#2c3e50',
+                  padding: '8px 16px',
+                  backgroundColor: section.color,
+                  borderRadius: '8px',
+                  display: 'inline-block',
+                  fontWeight: '600'
                 }}>
                   {section.name}
                 </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 16,
+                  paddingTop: '8px'
+                }}>
                   {section.name === 'Rule Selection' ? (
                     <>
                       <div style={{ 
@@ -1449,12 +1507,17 @@ Please provide a concise, direct answer to the question based on the interview c
                             fontSize: '0.95em',
                             color: '#34495e',
                             display: 'flex',
-                            alignItems: 'center',
+                            flexDirection: 'column', // Change to column layout
                             gap: '8px'
                           }}>
-                            {questionText}
+                            <span>{questionText}</span>
                             {question.factors && (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '6px' }}>
+                              <div style={{ 
+                                display: 'flex', 
+                                flexWrap: 'wrap', 
+                                gap: '4px',
+                                marginTop: '4px' // Add some space between question and factors
+                              }}>
                                 {parseFactors(question.factors).map((factor, index) => (
                                   <span 
                                     key={index}
@@ -1924,13 +1987,12 @@ Please provide a concise, direct answer to the question based on the interview c
                     {(currentScope?.rules || []).map((rule, index) => (
                       <div
                         key={index}
-                        onClick={() => handleRuleSelection(rule)}
                         style={{
                           padding: '8px 12px',
                           backgroundColor: selectedRules.includes(rule) ? '#3498db' : '#f8f9fa',
                           color: selectedRules.includes(rule) ? '#fff' : '#2c3e50',
                           borderRadius: '4px',
-                          cursor: 'pointer',
+                          cursor: 'default',
                           transition: 'all 0.2s ease'
                         }}
                       >
@@ -1983,7 +2045,13 @@ Please provide a concise, direct answer to the question based on the interview c
                       <div key={questionId} style={{ marginBottom: 12 }}>
                         <span style={{ fontWeight: 400 }}>{answer}</span>
                         {factors && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '6px' }}>
+                          <div style={{ 
+                            display: 'flex', 
+                            flexWrap: 'wrap', 
+                            gap: '4px', 
+                            marginLeft: '6px',
+                            marginTop: '8px' // Add space between answer and factors
+                          }}>
                             {parseFactors(question.factors).map((factor, index) => (
                               <span 
                                 key={index}

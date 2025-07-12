@@ -399,13 +399,13 @@ export const getFactorsBySection = (section) => {
 
 export const createFactorDetails = async (question, factor) => {
   const factorData = getFactorFromStorage(factor);
-  
+    
   if (factorData) {
-    return {
+      return {
       ...factorData,
-      questionText: question.text || question.questionText,
+        questionText: question.text || question.questionText,
       section: factorData.section || question.section || 'Unknown'
-    };
+      };
   }
 
   // Fallback to basic data if not found

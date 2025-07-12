@@ -9,19 +9,19 @@ const CONNECTION_EXPLANATIONS = {
   },
   'B': {
     title: 'Connection B: Situation → Definition of Situation',
-    explanation: 'The situation influences how individuals define and interpret the context.'
+    explanation: 'Connection B and C work together to define the situation.'
   },
   'C': {
     title: 'Connection C: Identity → Definition of Situation',
-    explanation: 'An individual\'s identity shapes how they define and understand the situation.'
+    explanation: 'An individual\'s identity shapes how they define and understand the situation. (Connection B + Connection C)'
   },
   'D': {
     title: 'Connection D: Identity → Rule Selection',
-    explanation: 'Personal identity influences which rules or norms individuals choose to follow.'
+    explanation: 'Connection D and E work together to determine which rules or norms individuals choose to follow.'
   },
   'E': {
     title: 'Connection E: Definition of Situation → Rule Selection',
-    explanation: 'How individuals define the situation determines which rules they consider applicable.'
+    explanation: 'How individuals define the situation determines which rules they consider applicable. (Connection D + Connection E)'
   },
   'F': {
     title: 'Connection F: Rule Selection → Decision',
