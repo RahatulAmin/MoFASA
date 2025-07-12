@@ -8,7 +8,7 @@ const Home = () => {
       case 'LLM-configuration':
         return (
           <div style={{ padding: '24px' }}>
-            <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>LLM Configuration</h2>
+            <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>LLM Configuration for Optional Summary Generation</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
               <div>
@@ -199,9 +199,62 @@ const Home = () => {
               When your analysis is complete, you can click <strong>"Download Project Report"</strong> to generate a complete report of the project. This can be helpful for sharing your findings with your team or saving for future reference.
             </p>
 
-            <p style={{ marginTop: '40px', fontStyle: 'italic', color: '#7f8c8d' }}>
-              That's it! Take your time, experiment, and don't worry about making everything perfect right away. MoFASA Tools is here to support thoughtful, reflective research — and you're already doing great by being here.
-            </p>
+            <div style={{ 
+              marginTop: '32px', 
+              textAlign: 'center',
+              padding: '20px',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              border: '1px solid #e9ecef',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              borderRadius: '8px',
+              padding: '16px',
+              backgroundColor: 'white',
+           
+            }}>
+              <p style={{ color: '#2c3e50', lineHeight: '1.6', marginBottom: '16px' }}>
+                <strong>Complete a practice project to understand MoFASA Tools more deeply.</strong>
+              </p>
+              
+              <button
+                onClick={() => {
+                  setSelectedSection('practice-mofasa');
+                  // Scroll to top of the right panel after a short delay to ensure content is rendered
+                  setTimeout(() => {
+                    const rightPanel = document.querySelector('.right-panel');
+                    if (rightPanel) {
+                      rightPanel.scrollTop = 0;
+                    }
+                  });
+                }}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#3498db',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '1em',
+                  transition: 'all 0.2s ease',
+                  marginLeft: '10px', 
+                  marginRight: '10px',
+                  
+                }}
+                
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#2980b9';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#3498db';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Practice MoFASA Tools
+              </button>
+            </div>
           </div>
         );
 
@@ -325,7 +378,41 @@ const Home = () => {
                 <li><strong>Identity</strong> - Internal context (background, role, social motives, etc.)</li>
                 <li><strong>Definition of the Situation</strong> - Interpretation of the moment (framing, uncertainty, consequences, etc.)</li>
               </ul>
-              <br />
+               
+              <div style={{ textAlign: 'center', margin: '20px 0' }}>
+                <img src={require('../images/framework.png')} alt="MoFASA Framework" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+                
+                <div style={{ 
+                  marginTop: '20px',
+                  padding: '20px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '8px',
+                  border: '1px solid #e9ecef',
+                  textAlign: 'left',
+                  maxWidth: '600px',
+                  margin: '20px auto'
+                }}>
+                  <h4 style={{ 
+                    marginBottom: '12px',
+                    color: '#2c3e50',
+                    fontFamily: 'Lexend, sans-serif'
+                  }}>Framework Connections:</h4>
+                  <div style={{ 
+                    display: 'grid',
+                    gap: '12px',
+                    fontSize: '0.95em',
+                    color: '#34495e'
+                  }}>
+                    <div><strong>Connection A:</strong> The situation is perceived by the individual's identity.</div>
+                    <div><strong>Connection B:</strong> Connection B and C work together to define the situation.</div>
+                    <div><strong>Connection C:</strong> An individual's identity shapes how they define and understand the situation. (Connection B + Connection C)</div>
+                    <div><strong>Connection D:</strong> Connection D and E work together to determine which rules or norms individuals choose to follow.</div>
+                    <div><strong>Connection E:</strong> How individuals define the situation determines which rules they consider applicable. (Connection D + Connection E)</div>
+                    <div><strong>Connection F:</strong> The selected rules guide the final decision or course of action.</div>
+                  </div>
+                </div>
+              </div>
+
               <p>These lenses help you understand why Emilia found the robot unsettling, while Tony simply tuned it out. But MoFASA goes further by offering three practical affordances to guide design and reflection:</p>
               <br />
               <ul style={{ paddingLeft: '20px' }}>
@@ -333,21 +420,6 @@ const Home = () => {
                 <li><strong>Behavioral Diversity</strong> - Observe the range of reactions that emerge from the same situation.</li>
                 <li><strong>Situation Design</strong> - Identify and adjust problematic dynamics, whether by redesigning the robot or modifying the environment.</li>
               </ul>
-
-              <h3 style={{ marginTop: '24px' }}>🛠 MoFASA Tools</h3>
-              <p><strong>MoFASA Tools</strong> is a companion desktop application that helps you apply the framework to your own HRI research or deployment scenarios.</p>
-              <br />
-              <p>Use it to:</p>
-              <ul style={{ paddingLeft: '20px' }}>
-                <li>Set up projects with scopes, participant data, and interaction contexts</li>
-                <li>Analyze behavior using MoFASA's three core affordances</li>
-                <li>Identify patterns, outliers, and underlying logic in participant responses</li>
-                <li>Generate insights to inform robot design and situational adaptations</li>
-              </ul>
-              <br />
-              <p>This isn't a spreadsheet or a loose set of notes — it's a structured, thoughtful analysis environment designed to elevate your HRI evaluations and interventions.</p>
-              <p>Whether you're analyzing early field tests, designing for sensitive environments, or trying to prevent unintended consequences — <strong>MoFASA Tools helps you move 
-                beyond surface-level metrics and into the heart of social understanding.</strong></p>
 
             </div>
       
@@ -365,7 +437,7 @@ const Home = () => {
            
             }}>
               <p style={{ color: '#2c3e50', lineHeight: '1.6', marginBottom: '16px' }}>
-                <strong>Get started by exploring our interactive tutorial, or try analyzing a practice project.</strong>
+                <strong>Get started by exploring our interactive tutorial.</strong>
               </p>
               <button
                 onClick={() => {
@@ -405,44 +477,7 @@ const Home = () => {
                 Getting Started with MoFASA
               </button>
 
-              <button
-                onClick={() => {
-                  setSelectedSection('practice-mofasa');
-                  // Scroll to top of the right panel after a short delay to ensure content is rendered
-                  setTimeout(() => {
-                    const rightPanel = document.querySelector('.right-panel');
-                    if (rightPanel) {
-                      rightPanel.scrollTop = 0;
-                    }
-                  });
-                }}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#3498db',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  fontFamily: 'Lexend, sans-serif',
-                  fontSize: '1em',
-                  transition: 'all 0.2s ease',
-                  marginLeft: '10px', 
-                  marginRight: '10px',
-                  
-                }}
-                
-                onMouseOver={(e) => {
-                  e.target.style.backgroundColor = '#2980b9';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.backgroundColor = '#3498db';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                Practice MoFASA Tools
-              </button>
+              
             </div>
           </div>
         );
@@ -586,12 +621,7 @@ const Home = () => {
             Practice MoFASA Tools
           </button>
 
-          <button
-            onClick={() => setSelectedSection(selectedSection === 'LLM-configuration' ? '' : 'LLM-configuration')}
-            className={`left-panel-button ${selectedSection === 'LLM-configuration' ? 'selected' : ''}`}
-          >
-            LLM Configuration
-          </button>
+          
 
           <button
             onClick={() => setSelectedSection(selectedSection === 'research-paper' ? '' : 'research-paper')}
@@ -601,11 +631,20 @@ const Home = () => {
           </button>
 
           <button
+            onClick={() => setSelectedSection(selectedSection === 'LLM-configuration' ? '' : 'LLM-configuration')}
+            className={`left-panel-button ${selectedSection === 'LLM-configuration' ? 'selected' : ''}`}
+          >
+            LLM Configuration
+          </button>
+          
+          <button
             onClick={() => setSelectedSection(selectedSection === 'about-us' ? '' : 'about-us')}
             className={`left-panel-button ${selectedSection === 'about-us' ? 'selected' : ''}`}
           >
             About Us
           </button>
+
+          
         </div>
 
         {/* Thin line */}
