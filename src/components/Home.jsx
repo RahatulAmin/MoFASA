@@ -148,10 +148,12 @@ const Home = () => {
             </p>
 
 
-            <h3 style={{ marginTop: '32px', fontSize: '20px' }}>4. Summarizing What Happened</h3>
+            <h3 style={{ marginTop: '32px', fontSize: '20px' }}>4. Summarizing What Happened (Optional)</h3>
             <p>
-              Once you've completed all the questions, you have two options. You can write a short summary of the participant's experience based on your answers, or you can click <strong>"Generate Summary using LLM"</strong> to let the app help you write one using a large language model.
-              If you're using this option for the first time, make sure to follow the LLM setup instructions in the Settings menu. You can also customize the LLM prompt there to better fit your project needs.
+              Once you've completed all the questions, you can either write a short summary of the participant's experience based on your answers, or you can click <strong>"Generate Summary using LLM"</strong> 
+              to let the app help you write one using a large language model.
+              If you're using this option for the first time, make sure to follow the LLM setup instructions in the Settings menu. 
+              You can also customize the LLM prompt there to better fit your project needs.
             </p>
 
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
