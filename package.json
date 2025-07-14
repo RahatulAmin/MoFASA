@@ -17,7 +17,7 @@
     "appId": "com.mofasa.app",
     "productName": "MoFASA",
     "directories": {
-      "output": "dist11"
+      "output": "dist2"
     },
     "files": [
       "public/**/*",
