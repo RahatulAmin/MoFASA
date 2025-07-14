@@ -1,0 +1,35 @@
+directories:
+  output: dist11
+  buildResources: build
+appId: com.mofasa.app
+productName: MoFASA
+files:
+  - filter:
+      - public/**/*
+      - main.js
+      - preload.js
+      - index.html
+      - package.json
+      - data/**/*
+      - src/**/*
+      - dist/**/*
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+asar: true
+asarUnpack:
+  - '**/*.node'
+  - data/**/*
+npmRebuild: true
+buildDependenciesFromSource: true
+electronVersion: 28.3.3

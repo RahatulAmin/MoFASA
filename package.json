@@ -10,34 +10,34 @@
     "build": "webpack --config webpack.config.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win",
-    "dist:win": "electron-builder --win --x64"
+    "dist:win": "electron-builder --win --x64",
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
     "appId": "com.mofasa.app",
     "productName": "MoFASA",
     "directories": {
-      "output": "dist2"
+      "output": "dist11"
     },
     "files": [
-      "dist2/**/*",
+      "public/**/*",
       "main.js",
       "preload.js",
       "index.html",
-      "package.json"
+      "package.json",
+      "data/**/*",
+      "src/**/*",
+      "dist/**/*"
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         },
         {
           "target": "portable",
-          "arch": [
-            "x64"
-          ]
+          "arch": ["x64"]
         }
       ]
     },
@@ -49,9 +49,10 @@
     },
     "asar": true,
     "asarUnpack": [
-      "**/*.node"
+      "**/*.node",
+      "data/**/*"
     ],
-    "npmRebuild": false,
+    "npmRebuild": true,
     "buildDependenciesFromSource": true
   },
   "author": "",
@@ -87,7 +88,7 @@
     "electron-rebuild": "^3.2.9",
     "electron-reload": "^2.0.0-alpha.1",
     "style-loader": "^3.3.4",
-    "webpack": "^5.90.1",
+    "webpack": "^5.100.1",
     "webpack-cli": "^5.1.4"
   }
 }

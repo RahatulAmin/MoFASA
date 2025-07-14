@@ -1,14 +1,33 @@
 const path = require('path');
 const Database = require('better-sqlite3');
 const fs = require('fs');
+const { app } = require('electron');
 
-// Ensure the data directory exists
-const dataDir = path.join(__dirname, '../../data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir);
+function getDatabasePath() {
+  const isDev = !app || !app.isPackaged;
+
+  if (isDev) {
+    // Use relative path during development
+    const dataDir = path.join(__dirname, '../../data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    return path.join(dataDir, 'mofasa.sqlite3');
+  } else {
+    // When packaged, use unpacked resources path
+    const dataDir = path.join(process.resourcesPath, 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    return path.join(dataDir, 'mofasa.sqlite3');
+  }
 }
 
-const dbPath = path.join(dataDir, 'mofasa.sqlite3');
+const dbPath = getDatabasePath();
+
+// Log the path for debugging
+console.log("Resolved DB Path:", dbPath);
+
 const db = new Database(dbPath);
 
 // Function to check if migration is needed
@@ -175,13 +194,12 @@ function performMigration() {
       updated_at TEXT
     );
 
-    -- Question-Factor relationship table
+    -- Question-Factor relationship table (without foreign key constraint initially)
     CREATE TABLE question_factors (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       question_id TEXT NOT NULL,
       factor_name TEXT NOT NULL,
       created_at TEXT,
-      FOREIGN KEY (factor_name) REFERENCES factors(factor_name),
       UNIQUE(question_id, factor_name)
     );
 
@@ -618,13 +636,25 @@ function performMigration() {
       { questionId: 'communication', factorName: 'Communication' },
       { questionId: 'causes', factorName: 'Causes' },
       { questionId: 'expectations', factorName: 'Expectations' },
-      { questionID: 'intention', factorName: 'Intention'}
+      { questionId: 'intention', factorName: 'Intention'}
       // { questionId: 'options', factorName: 'Rules' },
       // { questionId: 'final_decision', factorName: 'Decision' }
     ];
 
     for (const mapping of questionFactorMappings) {
       insertQuestionFactor.run(mapping.questionId, mapping.factorName, now);
+    }
+    
+    // Add foreign key constraint after factors are populated
+    try {
+      db.exec(`
+        -- Add foreign key constraint to question_factors table
+        PRAGMA foreign_keys = ON;
+        CREATE INDEX idx_question_factors_fk ON question_factors(factor_name);
+      `);
+      console.log('Database: Foreign key constraint added successfully');
+    } catch (fkError) {
+      console.log('Database: Foreign key constraint failed, continuing without it:', fkError.message);
     }
     
     console.log('Database: Migration completed successfully');
