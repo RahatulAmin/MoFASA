@@ -11,6 +11,8 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win",
     "dist:win": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac",
+    "dist:universal": "electron-builder --mac --win --linux",
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
@@ -29,6 +31,12 @@
       "src/**/*",
       "dist/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "src/MoFASA_practice_study.pdf",
+        "to": "MoFASA_practice_study.pdf"
+      }
+    ],
     "win": {
       "target": [
         {
@@ -40,6 +48,19 @@
           "arch": ["x64"]
         }
       ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.productivity"
     },
     "nsis": {
       "oneClick": false,

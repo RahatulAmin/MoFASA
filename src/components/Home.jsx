@@ -285,11 +285,21 @@ const Home = () => {
                  Contains: 1 HRI project with 12 participant interviews
                </p>
                <button 
-                 onClick={() => {
-                   const link = document.createElement('a');
-                   link.href = require('../MoFASA_practice_study.pdf');
-                   link.download = 'MoFASA_practice_study.pdf';
-                   link.click();
+                 onClick={async () => {
+                   try {
+                     const result = await window.electronAPI.downloadFile('MoFASA_practice_study.pdf');
+                     if (result.success) {
+                       console.log('File downloaded successfully to:', result.filePath);
+                     } else if (result.canceled) {
+                       console.log('Download canceled by user');
+                     } else {
+                       console.error('Download failed:', result.error);
+                       alert('Failed to download file. Please try again.');
+                     }
+                   } catch (error) {
+                     console.error('Download error:', error);
+                     alert('Failed to download file. Please try again.');
+                   }
                  }}
                  style={{
                    background: 'white',

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const axios = require('axios');
 const fs = require('fs');
@@ -78,6 +78,49 @@ ipcMain.handle('get-projects', async () => database.getAllProjects());
 ipcMain.handle('save-projects', async (_e, projects) => database.saveAllProjects(projects));
 ipcMain.handle('update-participant-interview', async (_e, projectId, participantId, interviewText) => {
   database.updateParticipantInterview(projectId, participantId, interviewText);
+});
+
+// File download handler
+ipcMain.handle('download-file', async (event, fileName) => {
+  try {
+    // Get the source file path
+    const isDev = !app.isPackaged;
+    let sourcePath;
+    
+    if (isDev) {
+      // In development, use the src directory
+      sourcePath = path.join(__dirname, 'src', fileName);
+    } else {
+      // In production, use the extraResources path
+      sourcePath = path.join(process.resourcesPath, fileName);
+    }
+    
+    // Check if file exists
+    if (!fs.existsSync(sourcePath)) {
+      throw new Error(`File not found: ${sourcePath}`);
+    }
+    
+    // Show save dialog
+    const result = await dialog.showSaveDialog({
+      title: 'Save File',
+      defaultPath: fileName,
+      filters: [
+        { name: 'PDF Files', extensions: ['pdf'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+    
+    if (!result.canceled && result.filePath) {
+      // Copy the file to the selected location
+      fs.copyFileSync(sourcePath, result.filePath);
+      return { success: true, filePath: result.filePath };
+    } else {
+      return { success: false, canceled: true };
+    }
+  } catch (error) {
+    console.error('Download error:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('force-database-update', async () => {

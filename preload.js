@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveProjects: (projects) => ipcRenderer.invoke('save-projects', projects),
   updateParticipantInterview: (projectId, participantId, interviewText) => 
     ipcRenderer.invoke('update-participant-interview', projectId, participantId, interviewText),
+  // File download API
+  downloadFile: (fileName) => ipcRenderer.invoke('download-file', fileName),
   // DeepSeek LLM functionality
       generateWithDeepSeek: (prompt) => ipcRenderer.invoke('generate-with-deepseek', prompt),
     generateWithDeepSeekStream: (prompt) => ipcRenderer.invoke('generate-with-deepseek-stream', prompt),
