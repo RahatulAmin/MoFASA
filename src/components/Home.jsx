@@ -362,7 +362,7 @@ const Home = () => {
               <p>A delivery robot rolls into a busy university café. Three students encounter it.</p>
 
               <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <img src={require('../images/home_image.png')} alt="robot entering a busy university café" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <img src={require('../images/home_image_2.jpg')} alt="robot entering a busy university café" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
               </div>
 
               <ul style={{ paddingLeft: '20px' }}>

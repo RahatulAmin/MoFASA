@@ -183,6 +183,7 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
   const [showAllScopes, setShowAllScopes] = useState(true);
   const [selectedScopes, setSelectedScopes] = useState(new Set());
   const [undesirableRulesMap, setUndesirableRulesMap] = useState({});
+  const [chartType, setChartType] = useState('bar'); // 'bar' or 'pie'
 
   // Load undesirable rules for all scopes
   useEffect(() => {
@@ -838,35 +839,95 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
         <section style={sectionStyle}>
           <h2 style={sectionTitleStyle}>Behavioral Diversity Insights</h2>
           
-          {/* Sort options */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: 8,
-              fontFamily: 'Lexend, sans-serif',
-              fontSize: '0.95em',
-              color: '#34495e'
-            }}>
-              Sort participants by:
-            </label>
-            <select
-              value={behavioralSortBy}
-              onChange={(e) => setBehavioralSortBy(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 4,
-                border: '1px solid #dcdde1',
-                fontSize: '0.95em',
+          {/* Controls row */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '20px', 
+            alignItems: 'center', 
+            marginBottom: 20,
+            flexWrap: 'wrap'
+          }}>
+            {/* Sort options */}
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: 8,
                 fontFamily: 'Lexend, sans-serif',
-                color: '#2c3e50',
-                background: '#fff',
-                width: '200px'
-              }}
-            >
-              <option value="">-No Sorting-</option>
-              <option value="age">Age Range</option>
-              <option value="gender">Gender</option>
-            </select>
+                fontSize: '0.95em',
+                color: '#34495e'
+              }}>
+                Sort participants by:
+              </label>
+              <select
+                value={behavioralSortBy}
+                onChange={(e) => setBehavioralSortBy(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 4,
+                  border: '1px solid #dcdde1',
+                  fontSize: '0.95em',
+                  fontFamily: 'Lexend, sans-serif',
+                  color: '#2c3e50',
+                  background: '#fff',
+                  width: '200px'
+                }}
+              >
+                <option value="">-No Sorting-</option>
+                <option value="age">Age Range</option>
+                <option value="gender">Gender</option>
+              </select>
+            </div>
+
+            {/* Chart type toggle */}
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: 8,
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.95em',
+                color: '#34495e'
+              }}>
+                Chart type:
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setChartType('bar')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: chartType === 'bar' ? '#27ae60' : '#f8f9fa',
+                    color: chartType === 'bar' ? '#fff' : '#2c3e50',
+                    border: '1px solid',
+                    borderColor: chartType === 'bar' ? '#27ae60' : '#e9ecef',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: chartType === 'bar' ? '600' : '500',
+                    fontSize: '0.9em',
+                    fontFamily: 'Lexend, sans-serif',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  📊 Bar Chart
+                </button>
+                <button
+                  onClick={() => setChartType('pie')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: chartType === 'pie' ? '#27ae60' : '#f8f9fa',
+                    color: chartType === 'pie' ? '#fff' : '#2c3e50',
+                    border: '1px solid',
+                    borderColor: chartType === 'pie' ? '#27ae60' : '#e9ecef',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: chartType === 'pie' ? '600' : '500',
+                    fontSize: '0.9em',
+                    fontFamily: 'Lexend, sans-serif',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  🥧 Pie Chart
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Charts by Scope */}
@@ -943,14 +1004,19 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                 }}>
                   {scopeName} - Statistics
                 </h3>
-                <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 24 }}>
-                  <div style={{ maxWidth: 350, minWidth: 300 }}>
-                    <h4 style={{ textAlign: 'center', marginBottom: 16, fontSize: '1em' }}>Rule Selection Counts</h4>
-                    <Bar data={scopeBarData} />
-                  </div>
-                  <div style={{ maxWidth: 350, minWidth: 300 }}>
-                    <h4 style={{ textAlign: 'center', marginBottom: 16, fontSize: '1em' }}>Rule Selection Distribution</h4>
-                    <Pie data={scopePieData} />
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+                  <div style={{ maxWidth: 500, minWidth: 400 }}>
+                    {chartType === 'bar' ? (
+                      <>
+                        <h4 style={{ textAlign: 'center', marginBottom: 16, fontSize: '1em' }}>Rule Selection Counts</h4>
+                        <Bar data={scopeBarData} />
+                      </>
+                    ) : (
+                      <>
+                        <h4 style={{ textAlign: 'center', marginBottom: 16, fontSize: '1em' }}>Rule Selection Distribution</h4>
+                        <Pie data={scopePieData} />
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1125,7 +1191,7 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                     {/* Generated Rules Section */}
                     {data.generatedRules && data.generatedRules.length > 0 && (
                       <div style={recommendationStyle}>
-                        <div style={{ fontWeight: 600, color: '#27ae60', marginBottom: 12 }}>
+                        <div style={{ fontWeight: 600, marginBottom: 12 }}>
                           Generated Rules
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -1152,17 +1218,7 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                                   <span style={{ fontSize: '0.9em' }}>⚠️</span>
                                 )}
                                 {rule}
-                                {isUndesirable && (
-                                  <span style={{
-                                    fontSize: '0.7em',
-                                    backgroundColor: 'rgba(0,0,0,0.2)',
-                                    padding: '2px 4px',
-                                    borderRadius: '2px',
-                                    marginLeft: '4px'
-                                  }}>
-                                    Undesirable
-                                  </span>
-                                )}
+                                
                               </div>
                             );
                           })}
