@@ -35,5 +35,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getQuestionFactors: (questionId) => ipcRenderer.invoke('get-question-factors', questionId),
   updateQuestionFactorMappings: () => ipcRenderer.invoke('update-question-factor-mappings'),
   updateFactorsWithSections: () => ipcRenderer.invoke('update-factors-with-sections'),
-  forceDatabaseUpdate: () => ipcRenderer.invoke('force-database-update')
+  forceDatabaseUpdate: () => ipcRenderer.invoke('force-database-update'),
+  // Undesirable rules management API
+  getUndesirableRules: (scopeId) => ipcRenderer.invoke('get-undesirable-rules', scopeId),
+  saveUndesirableRules: (scopeId, rules) => ipcRenderer.invoke('save-undesirable-rules', scopeId, rules),
+  addUndesirableRule: (scopeId, rule) => ipcRenderer.invoke('add-undesirable-rule', scopeId, rule),
+  removeUndesirableRule: (scopeId, rule) => ipcRenderer.invoke('remove-undesirable-rule', scopeId, rule)
 });

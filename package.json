@@ -31,12 +31,6 @@
       "src/**/*",
       "dist/**/*"
     ],
-    "extraResources": [
-      {
-        "from": "src/MoFASA_practice_study.pdf",
-        "to": "MoFASA_practice_study.pdf"
-      }
-    ],
     "win": {
       "target": [
         {

@@ -366,3 +366,23 @@ ipcMain.handle('get-enabled-project-questions', async (_e, projectId) => {
 ipcMain.handle('test-project-question-settings', async (_e, projectId) => {
   return database.testProjectQuestionSettings(projectId);
 });
+
+// Undesirable rules management handlers
+ipcMain.handle('get-undesirable-rules', async (_e, scopeId) => {
+  return database.getUndesirableRules(scopeId);
+});
+
+ipcMain.handle('save-undesirable-rules', async (_e, scopeId, rules) => {
+  database.saveUndesirableRules(scopeId, rules);
+  return { success: true };
+});
+
+ipcMain.handle('add-undesirable-rule', async (_e, scopeId, rule) => {
+  database.addUndesirableRule(scopeId, rule);
+  return { success: true };
+});
+
+ipcMain.handle('remove-undesirable-rule', async (_e, scopeId, rule) => {
+  database.removeUndesirableRule(scopeId, rule);
+  return { success: true };
+});

@@ -1,4 +1,4 @@
-import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
+import React, { useRef, useLayoutEffect, useState, useEffect, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import FactorDetailsModal from './FactorDetailsModal';
 import { handleFactorClick, parseFactors } from '../utils/factorUtils';
@@ -101,7 +101,17 @@ const CONNECTION_EXPLANATIONS = {
   }
 };
 
-const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipantSummary, updateProjectRules }) => {
+// Custom comparison function for memo
+const arePropsEqual = (prevProps, nextProps) => {
+  // Only re-render if the project ID or participant ID changes
+  const prevProjectId = prevProps.projects?.[parseInt(prevProps.projectId, 10)]?.id;
+  const nextProjectId = nextProps.projects?.[parseInt(nextProps.projectId, 10)]?.id;
+  
+  return prevProjectId === nextProjectId && 
+         prevProps.participantId === nextProps.participantId;
+};
+
+const ParticipantPage = memo(({ projects, updateParticipantAnswers, updateParticipantSummary, updateProjectRules }) => {
   const { projectId, participantId } = useParams();
   const navigate = useNavigate();
   const idx = parseInt(projectId, 10);
@@ -156,6 +166,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   // Store scroll position to preserve it during re-renders
   const scrollPositionRef = useRef({ top: 0, left: 0 });
   const shouldRestoreScroll = useRef(false);
+  const questionsLoadedRef = useRef(false); // Track if questions are already loaded
 
   // Reference for connection calculation function
   const refreshConnections = useRef(() => {});
@@ -172,7 +183,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       if (refreshConnections.current) {
         refreshConnections.current();
       }
-    }, 150); // Debounce to 150ms
+    }, 300); // Increased debounce to 300ms for better performance
   };
   
   // Function to save current scroll position
@@ -191,8 +202,12 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const restoreScrollPosition = () => {
     const rightPanel = document.querySelector('.right-panel');
     if (rightPanel && scrollPositionRef.current && shouldRestoreScroll.current) {
-      rightPanel.scrollTop = scrollPositionRef.current.top;
-      rightPanel.scrollLeft = scrollPositionRef.current.left;
+      // Only restore if the position has actually changed
+      if (rightPanel.scrollTop !== scrollPositionRef.current.top || 
+          rightPanel.scrollLeft !== scrollPositionRef.current.left) {
+        rightPanel.scrollTop = scrollPositionRef.current.top;
+        rightPanel.scrollLeft = scrollPositionRef.current.left;
+      }
       shouldRestoreScroll.current = false;
     }
   };
@@ -204,6 +219,9 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
 
   // Load questions from database
   useEffect(() => {
+    // Reset the loaded flag when project changes
+    questionsLoadedRef.current = false;
+    
     const loadQuestions = async () => {
       try {
         setQuestionsLoading(true);
@@ -231,10 +249,12 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         });
         
         setQuestions(formattedQuestions);
+        questionsLoadedRef.current = true; // Mark as loaded
       } catch (error) {
         console.error('Error loading questions:', error);
         // Fallback to hardcoded questions if database fails
         setQuestions(QUESTIONS);
+        questionsLoadedRef.current = true; // Mark as loaded even with fallback
       } finally {
         setQuestionsLoading(false);
       }
@@ -245,13 +265,13 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
 
   // Trigger connection refresh when questions are loaded
   useEffect(() => {
-    if (!questionsLoading && Object.keys(questions).length > 0) {
+    if (!questionsLoading && questionsLoadedRef.current && Object.keys(questions).length > 0) {
       // Use a longer delay to ensure DOM is fully rendered
       setTimeout(() => {
         triggerConnectionRefresh();
       }, 200);
     }
-  }, [questionsLoading, questions]);
+  }, [questionsLoading, questionsLoadedRef.current, Object.keys(questions).length]);
 
   // Add scroll event listener to continuously save scroll position
   useEffect(() => {
@@ -274,42 +294,45 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     if (shouldRestoreScroll.current) {
       restoreScrollPosition();
     }
-  });
+  }, []); // Add empty dependency array to prevent infinite re-renders
 
   // Add focus event listener to reload questions when returning to the page
   useEffect(() => {
     const handleFocus = async () => {
-      // Reload questions when the window gains focus (user returns to the page)
-      try {
-        setQuestionsLoading(true);
-        const questionsData = await window.electronAPI.getEnabledProjectQuestions(actualProjectId);
-        
-        // Format them for the component
-        const formattedQuestions = {};
-        Object.keys(questionsData).forEach(section => {
-          formattedQuestions[section] = questionsData[section].map(q => {
-            if (q.questionType === 'dropdown') {
-              return {
-                id: q.questionId,
-                text: q.questionText,
-                type: 'dropdown',
-                options: q.options,
-                factors: q.factors
-              };
-            } else {
-              return {
-                text: q.questionText,
-                factors: q.factors
-              };
-            }
+      // Only reload questions if they haven't been loaded yet
+      if (!questionsLoadedRef.current && !questionsLoading && Object.keys(questions).length === 0) {
+        try {
+          setQuestionsLoading(true);
+          const questionsData = await window.electronAPI.getEnabledProjectQuestions(actualProjectId);
+          
+          // Format them for the component
+          const formattedQuestions = {};
+          Object.keys(questionsData).forEach(section => {
+            formattedQuestions[section] = questionsData[section].map(q => {
+              if (q.questionType === 'dropdown') {
+                return {
+                  id: q.questionId,
+                  text: q.questionText,
+                  type: 'dropdown',
+                  options: q.options,
+                  factors: q.factors
+                };
+              } else {
+                return {
+                  text: q.questionText,
+                  factors: q.factors
+                };
+              }
+            });
           });
-        });
-        
-        setQuestions(formattedQuestions);
-      } catch (error) {
-        console.error('Error reloading questions:', error);
-      } finally {
-        setQuestionsLoading(false);
+          
+          setQuestions(formattedQuestions);
+          questionsLoadedRef.current = true; // Mark as loaded
+        } catch (error) {
+          console.error('Error reloading questions:', error);
+        } finally {
+          setQuestionsLoading(false);
+        }
       }
     };
 
@@ -318,7 +341,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [actualProjectId]);
+  }, [actualProjectId, questionsLoading, questions]); // Add proper dependencies
 
   // Reset states when participant changes
   useEffect(() => {
@@ -524,14 +547,13 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       clearTimeout(timeoutId);
     };
   }, [
-    projects, 
+    // Only re-run when these specific values change
     participantId, 
-    localAnswers, 
     selectedRules, 
     showInterview, 
     showSummary,
-    currentScope,
-    questions
+    currentScope?.scopeNumber, // Only scope number, not entire scope object
+    Object.keys(questions).length // Only when questions structure changes
   ]);
 
   const generateSummary = async () => {
@@ -2226,6 +2248,6 @@ Please provide a concise, direct answer to the question based on the interview c
       )}
     </div>
   );
-};
+});
 
 export default ParticipantPage; 

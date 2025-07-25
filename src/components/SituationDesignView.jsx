@@ -16,6 +16,37 @@ const SituationDesignView = ({
 }) => {
   const [selectedRule, setSelectedRule] = useState(null);
   const [expandedParticipants, setExpandedParticipants] = useState(new Set());
+  const [undesirableRules, setUndesirableRules] = useState([]); // Store as simple array
+  const [isLabelingMode, setIsLabelingMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Load undesirable rules from database whenever currentScope changes
+  useEffect(() => {
+    const loadUndesirableRules = async () => {
+      if (currentScope?.id) {
+        setLoading(true);
+        try {
+          console.log('Loading undesirable rules for scopeId:', currentScope.id);
+          const rules = await window.electronAPI.getUndesirableRules(currentScope.id);
+          console.log('Loaded undesirable rules:', rules);
+          setUndesirableRules(rules);
+        } catch (error) {
+          console.error('Error loading undesirable rules:', error);
+          setUndesirableRules([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadUndesirableRules();
+  }, [currentScope?.id]); // Load when scopeId changes
+
+  // Reset UI state when component is first rendered (when navigating back to situation design view)
+  useEffect(() => {
+    setSelectedRule(null);
+    setIsLabelingMode(false);
+  }, []); // Only run once when component mounts
 
   const toggleParticipantExpansion = (participantId) => {
     setExpandedParticipants(prev => {
@@ -29,57 +60,229 @@ const SituationDesignView = ({
     });
   };
 
+  const handleUndesirableRuleToggle = async (rule) => {
+    if (!currentScope?.id) {
+      console.error('No scope ID available');
+      return;
+    }
+
+    try {
+      const currentUndesirableRules = new Set(undesirableRules);
+      
+      if (currentUndesirableRules.has(rule)) {
+        // Remove rule
+        console.log('Removing undesirable rule:', rule);
+        await window.electronAPI.removeUndesirableRule(currentScope.id, rule);
+        currentUndesirableRules.delete(rule);
+      } else {
+        // Add rule
+        console.log('Adding undesirable rule:', rule);
+        await window.electronAPI.addUndesirableRule(currentScope.id, rule);
+        currentUndesirableRules.add(rule);
+      }
+      
+      // Update local state
+      setUndesirableRules(Array.from(currentUndesirableRules));
+    } catch (error) {
+      console.error('Error toggling undesirable rule:', error);
+    }
+  };
+
+  const getCurrentScopeUndesirableRules = () => {
+    return new Set(undesirableRules);
+  };
+
+  const getAcceptableRules = () => {
+    const currentUndesirableRules = getCurrentScopeUndesirableRules();
+    return (currentScope?.rules || []).filter(rule => !currentUndesirableRules.has(rule));
+  };
+
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* Generated Rules Section */}
         <div style={{ width: '100%' }}>
-          <h3 style={{
-            fontFamily: 'Lexend, sans-serif',
-            fontSize: '1.2em',
-            color: '#2c3e50',
-            marginBottom: '16px'
-          }}>
-            Generated Rules
-          </h3>
           <div style={{ 
             display: 'flex', 
-            flexWrap: 'wrap', 
-            gap: '8px',
-            marginBottom: '20px'
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '16px'
           }}>
-            {(currentScope?.rules || []).map((rule, index) => (
+            <h3 style={{
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1.2em',
+              color: '#2c3e50',
+              margin: 0
+            }}>
+              Generated Rules
+            </h3>
+            {(currentScope?.rules && currentScope.rules.length > 0) && (
               <button
-                key={index}
-                onClick={() => setSelectedRule(selectedRule === rule ? null : rule)}
+                onClick={() => setIsLabelingMode(!isLabelingMode)}
                 style={{
-                  padding: '8px 16px',
-                  background: selectedRule === rule ? '#8e44ad' : '#95a5a6',
+                  padding: '6px 12px',
+                  background: isLabelingMode ? '#e74c3c' : '#3498db',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '4px',
                   cursor: 'pointer',
-                  fontSize: '0.9em',
-                  transition: 'all 0.2s ease',
-                  opacity: selectedRule === rule ? 1 : 0.7
-                }}
-                onMouseOver={(e) => {
-                  if (selectedRule !== rule) {
-                    e.target.style.background = '#8e44ad';
-                    e.target.style.opacity = '0.9';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (selectedRule !== rule) {
-                    e.target.style.background = '#95a5a6';
-                    e.target.style.opacity = '0.7';
-                  }
+                  fontSize: '0.85em',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease'
                 }}
               >
-                {rule}
+                {isLabelingMode ? 'Done Labeling' : 'Label Undesirable Rules'}
               </button>
-            ))}
+            )}
           </div>
+
+          {/* Labeling Mode - All Rules for Selection */}
+          {isLabelingMode && (
+            <div style={{ 
+              background: '#fff3cd',
+              borderRadius: '6px',
+              padding: '16px',
+              border: '1px solid #ffeaa7',
+              marginBottom: '20px'
+            }}>
+              <h4 style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1em',
+                color: '#856404',
+                margin: '0 0 12px 0'
+              }}>
+                Select rules to mark as undesirable:
+                {loading && (
+                  <span style={{ marginLeft: '8px', fontSize: '0.9em', fontStyle: 'italic' }}>
+                    Loading...
+                  </span>
+                )}
+              </h4>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '8px'
+              }}>
+                {(currentScope?.rules || []).map((rule, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleUndesirableRuleToggle(rule)}
+                    disabled={loading}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: getCurrentScopeUndesirableRules().has(rule) ? '#e74c3c' : '#fff',
+                      color: getCurrentScopeUndesirableRules().has(rule) ? '#fff' : '#2c3e50',
+                      border: '1px solid',
+                      borderColor: getCurrentScopeUndesirableRules().has(rule) ? '#e74c3c' : '#ffeaa7',
+                      borderRadius: '4px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      fontWeight: getCurrentScopeUndesirableRules().has(rule) ? '600' : '500',
+                      fontSize: '0.85em',
+                      fontFamily: 'Lexend, sans-serif',
+                      transition: 'all 0.2s ease',
+                      opacity: loading ? 0.6 : 1
+                    }}
+                  >
+                    {rule}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Acceptable Rules */}
+          {getAcceptableRules().length > 0 && (
+            <div style={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: '8px',
+              marginBottom: '20px'
+            }}>
+              {getAcceptableRules().map((rule, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedRule(selectedRule === rule ? null : rule)}
+                  style={{
+                    padding: '8px 16px',
+                    background: selectedRule === rule ? '#8e44ad' : '#95a5a6',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.9em',
+                    transition: 'all 0.2s ease',
+                    opacity: selectedRule === rule ? 1 : 0.7
+                  }}
+                  onMouseOver={(e) => {
+                    if (selectedRule !== rule) {
+                      e.target.style.background = '#8e44ad';
+                      e.target.style.opacity = '0.9';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedRule !== rule) {
+                      e.target.style.background = '#95a5a6';
+                      e.target.style.opacity = '0.7';
+                    }
+                  }}
+                >
+                  {rule}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Undesirable Rules Section */}
+          {getCurrentScopeUndesirableRules().size > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1em',
+                color: '#e74c3c',
+                marginBottom: '12px',
+                borderBottom: '1px solid #e74c3c',
+                paddingBottom: '4px'
+              }}>
+                Undesirable Rules
+              </h4>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                gap: '8px'
+              }}>
+                {Array.from(getCurrentScopeUndesirableRules()).map((rule, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedRule(selectedRule === rule ? null : rule)}
+                    style={{
+                      padding: '8px 16px',
+                      background: selectedRule === rule ? '#e74c3c' : '#e74c3c',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.9em',
+                      transition: 'all 0.2s ease',
+                      opacity: selectedRule === rule ? 1 : 0.7
+                    }}
+                    onMouseOver={(e) => {
+                      if (selectedRule !== rule) {
+                        e.target.style.opacity = '0.9';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (selectedRule !== rule) {
+                        e.target.style.opacity = '0.7';
+                      }
+                    }}
+                  >
+                    {rule}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* No rules message */}
           {(!currentScope?.rules || currentScope.rules.length === 0) && (
@@ -109,6 +312,8 @@ const SituationDesignView = ({
               </p>
             </div>
           )}
+
+
 
           {/* Participant Cards for Selected Rule */}
           {selectedRule && (
@@ -216,8 +421,14 @@ const SituationDesignView = ({
                             {participant.answers?.Identity?.gender && (
                               <span>Gender: {participant.answers.Identity.gender}</span>
                             )}
-                            {participant.answers?.Identity?.['Nationality of the participant(s)'] && (
-                              <span>Nationality: {participant.answers.Identity['Nationality of the participant(s)']}</span>
+                            {(participant.answers?.Identity?.['Nationality of the participant(s)'] || 
+                              participant.answers?.Identity?.nationality ||
+                              participant.answers?.Identity?.Nationality) && (
+                              <span>Nationality: {
+                                participant.answers?.Identity?.['Nationality of the participant(s)'] ||
+                                participant.answers?.Identity?.nationality ||
+                                participant.answers?.Identity?.Nationality
+                              }</span>
                             )}
                           </div>
                         </div>

@@ -76,6 +76,17 @@ function needsMigration() {
       console.log('Database: scope_rules table missing - migration needed');
       return true; // Migration needed - scope_rules table doesn't exist
     }
+
+    // Check if undesirable_rules table exists
+    const undesirableRulesTableExists = db.prepare(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='undesirable_rules'
+    `).get();
+    
+    if (!undesirableRulesTableExists) {
+      console.log('Database: undesirable_rules table missing - migration needed');
+      return true; // Migration needed - undesirable_rules table doesn't exist
+    }
     
     // Check if projects table has the new structure
     const columns = db.prepare("PRAGMA table_info(projects)").all();
@@ -138,17 +149,62 @@ function performMigration() {
   console.log('Database: Performing migration to new scope-based structure...');
   
   try {
-    // Drop all existing tables if they exist
-    db.exec(`
-      DROP TABLE IF EXISTS situation_design;
-      DROP TABLE IF EXISTS participant_answers;
-      DROP TABLE IF EXISTS participants;
-      DROP TABLE IF EXISTS scope_rules;
-      DROP TABLE IF EXISTS scopes;
-      DROP TABLE IF EXISTS project_questions;
-      DROP TABLE IF EXISTS questionnaire;
-      DROP TABLE IF EXISTS projects;
-    `);
+    // Check what's missing and only add what we need
+    const tables = db.prepare(`
+      SELECT name FROM sqlite_master WHERE type='table'
+    `).all();
+    
+    const existingTables = new Set(tables.map(t => t.name));
+    console.log('Existing tables:', Array.from(existingTables));
+    
+    // Only create the undesirable_rules table if it doesn't exist
+    if (!existingTables.has('undesirable_rules')) {
+      console.log('Creating undesirable_rules table...');
+      db.exec(`
+        CREATE TABLE undesirable_rules (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          scopeId INTEGER NOT NULL,
+          rule TEXT NOT NULL,
+          createdAt TEXT,
+          updatedAt TEXT,
+          UNIQUE(scopeId, rule)
+        );
+        
+        CREATE INDEX idx_undesirable_rules_fk ON undesirable_rules(scopeId);
+      `);
+      console.log('undesirable_rules table created successfully');
+      return;
+    }
+    
+    // If we need a full migration (no core tables exist), do the full setup
+    if (!existingTables.has('scopes') || !existingTables.has('project_questions')) {
+      console.log('Performing full migration - missing core scope tables...');
+      
+      // Disable foreign keys before dropping
+      db.exec('PRAGMA foreign_keys = OFF;');
+      
+      // Drop all existing tables if they exist
+      db.exec(`
+        DROP TABLE IF EXISTS situation_design;
+        DROP TABLE IF EXISTS participant_answers;
+        DROP TABLE IF EXISTS participants;
+        DROP TABLE IF EXISTS scope_rules;
+        DROP TABLE IF EXISTS scopes;
+        DROP TABLE IF EXISTS project_questions;
+        DROP TABLE IF EXISTS questionnaire;
+        DROP TABLE IF EXISTS projects;
+        DROP TABLE IF EXISTS factors;
+        DROP TABLE IF EXISTS question_factors;
+        DROP TABLE IF EXISTS undesirable_rules;
+        DROP TABLE IF EXISTS project_participant_data;
+      `);
+      
+      // Re-enable foreign keys
+      db.exec('PRAGMA foreign_keys = ON;');
+    } else {
+      console.log('Core tables exist, migration not needed');
+      return;
+    }
     
     // Create tables without foreign key constraints first
     const createTablesWithoutFK = `
@@ -273,6 +329,16 @@ function performMigration() {
       updatedAt TEXT,
       UNIQUE(scopeId)
     );
+
+    -- Undesirable rules table
+    CREATE TABLE undesirable_rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      scopeId INTEGER NOT NULL,
+      rule TEXT NOT NULL,
+      createdAt TEXT,
+      updatedAt TEXT,
+      UNIQUE(scopeId, rule)
+    );
     `;
     
     db.exec(createTablesWithoutFK);
@@ -300,6 +366,9 @@ function performMigration() {
         
         -- Add foreign key constraints to situation_design
         CREATE INDEX idx_situation_design_fk ON situation_design(scopeId);
+        
+        -- Add foreign key constraints to undesirable_rules
+        CREATE INDEX idx_undesirable_rules_fk ON undesirable_rules(scopeId);
       `);
     } catch (fkError) {
       console.log('Database: Foreign key constraints failed, continuing without them:', fkError.message);
@@ -1527,6 +1596,62 @@ function testProjectQuestionSettings(projectId) {
   console.log('=== END TEST ===');
 }
 
+// Undesirable Rules Management Functions
+function getUndesirableRules(scopeId) {
+  console.log('Database: Getting undesirable rules for scope', scopeId);
+  
+  const stmt = db.prepare(`
+    SELECT rule FROM undesirable_rules WHERE scopeId = ? ORDER BY createdAt ASC
+  `);
+  
+  const results = stmt.all(scopeId);
+  return results.map(row => row.rule);
+}
+
+function saveUndesirableRules(scopeId, rules) {
+  console.log('Database: Saving undesirable rules for scope', scopeId, ':', rules);
+  
+  const transaction = db.transaction(() => {
+    // Delete existing rules for this scope
+    const deleteStmt = db.prepare('DELETE FROM undesirable_rules WHERE scopeId = ?');
+    deleteStmt.run(scopeId);
+    
+    // Insert new rules
+    if (rules && rules.length > 0) {
+      const insertStmt = db.prepare(`
+        INSERT INTO undesirable_rules (scopeId, rule, createdAt, updatedAt) 
+        VALUES (?, ?, ?, ?)
+      `);
+      
+      const now = new Date().toISOString();
+      for (const rule of rules) {
+        insertStmt.run(scopeId, rule, now, now);
+      }
+    }
+  });
+  
+  transaction();
+}
+
+function addUndesirableRule(scopeId, rule) {
+  console.log('Database: Adding undesirable rule for scope', scopeId, ':', rule);
+  
+  const stmt = db.prepare(`
+    INSERT OR IGNORE INTO undesirable_rules (scopeId, rule, createdAt, updatedAt) 
+    VALUES (?, ?, ?, ?)
+  `);
+  
+  const now = new Date().toISOString();
+  stmt.run(scopeId, rule, now, now);
+}
+
+function removeUndesirableRule(scopeId, rule) {
+  console.log('Database: Removing undesirable rule for scope', scopeId, ':', rule);
+  
+  const stmt = db.prepare('DELETE FROM undesirable_rules WHERE scopeId = ? AND rule = ?');
+  stmt.run(scopeId, rule);
+}
+
 module.exports = {
   getAllProjects,
   saveAllProjects,
@@ -1548,5 +1673,9 @@ module.exports = {
   getAllFactors,
   getQuestionFactors,
   updateQuestionFactorMappings,
-  updateFactorsWithSections
+  updateFactorsWithSections,
+  getUndesirableRules,
+  saveUndesirableRules,
+  addUndesirableRule,
+  removeUndesirableRule
 };
