@@ -219,6 +219,10 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
         return;
       }
 
+      // Ensure element is fully expanded before capturing
+      const originalOverflow = element.style.overflow;
+      element.style.overflow = 'visible';
+      
       // Create canvas from the content
       const canvas = await html2canvas(element, {
         scale: 2,
@@ -227,8 +231,15 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
         useCORS: true,
         allowTaint: true,
         height: element.scrollHeight,
-        width: element.scrollWidth
+        width: element.scrollWidth,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
       });
+      
+      // Restore original overflow
+      element.style.overflow = originalOverflow;
 
       const imgData = canvas.toDataURL('image/png');
       
@@ -453,7 +464,9 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
       minHeight: '100vh',
       display: 'flex',
       justifyContent: 'center',
-      padding: '32px 16px'
+      padding: '32px 16px',
+      width: '100%',
+      overflow: 'visible' // Ensure content is never clipped
     }}>
       <div className="report-content" style={{
         maxWidth: '816px', // Letter size width (8.5 inches * 96 DPI)
@@ -462,7 +475,9 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
         borderRadius: '12px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         padding: '32px',
-        margin: '0 auto'
+        margin: '0 auto',
+        minHeight: 'auto', // Ensure no minimum height constraints
+        height: 'auto' // Allow dynamic height based on content
       }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
@@ -1286,6 +1301,8 @@ const sectionStyle = {
   padding: 24,
   marginBottom: 32,
   boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+  height: 'auto', // Ensure sections expand with content
+  minHeight: 'auto' // Remove any minimum height constraints
 };
 
 const sectionTitleStyle = {

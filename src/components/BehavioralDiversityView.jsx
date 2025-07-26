@@ -1,19 +1,21 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend
 } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Pie } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend
@@ -30,6 +32,7 @@ const BehavioralDiversityView = ({
   generatePDF
 }) => {
   const behavioralRef = useRef(null);
+  const [chartType, setChartType] = useState('bar'); // 'bar' or 'pie'
 
   const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
   const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
@@ -171,6 +174,63 @@ const BehavioralDiversityView = ({
           backgroundColor: '#27ae60',
           borderColor: '#219a52',
           borderWidth: 1
+        }]
+      };
+    }
+  };
+
+  // Function to get pie chart data - simplified for better pie chart display
+  const getPieChartData = (sortType = '') => {
+    const stats = getRuleUsageStats(sortType);
+    
+    if (sortType === 'gender' || sortType === 'age') {
+      // For complex sorts, show total rule usage (aggregated)
+      const aggregated = {};
+      Object.keys(stats).forEach(rule => {
+        const ruleStats = stats[rule];
+        aggregated[rule] = Object.values(ruleStats).reduce((sum, count) => sum + count, 0);
+      });
+      
+      return {
+        labels: Object.keys(aggregated),
+        datasets: [{
+          data: Object.values(aggregated),
+          backgroundColor: [
+            '#3498db',
+            '#e74c3c',
+            '#2ecc71',
+            '#f39c12',
+            '#9b59b6',
+            '#1abc9c',
+            '#34495e',
+            '#e67e22',
+            '#95a5a6',
+            '#f1c40f'
+          ],
+          borderColor: '#fff',
+          borderWidth: 2
+        }]
+      };
+    } else {
+      // Simple case - just show rule distribution
+      return {
+        labels: Object.keys(stats),
+        datasets: [{
+          data: Object.values(stats),
+          backgroundColor: [
+            '#3498db',
+            '#e74c3c',
+            '#2ecc71',
+            '#f39c12',
+            '#9b59b6',
+            '#1abc9c',
+            '#34495e',
+            '#e67e22',
+            '#95a5a6',
+            '#f1c40f'
+          ],
+          borderColor: '#fff',
+          borderWidth: 2
         }]
       };
     }
@@ -451,48 +511,140 @@ const BehavioralDiversityView = ({
         }}>
           {/* Independent Sorting Controls for Stats */}
           <div style={{ 
-            marginBottom: '20px'
+            display: 'flex',
+            gap: '20px',
+            alignItems: 'center',
+            marginBottom: '20px',
+            flexWrap: 'wrap'
           }}>
-            <label style={{ 
-              display: 'block', 
-              marginBottom: '8px',
-              fontFamily: 'Lexend, sans-serif',
-              fontSize: '0.95em',
-              color: '#34495e'
-            }}>
-              View Statistics By:
-            </label>
-            <select
-              value={statsSort}
-              onChange={(e) => setStatsSort(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '4px',
-                border: '1px solid #dcdde1',
-                fontSize: '0.95em',
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px',
                 fontFamily: 'Lexend, sans-serif',
-                color: '#2c3e50',
-                background: '#fff',
-                width: '150px'
-              }}
-            >
-              <option value="">All Participants</option>
-              <option value="gender">By Gender</option>
-              <option value="age">By Age Range</option>
-            </select>
+                fontSize: '0.95em',
+                color: '#34495e'
+              }}>
+                View Statistics By:
+              </label>
+              <select
+                value={statsSort}
+                onChange={(e) => setStatsSort(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  border: '1px solid #dcdde1',
+                  fontSize: '0.95em',
+                  fontFamily: 'Lexend, sans-serif',
+                  color: '#2c3e50',
+                  background: '#fff',
+                  width: '150px'
+                }}
+              >
+                <option value="">All Participants</option>
+                <option value="gender">By Gender</option>
+                <option value="age">By Age Range</option>
+              </select>
+            </div>
+
+            {/* Chart type toggle */}
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px',
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.95em',
+                color: '#34495e'
+              }}>
+                Chart Type:
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setChartType('bar')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: chartType === 'bar' ? '#27ae60' : '#f8f9fa',
+                    color: chartType === 'bar' ? '#fff' : '#2c3e50',
+                    border: '1px solid',
+                    borderColor: chartType === 'bar' ? '#27ae60' : '#e9ecef',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: chartType === 'bar' ? '600' : '500',
+                    fontSize: '0.9em',
+                    fontFamily: 'Lexend, sans-serif',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  📊 Bar Chart
+                </button>
+                <button
+                  onClick={() => setChartType('pie')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: chartType === 'pie' ? '#27ae60' : '#f8f9fa',
+                    color: chartType === 'pie' ? '#fff' : '#2c3e50',
+                    border: '1px solid',
+                    borderColor: chartType === 'pie' ? '#27ae60' : '#e9ecef',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: chartType === 'pie' ? '600' : '500',
+                    fontSize: '0.9em',
+                    fontFamily: 'Lexend, sans-serif',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  🥧 Pie Chart
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Bar Graph */}
+          {/* Chart Display */}
           <div style={{ 
             marginTop: '20px',
             position: 'relative',
             height: '400px',
             padding: '20px'
           }}>
-            <Bar
-              data={getChartData(statsSort)}
-              options={getChartOptions(statsSort)}
-            />
+            {chartType === 'bar' ? (
+              <Bar
+                data={getChartData(statsSort)}
+                options={getChartOptions(statsSort)}
+              />
+            ) : (
+              <Pie
+                data={getPieChartData(statsSort)}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'right',
+                      labels: {
+                        font: {
+                          family: 'Lexend, sans-serif'
+                        },
+                        padding: 20,
+                        usePointStyle: true
+                      }
+                    },
+                    title: {
+                      display: true,
+                      text: statsSort === 'gender' ? 'Rule Usage by Gender (Total)' :
+                            statsSort === 'age' ? 'Rule Usage by Age Range (Total)' :
+                            'Rule Usage Distribution',
+                      font: {
+                        family: 'Lexend, sans-serif',
+                        size: 16
+                      },
+                      padding: {
+                        bottom: 20
+                      }
+                    }
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

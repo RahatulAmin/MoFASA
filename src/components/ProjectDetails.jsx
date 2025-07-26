@@ -2501,7 +2501,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
             width: '100%',
             maxWidth: '880px',
             display: 'flex',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            minHeight: 'auto' // Allow dynamic height in modal
           }}>
             <ProjectReport
               projectData={project}
