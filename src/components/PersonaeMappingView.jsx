@@ -110,6 +110,7 @@ const PersonaeMappingView = ({
       {/* View selection buttons and PDF download */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
         <button
+          className="framework-view-button"
           key="framework-view"
           onClick={() => setPersonaeView('framework')}
           style={{
@@ -125,6 +126,7 @@ const PersonaeMappingView = ({
           Framework View
         </button>
         <button
+          className="summary-view-button"
           key="summary-view"
           onClick={() => setPersonaeView('summary')}
           style={{
@@ -142,6 +144,7 @@ const PersonaeMappingView = ({
 
         {/* PDF Download Button */}
         <button
+          className="download-pdf-button"
           key="pdf-download"
           onClick={generatePDF}
           disabled={isPdfGenerating}
@@ -188,6 +191,7 @@ const PersonaeMappingView = ({
               Sort by:
             </label>
             <select
+              className="sort-by-selector"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               style={{

@@ -341,6 +341,7 @@ const BehavioralDiversityView = ({
             Sort by:
           </label>
           <select
+            className="sort-by-selector"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             style={{
@@ -391,13 +392,14 @@ const BehavioralDiversityView = ({
         </button>
       </div>
 
-      {/* Wrap the entire behavioral content in a ref with max-width */}
-      <div 
-        ref={behavioralRef}
-        style={{
-          width: '100%'
-        }}
-      >
+              {/* Wrap the entire behavioral content in a ref with max-width */}
+        <div 
+          
+          ref={behavioralRef}
+          style={{
+            width: '100%'
+          }}
+        >
         {/* Grouped participants */}
         {Object.entries(getGroupedParticipants()).map(([group, groupParticipants]) => (
           <div key={group} style={{ marginBottom: 20 }}>
@@ -411,9 +413,11 @@ const BehavioralDiversityView = ({
             }}>
               {group}
             </h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+            <div  className="participant-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+           
               {groupParticipants.map((participant) => (
                 <div
+                  className="participant-card"
                   key={participant.id}
                   style={{
                     width: '320px',
@@ -501,14 +505,17 @@ const BehavioralDiversityView = ({
         }}>
           Rule Usage Statistics
         </h3>
-        <div style={{ 
-          marginTop: '40px',
-          padding: '20px',
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          border: '1px solid #dcdde1'
-        }}>
+        <div 
+          className="statistics-panel"
+          style={{ 
+            marginTop: '40px',
+            padding: '20px',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            border: '1px solid #dcdde1'
+          }}
+        >
           {/* Independent Sorting Controls for Stats */}
           <div style={{ 
             display: 'flex',

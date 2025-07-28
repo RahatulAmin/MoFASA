@@ -1334,7 +1334,7 @@ Please provide a concise, direct answer to the question based on the interview c
 
 
           {/* Question Sections */}
-          <div>
+          <div className="questionnaire-section">
             {SECTIONS.map(section => (
               <div key={section.name} style={{ 
                 marginBottom: 32,
@@ -1706,6 +1706,7 @@ Please provide a concise, direct answer to the question based on the interview c
                     }}
                   />
                   <button
+                    className="generate-summary-button"
                     onClick={generateSummary}
                     disabled={isGenerating}
                     style={{
@@ -1759,7 +1760,7 @@ Please provide a concise, direct answer to the question based on the interview c
 
       {/* Right Panel: Visual Answers */}
       <div 
-        className="right-panel" 
+        className="right-panel framework-panel" 
         ref={scrollContainerRef}
         style={{ 
           flex: 1,

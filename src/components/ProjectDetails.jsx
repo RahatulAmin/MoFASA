@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import editIcon from '../images/edit.png';
 import deleteIcon from '../images/trash.png';
@@ -15,6 +15,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getProjects, saveProjects } from '../store';
 import ProjectReport from './ProjectReport';
+import { CurrentViewContext } from '../App';
 
 const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
@@ -24,6 +25,9 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const idx = parseInt(projectId, 10);
   const project = projects[idx];
   const navigate = useNavigate();
+  
+  // Get the context for updating global currentView
+  const { setCurrentView: setGlobalCurrentView } = useContext(CurrentViewContext);
 
   const [descEditMode, setDescEditMode] = useState(false);
   const [descDraft, setDescDraft] = useState(project?.description || '');
@@ -154,6 +158,13 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   useEffect(() => {
     setSelectedParticipant(null);
   }, [projectId]);
+
+  // Update global currentView when local currentView changes
+  useEffect(() => {
+    if (setGlobalCurrentView) {
+      setGlobalCurrentView(currentView);
+    }
+  }, [currentView, setGlobalCurrentView]);
 
   const handleDescSave = () => {
     updateProjectDescription(idx, descDraft);
@@ -940,6 +951,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
             📄 Download Project Report
           </button> */}
           <button
+            className="check-report-btn"
             onClick={() => setShowHtmlReportModal(true)}
             style={{
               padding: '10px 20px',
@@ -971,16 +983,19 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         </div>
 
         {/* Project Header Card */}
-        <div style={{
-          background: '#fff',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '24px',
-          border: '1px solid #e9ecef',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
-        }}>
+        <div 
+          className="project-header-card"
+          style={{
+            background: '#fff',
+            borderRadius: '12px',
+            padding: '24px',
+            marginBottom: '24px',
+            border: '1px solid #e9ecef',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+          }}
+        >
           {/* Project Name */}
-          <div style={{ marginBottom: '20px' }}>
+          <div className="project-name-section" style={{ marginBottom: '20px' }}>
             {/* <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <div style={{
                 width: '3px',
@@ -1069,8 +1084,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{
+              <div className="project-name-display" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2 className="project-title" style={{
                   fontFamily: 'Lexend, sans-serif',
                   fontWeight: '600',
                   fontSize: '1.5em',
@@ -1080,6 +1095,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                   {project.name}
                 </h2>
                 <button
+                  className="edit-project-name-btn"
                   onClick={() => setNameEditMode(true)}
                   style={{
                     background: 'none',
@@ -1111,12 +1127,15 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           </div>
 
           {/* Project Description */}
-          <div style={{
-            background: '#f8f9fa',
-            borderRadius: '8px',
-            padding: '16px',
-            border: '1px solid #e9ecef'
-          }}>
+          <div 
+            className="project-description-section"
+            style={{
+              background: '#f8f9fa',
+              borderRadius: '8px',
+              padding: '16px',
+              border: '1px solid #e9ecef'
+            }}
+          >
             {/* <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <div style={{
                 width: '2px',
@@ -1255,6 +1274,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               </div>
             ) : (
               <button
+                className="add-description-btn"
                 onClick={() => { setDescDraft(''); setDescEditMode(true); }}
                 style={{
                   padding: '8px 16px',
@@ -1276,14 +1296,16 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         
         {/* Scope Selection */}
         {project.scopes && project.scopes.length > 0 && (
-          <div style={{
-              background: '#fff',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px',
-              border: '1px solid #e9ecef',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
-              }}>
+          <div 
+            className="scope-selection-section"
+            style={{
+                background: '#fff',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px',
+                border: '1px solid #e9ecef',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+                }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <div style={{
                 width: '3px',
@@ -1302,7 +1324,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               </h3>
             </div>
             
-            <div style={{
+            <div className="scope-buttons-container" style={{
               display: 'flex',
               gap: '8px',
               flexWrap: 'wrap',
@@ -1312,6 +1334,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               {project.scopes.map((scope, index) => (
                 <button
                   key={`scope-${scope.scopeNumber}-${index}`}
+                  className={`scope-button scope-${scope.scopeNumber}`}
                   onClick={(e) => {
                     handleScopeSelection(index);
                     // Add glowing ring effect
@@ -1509,6 +1532,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         {/* Three buttons */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
           <button 
+            className="personae-mapping-button"
             key="personae-mapping"
             onClick={() => setCurrentView(currentView === 'personae' ? 'details' : 'personae')}
             style={{ 
@@ -1537,7 +1561,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           >
             Personae Mapping
           </button>
-          <button 
+          <button
+            className="behavioral-diversity-button"
             key="behavioral-diversity"
             onClick={() => setCurrentView(currentView === 'behavioral' ? 'details' : 'behavioral')}
             style={{ 
@@ -1567,6 +1592,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
             Behavioral Diversity
           </button>
           <button 
+            className="situation-design-button"
             key="situation-design"
             onClick={() => setCurrentView(currentView === 'situation' ? 'details' : 'situation')}
             style={{ 
@@ -1770,6 +1796,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           // Regular View
           <>
         <button 
+          className="add-participant-btn"
           onClick={handleAddParticipant} 
           style={{ 
             padding: '8px 16px', 
@@ -1794,9 +1821,9 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           Add Participants
         </button>
             
-        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="participants-list" style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {participants.map((p, i) => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div key={p.id} className={`participant-item participant-${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               {editingParticipant === p.id ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <input
@@ -2100,7 +2127,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               </div>
 
               {/* Robot Changes Section */}
-              <div style={{ width: '100%', marginBottom: '24px' }}>
+              <div className="robot-changes-section" style={{ width: '100%', marginBottom: '24px' }}>
                 <h3 style={{
                   fontFamily: 'Lexend, sans-serif',
                   fontSize: '1.2em',
@@ -2157,7 +2184,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               </div>
               
               {/* Environmental Changes Section */}
-              <div style={{ width: '100%' }}>
+              <div className="environmental-changes-section" style={{ width: '100%' }}>
                 <h3 style={{
                   fontFamily: 'Lexend, sans-serif',
                   fontSize: '1.2em',

@@ -658,4 +658,88 @@ button:disabled {
     font-weight: bold;
     font-family: "Lexend", sans-serif;
 }
+
+/* Tutorial animations */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Tutorial specific styles */
+.tutorial-highlight {
+    position: relative;
+    z-index: 10001;
+}
+
+.tutorial-trigger {
+    position: relative;
+}
+
+/* Tutorial button hover effect */
+.tutorial-trigger:hover .tutorial-indicator {
+    transform: scale(1.3);
+}
+
+/* Disable beacon hover effects but keep functionality */
+.react-joyride__beacon:hover,
+.react-joyride__beacon:focus,
+.react-joyride__beacon:active {
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Disable any beacon-related hover effects but keep functionality */
+[class*="beacon"]:hover,
+[class*="beacon"]:focus,
+[class*="beacon"]:active {
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Simple tutorial button hover effects */
+.react-joyride__button--next:hover,
+.react-joyride__button--next:focus {
+    background-color: #2980b9 !important;
+}
+
+.react-joyride__button--back:hover,
+.react-joyride__button--back:focus {
+    background-color: #7f8c8d !important;
+}
+
+.react-joyride__button--skip:hover,
+.react-joyride__button--skip:focus {
+    color: #5a6c7d !important;
+}
+
+.react-joyride__button--close:hover,
+.react-joyride__button--close:focus {
+    background-color: #e74c3c !important;
+    color: #ffffff !important;
+    transform: scale(1.1) !important;
+    border-radius: 50% !important;
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3) !important;
+}
+
+/* Prevent beacon from getting button hover effects */
+.react-joyride__beacon:hover,
+.react-joyride__beacon:focus,
+.react-joyride__beacon:active {
+    background-color: transparent !important;
+    color: inherit !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
   

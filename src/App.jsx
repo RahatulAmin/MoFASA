@@ -8,8 +8,12 @@ import Settings from './components/Settings';
 import About from './components/About';
 import SplashScreen from './components/SplashScreen';
 import LLMStatus from './components/LLMStatus';
+import TutorialManager from './components/TutorialManager';
 import { getProjects, saveProjects } from './store';
 import '../styles.css';
+
+// Create context for current view
+export const CurrentViewContext = React.createContext();
 
 const App = () => {
   // Configuration - Change this to control splash screen duration
@@ -18,6 +22,7 @@ const App = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentView, setCurrentView] = useState(null);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -252,7 +257,7 @@ const App = () => {
         {projects.map((project, idx) => (
           <div
             key={idx}
-            className="sidebar-item"
+            className={`sidebar-item sidebar-project sidebar-project-${idx}`}
             style={{ paddingLeft: 30, background: location.pathname === `/projects/${idx}` ? '#34495e' : undefined, cursor: 'pointer' }}
             onClick={() => navigate(`/projects/${idx}`)}
           >
@@ -296,47 +301,51 @@ const App = () => {
 
   return (
     <Router>
-      <div className="app">
-        <div className="sidebar">
-          <h2>MoFASA Tools</h2>
-          <div className="sidebar-menu">
-            <SidebarLinks />
+      <CurrentViewContext.Provider value={{ currentView, setCurrentView }}>
+        <TutorialManager currentView={currentView}>
+          <div className="app">
+            <div className="sidebar">
+              <h2>MoFASA Tools</h2>
+              <div className="sidebar-menu">
+                <SidebarLinks />
+              </div>
+              <SidebarBottom />
+            </div>
+            <div className="main-content">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/projects" element={
+                  <Projects
+                    projects={projects}
+                    addProject={addProject}
+                    editProject={editProject}
+                    deleteProject={deleteProject}
+                  />
+                } />
+                <Route path="/projects/:projectId" element={
+                  <ProjectDetails
+                    projects={projects}
+                    updateProjectDescription={updateProjectDescription}
+                    editProject={editProject}
+                    deleteProject={deleteProject}
+                    updateProjectRules={updateProjectRules}
+                  />
+                } />
+                <Route path="/projects/:projectId/participants/:participantId" element={
+                  <ParticipantPage
+                    projects={projects}
+                    updateParticipantAnswers={updateParticipantAnswers}
+                    updateParticipantSummary={updateParticipantSummary}
+                    updateProjectRules={updateProjectRules}
+                  />
+                } />
+                <Route path="/settings" element={<Settings projects={projects} />} />
+                <Route path="/about" element={<About />} />
+              </Routes>
+            </div>
           </div>
-          <SidebarBottom />
-        </div>
-        <div className="main-content">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/projects" element={
-              <Projects
-                projects={projects}
-                addProject={addProject}
-                editProject={editProject}
-                deleteProject={deleteProject}
-              />
-            } />
-            <Route path="/projects/:projectId" element={
-              <ProjectDetails
-                projects={projects}
-                updateProjectDescription={updateProjectDescription}
-                editProject={editProject}
-                deleteProject={deleteProject}
-                updateProjectRules={updateProjectRules}
-              />
-            } />
-            <Route path="/projects/:projectId/participants/:participantId" element={
-              <ParticipantPage
-                projects={projects}
-                updateParticipantAnswers={updateParticipantAnswers}
-                updateParticipantSummary={updateParticipantSummary}
-                updateProjectRules={updateProjectRules}
-              />
-            } />
-            <Route path="/settings" element={<Settings projects={projects} />} />
-            <Route path="/about" element={<About />} />
-          </Routes>
-        </div>
-      </div>
+        </TutorialManager>
+      </CurrentViewContext.Provider>
     </Router>
   );
 };

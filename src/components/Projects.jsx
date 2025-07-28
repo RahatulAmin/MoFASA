@@ -531,8 +531,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
 
   return (
     <div style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: '20px' }}>
-        <h2>Projects</h2>
+      <div className="projects-header" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 className="projects-title">Projects</h2>
         <button 
           onClick={() => setIsAddProjectOpen(true)}
           className="button-style add-project-button"
@@ -598,6 +598,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                   <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Project Name:</label>
                   <input
                     type="text"
+                    placeholder="Enter your project name..."
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
                     style={{
@@ -1510,7 +1511,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
         </div>
       )}
 
-      <div style={{ 
+      <div className="projects-grid" style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(5, 1fr)', 
         gap: '20px',
@@ -1519,7 +1520,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
         {projects.map((project, index) => (
           <div
             key={index}
-            className='project-card'
+            className={`project-card project-card-${index}`}
             onClick={() => navigate(`/projects/${index}`)}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>

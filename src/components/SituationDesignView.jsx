@@ -101,7 +101,7 @@ const SituationDesignView = ({
     <div style={{ padding: '24px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* Generated Rules Section */}
-        <div style={{ width: '100%' }}>
+        <div className="generated-rules" style={{ width: '100%' }}>
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
@@ -118,6 +118,7 @@ const SituationDesignView = ({
             </h3>
             {(currentScope?.rules && currentScope.rules.length > 0) && (
               <button
+                className="label-undesirable-rules"
                 onClick={() => setIsLabelingMode(!isLabelingMode)}
                 style={{
                   padding: '6px 12px',
