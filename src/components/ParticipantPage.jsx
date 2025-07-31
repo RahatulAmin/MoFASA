@@ -163,10 +163,128 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [sameForAllScopes, setSameForAllScopes] = useState({}); // Track which questions should apply to all scopes per participant
   
+  // Persist interview processing state - participant specific
+  const [processingStatus, setProcessingStatus] = useState({
+    isProcessing: false,
+    progress: 0,
+    processedCount: 0,
+    totalQuestions: 0,
+    startTime: null
+  });
+  
   // Store scroll position to preserve it during re-renders
   const scrollPositionRef = useRef({ top: 0, left: 0 });
   const shouldRestoreScroll = useRef(false);
   const questionsLoadedRef = useRef(false); // Track if questions are already loaded
+  
+  // Persist interview text and processing state - participant specific
+  const getInterviewStorageKey = () => `interview_${participantId}_${actualProjectId}`;
+  const getProcessingStorageKey = () => `processing_${participantId}_${actualProjectId}`;
+  
+  const saveInterviewState = (text, isProcessing = false) => {
+    try {
+      // Only save if text is not empty
+      if (text && text.trim() !== '') {
+        localStorage.setItem(getInterviewStorageKey(), JSON.stringify({
+          text,
+          timestamp: Date.now()
+        }));
+      } else {
+        // If text is empty, remove from localStorage
+        localStorage.removeItem(getInterviewStorageKey());
+      }
+      
+      if (isProcessing) {
+        localStorage.setItem(getProcessingStorageKey(), JSON.stringify({
+          isProcessing: true,
+          timestamp: Date.now(),
+          progress: processingStatus.progress,
+          processedCount: processingStatus.processedCount,
+          totalQuestions: processingStatus.totalQuestions
+        }));
+      }
+    } catch (error) {
+      console.error('Error saving interview state:', error);
+    }
+  };
+  
+  const loadInterviewState = () => {
+    try {
+      const interviewData = localStorage.getItem(getInterviewStorageKey());
+      const processingData = localStorage.getItem(getProcessingStorageKey());
+      
+      if (interviewData) {
+        const parsed = JSON.parse(interviewData);
+        // Only restore if data is less than 1 hour old AND not empty AND not explicitly cleared
+        if (Date.now() - parsed.timestamp < 3600000 && 
+            parsed.text && 
+            parsed.text.trim() !== '' && 
+            parsed.text !== 'CLEARED') {
+          setInterviewText(parsed.text);
+        }
+      }
+      
+      // Don't restore processing status when switching participants
+      // Only restore if we're on the same participant and processing was interrupted
+      if (processingData) {
+        const parsed = JSON.parse(processingData);
+        // Only restore if processing started less than 10 minutes ago AND we're on the same participant
+        if (Date.now() - parsed.timestamp < 600000) {
+          // Only restore if the processing was for this specific participant
+          // This prevents cross-participant contamination
+          setProcessingStatus(prev => ({ 
+            ...prev, 
+            isProcessing: true,
+            progress: parsed.progress || 0,
+            processedCount: parsed.processedCount || 0,
+            totalQuestions: parsed.totalQuestions || 0
+          }));
+        } else {
+          // Clear stale processing state
+          localStorage.removeItem(getProcessingStorageKey());
+        }
+      }
+    } catch (error) {
+      console.error('Error loading interview state:', error);
+    }
+  };
+  
+  // Reset processing status when participant changes
+  const resetProcessingStatus = () => {
+    setProcessingStatus({
+      isProcessing: false,
+      progress: 0,
+      processedCount: 0,
+      totalQuestions: 0,
+      startTime: null
+    });
+    
+    // Also clear any stale processing data from localStorage for this participant
+    try {
+      localStorage.removeItem(getProcessingStorageKey());
+    } catch (error) {
+      console.error('Error clearing processing state:', error);
+    }
+  };
+  
+  const clearInterviewState = () => {
+    try {
+      localStorage.removeItem(getInterviewStorageKey());
+      localStorage.removeItem(getProcessingStorageKey());
+    } catch (error) {
+      console.error('Error clearing interview state for participant:', error);
+    }
+  };
+  
+  const clearInterviewText = () => {
+    setInterviewText('');
+    // Also clear from localStorage
+    try {
+      localStorage.removeItem(getInterviewStorageKey());
+    } catch (error) {
+      console.error('Error clearing interview text:', error);
+    }
+  };
 
   // Reference for connection calculation function
   const refreshConnections = useRef(() => {});
@@ -253,6 +371,7 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       } catch (error) {
         console.error('Error loading questions:', error);
         // Fallback to hardcoded questions if database fails
+        console.log('Falling back to hardcoded questions:', QUESTIONS);
         setQuestions(QUESTIONS);
         questionsLoadedRef.current = true; // Mark as loaded even with fallback
       } finally {
@@ -348,56 +467,71 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
     setSummary(participant?.summary || '');
     setError(null);
     setProgress(0);
-    setInterviewText(participant?.interviewText || '');
     
-    // Initialize local answers with participant's current answers
-    let participantAnswers = participant?.answers || {};
+    // Completely reset processing status for new participant
+    resetProcessingStatus();
     
-    // For Robot Specifics, check if the answer exists in any scope for this participant
+    // Always start with empty interview text for new participant
+    setInterviewText('');
+    
+    // Load persisted interview text or use participant's interview text
+    const participantInterviewText = participant?.interviewText || '';
+    if (participantInterviewText) {
+      setInterviewText(participantInterviewText);
+    } else {
+      // Try to load from localStorage for this specific participant
+      loadInterviewState();
+    }
+    
+    // Define Robot Specifics variables outside the conditional block
     const robotSpecificsQuestion = 'What is the type of the robot? What features does it have and what can it do?';
     const robotSpecificsId = 'robot_specifics';
     
-    // Check if Robot Specifics answer exists in current scope
-    let robotSpecificsAnswer = participantAnswers['Situation']?.[robotSpecificsQuestion] || 
-                              participantAnswers['Situation']?.[robotSpecificsId];
-    
-    // If not found in current scope, search in all other scopes
-    if (!robotSpecificsAnswer && project?.scopes) {
-      for (const scope of project.scopes) {
-        const scopeParticipant = scope.participants?.find(p => p.id === participantId);
-        if (scopeParticipant?.answers) {
-          const scopeRobotAnswer = scopeParticipant.answers['Situation']?.[robotSpecificsQuestion] || 
-                                  scopeParticipant.answers['Situation']?.[robotSpecificsId];
-          if (scopeRobotAnswer) {
-            robotSpecificsAnswer = scopeRobotAnswer;
-            break;
+    // Only initialize local answers if we're not currently processing
+    if (!processingStatus.isProcessing) {
+      // Initialize local answers with participant's current answers
+      let participantAnswers = participant?.answers || {};
+      
+      // Check if Robot Specifics answer exists in current scope
+      let robotSpecificsAnswer = participantAnswers['Situation']?.[robotSpecificsQuestion] || 
+                                participantAnswers['Situation']?.[robotSpecificsId];
+      
+      // If not found in current scope, search in all other scopes
+      if (!robotSpecificsAnswer && project?.scopes) {
+        for (const scope of project.scopes) {
+          const scopeParticipant = scope.participants?.find(p => p.id === participantId);
+          if (scopeParticipant?.answers) {
+            const scopeRobotAnswer = scopeParticipant.answers['Situation']?.[robotSpecificsQuestion] || 
+                                    scopeParticipant.answers['Situation']?.[robotSpecificsId];
+            if (scopeRobotAnswer) {
+              robotSpecificsAnswer = scopeRobotAnswer;
+              break;
+            }
           }
         }
       }
+      
+      // Update the local answers to include Robot Specifics from any scope
+      if (robotSpecificsAnswer) {
+        participantAnswers = {
+          ...participantAnswers,
+          'Situation': {
+            ...participantAnswers['Situation'],
+            [robotSpecificsQuestion]: robotSpecificsAnswer
+          }
+        };
+      }
+      
+      // Only set local answers if we don't already have comprehensive data
+      // This prevents overwriting freshly processed data
+      const hasComprehensiveData = localAnswers['Identity'] && localAnswers['Definition of Situation'];
+      if (!hasComprehensiveData) {
+        setLocalAnswers(participantAnswers);
+      }
     }
-    
-    // Update the local answers to include Robot Specifics from any scope
-    if (robotSpecificsAnswer) {
-      participantAnswers = {
-        ...participantAnswers,
-        'Situation': {
-          ...participantAnswers['Situation'],
-          [robotSpecificsQuestion]: robotSpecificsAnswer
-        }
-      };
-    }
-    
-    setLocalAnswers(participantAnswers);
     
     // Ensure selectedRules is always an array
     const participantSelectedRules = participant?.answers?.['Rule Selection']?.selectedRules;
-    console.log('Loading selected rules:', {
-      participantId,
-      participantAnswers: participant?.answers,
-      ruleSelectionAnswers: participant?.answers?.['Rule Selection'],
-      participantSelectedRules,
-      isArray: Array.isArray(participantSelectedRules)
-    });
     setSelectedRules(Array.isArray(participantSelectedRules) ? participantSelectedRules : []);
     
     // Initialize sameForAllScopes for Robot Specifics question (always enabled)
@@ -406,7 +540,7 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       [`${participantId}-Situation-${robotSpecificsQuestion}`]: true,
       [`${participantId}-Situation-${robotSpecificsId}`]: true
     }));
-  }, [participantId, participant?.summary, participant?.interviewText, participant?.answers, project?.scopes]);
+  }, [participantId, participant?.summary, participant?.interviewText, participant?.answers, project?.scopes, processingStatus.isProcessing]);
 
   // Save interview text immediately when participant changes
   useEffect(() => {
@@ -444,6 +578,10 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       }
     };
   }, []);
+
+
+
+
 
   // Navigation window logic
   let start = Math.max(0, currentIndex - 1);
@@ -761,15 +899,59 @@ Generate summary (remember: use ONLY the exact factors provided with each questi
 
   const processQuestionWithLLM = async (question, interviewText, config) => {
     try {
-      const prompt = `Based on the following interview text, answer this specific question: "${question}"
+      const prompt = `You are a data extraction specialist. Extract ONLY the direct answer from the interview text. Do not provide explanations, reasoning, or any text before the answer.
+
+Question: "${question}"
 
 Interview Text:
 ${interviewText}
 
-Please provide a concise, direct answer to the question based on the interview content.`;
+CRITICAL: Respond with ONLY the direct answer. No explanations. No "Answer:" prefix. No reasoning. Just the answer.
+
+If information is not provided, respond with: "Information not provided"
+
+Direct answer:`;
 
       const response = await window.electronAPI.generateWithDeepSeek(prompt);
-      return response.trim();
+      
+      // Clean up the response to remove any "Answer:" prefixes or explanations
+      let cleanedResponse = response.trim();
+      
+      // Remove common prefixes that LLM might add
+      const prefixesToRemove = [
+        'Answer:',
+        'The answer is:',
+        'Based on the interview:',
+        'From the interview:',
+        'The participant:',
+        'The individual:'
+      ];
+      
+      for (const prefix of prefixesToRemove) {
+        if (cleanedResponse.toLowerCase().startsWith(prefix.toLowerCase())) {
+          cleanedResponse = cleanedResponse.substring(prefix.length).trim();
+        }
+      }
+      
+      // If the response contains multiple lines, take only the last line (usually the actual answer)
+      const lines = cleanedResponse.split('\n').filter(line => line.trim());
+      if (lines.length > 1) {
+        // Look for the line that doesn't contain explanatory words
+        const answerLine = lines.find(line => 
+          !line.toLowerCase().includes('answer') && 
+          !line.toLowerCase().includes('based on') &&
+          !line.toLowerCase().includes('from the') &&
+          line.trim().length > 0
+        );
+        if (answerLine) {
+          cleanedResponse = answerLine.trim();
+        } else {
+          // Take the last non-empty line
+          cleanedResponse = lines[lines.length - 1].trim();
+        }
+      }
+      
+      return cleanedResponse;
     } catch (error) {
       console.error('Error processing question with LLM:', error);
       throw error;
@@ -783,29 +965,97 @@ Please provide a concise, direct answer to the question based on the interview c
     }
 
     setIsProcessing(true);
+    // Calculate total questions for sections that will be processed
+    const sectionsToProcess = ['Situation', 'Identity', 'Definition of Situation'];
+    const totalQuestions = Object.entries(questions)
+      .filter(([section]) => sectionsToProcess.includes(section))
+      .reduce((total, [section, questions]) => total + questions.length, 0);
+    
+    setProcessingStatus({
+      isProcessing: true,
+      progress: 0,
+      processedCount: 0,
+      totalQuestions: totalQuestions,
+      startTime: Date.now()
+    });
     setError(null);
+    
+    // Save processing state
+    saveInterviewState(interviewText, true);
 
     try {
       // Process each question in the enabled questions
       const processedAnswers = {};
+      let processedCount = 0;
+      
+      // Only process Situation, Identity, and Definition of Situation sections
+      const sectionsToProcess = ['Situation', 'Identity', 'Definition of Situation'];
+      
+      // Only count questions from sections that will be processed
+      const totalQuestions = Object.entries(questions)
+        .filter(([section]) => sectionsToProcess.includes(section))
+        .reduce((total, [section, questions]) => total + questions.length, 0);
       
       for (const [section, sectionQuestions] of Object.entries(questions)) {
+        // Skip sections that shouldn't be processed by LLM
+        if (!sectionsToProcess.includes(section)) {
+          continue;
+        }
+        
         processedAnswers[section] = {};
         
         for (const question of sectionQuestions) {
           const questionText = typeof question === 'string' ? question : question.text;
+          // Use the same logic as the form rendering for consistency
+          const questionId = typeof question === 'object' && question.type === 'dropdown' ? question.id : question.text;
           
           try {
             const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig);
-            processedAnswers[section][questionText] = answer;
+            
+            // Store answer with the correct question ID
+            processedAnswers[section][questionId] = answer;
+            
+            processedCount++;
+            
+            // Update progress
+            const newProgress = (processedCount / totalQuestions) * 100;
+            setProgress(newProgress);
+            setProcessingStatus(prev => ({
+              ...prev,
+              progress: newProgress,
+              processedCount
+            }));
+            
           } catch (error) {
             console.error(`Error processing question "${questionText}":`, error);
-            processedAnswers[section][questionText] = 'Error processing this question';
+            processedAnswers[section][questionId] = 'Error processing this question';
+            processedCount++;
+            const newProgress = (processedCount / totalQuestions) * 100;
+            setProgress(newProgress);
+            setProcessingStatus(prev => ({
+              ...prev,
+              progress: newProgress,
+              processedCount
+            }));
           }
         }
       }
 
-      // Save all processed answers
+      // Update local answers immediately for better UX
+      setLocalAnswers(prev => {
+        const updated = { ...prev };
+        Object.entries(processedAnswers).forEach(([section, answers]) => {
+          updated[section] = { ...updated[section], ...answers };
+        });
+        return updated;
+      });
+
+      // Force a re-render by updating the state again after a short delay
+      setTimeout(() => {
+        setLocalAnswers(current => ({ ...current }));
+      }, 200);
+
+      // Save all processed answers to database
       await Promise.all(
         Object.entries(processedAnswers).map(([section, answers]) =>
           Object.entries(answers).map(([question, answer]) =>
@@ -814,13 +1064,40 @@ Please provide a concise, direct answer to the question based on the interview c
         ).flat()
       );
 
-      alert('Interview processing completed! All answers have been saved.');
+      alert(`Interview processing completed! ${processedCount} questions processed and saved.`);
       setShowInterview(false);
+      
+      // Delay clearing the processing status to show completion feedback
+      setTimeout(() => {
+        setProgress(0);
+        setProcessingStatus({
+          isProcessing: false,
+          progress: 0,
+          processedCount: 0,
+          totalQuestions: 0,
+          startTime: null
+        });
+        clearInterviewState(); // Clear processing state on completion
+      }, 2000); // Show completion status for 2 seconds
+      
+      // Force a final state update to ensure the form displays the processed answers
+      setTimeout(() => {
+        setLocalAnswers(current => ({ ...current }));
+      }, 500);
     } catch (error) {
       console.error('Error processing interview:', error);
       setError('Failed to process interview. Please try again.');
+      setProcessingStatus({
+        isProcessing: false,
+        progress: 0,
+        processedCount: 0,
+        totalQuestions: 0,
+        startTime: null
+      });
+      clearInterviewState(); // Clear processing state on error
     } finally {
       setIsProcessing(false);
+      setProgress(0);
     }
   };
 
@@ -1204,18 +1481,7 @@ Please provide a concise, direct answer to the question based on the interview c
             )}
           </div>
           
-          {/* Participant Name */}
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ 
-              fontFamily: 'Lexend, sans-serif', 
-              fontWeight: 600, 
-              fontSize: '1.2em', 
-              marginBottom: '12px',
-              color: '#34495e'
-            }}>
-              Participant: {participant.name}
-            </h3>
-          </div>
+          
           
           {/* Scope Selection */}
           {project.scopes && project.scopes.length > 0 && (
@@ -1299,7 +1565,20 @@ Please provide a concise, direct answer to the question based on the interview c
           )}
         </div>
 
-          {/* Toggle Switches
+        {/* Participant Name */}
+        <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ 
+              fontFamily: 'Lexend, sans-serif', 
+              fontWeight: 600, 
+              fontSize: '1.2em', 
+              marginBottom: '12px',
+              color: '#34495e'
+            }}>
+              Participant: {participant.name}
+            </h3>
+          </div>
+
+          {/* Toggle Switches */}
           <div style={{ 
             display: 'flex', 
             gap: '16px', 
@@ -1394,65 +1673,160 @@ Please provide a concise, direct answer to the question based on the interview c
               </label>
               <span style={{ fontFamily: 'Lexend, sans-serif', fontSize: '0.95em' }}>Generate Summary</span>
             </div>
-          </div> */}
+          </div>
 
           {/* Interview Text Area */}
           {showInterview && (
             <div style={{ 
               marginBottom: '24px',
-              padding: '16px',
+              padding: '20px',
               backgroundColor: '#f8f9fa',
               borderRadius: '8px',
               border: '1px solid #e9ecef'
             }}>
               <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ 
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '1.1em',
+                  color: '#2c3e50',
+                  marginBottom: '12px',
+                  fontWeight: '600'
+                }}>
+                  📝 Interview Data Extraction
+                </h4>
+                <p style={{ 
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.9em',
+                  color: '#7f8c8d',
+                  marginBottom: '16px',
+                  lineHeight: '1.4'
+                }}>
+                  Paste the participant's interview text below. The AI will automatically extract answers to all questions based on the interview content.
+                </p>
                 <textarea
                   value={interviewText}
-                  onChange={(e) => setInterviewText(e.target.value)}
-                  placeholder="Paste interview text here..."
+                  onChange={(e) => {
+                    const newText = e.target.value;
+                    setInterviewText(newText);
+                    // Only save if text is not empty
+                    if (newText.trim() !== '') {
+                      saveInterviewState(newText);
+                    } else {
+                              // Clear from localStorage if text is empty
+        try {
+          localStorage.removeItem(getInterviewStorageKey());
+        } catch (error) {
+          console.error('Error clearing empty interview text:', error);
+        }
+                    }
+                  }}
+                  placeholder="Paste the participant's interview text here... The AI will analyze this text and extract answers to all the questions automatically."
                   style={{
                     width: '100%',
-                    minHeight: '200px',
-                    padding: '12px',
-                    borderRadius: '4px',
+                    minHeight: '250px',
+                    padding: '16px',
+                    borderRadius: '6px',
                     border: '1px solid #dcdde1',
                     fontSize: '0.95em',
                     fontFamily: 'Lexend, sans-serif',
                     resize: 'vertical',
-                    marginBottom: '12px'
+                    marginBottom: '16px',
+                    lineHeight: '1.5'
                   }}
                 />
-                <button
-                  onClick={handleProcessInterview}
-                  disabled={isProcessing || !interviewText.trim()}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: isProcessing || !interviewText.trim() ? '#bbb' : '#3498db',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: isProcessing || !interviewText.trim() ? 'default' : 'pointer',
-                    fontFamily: 'Lexend, sans-serif'
-                  }}
-                >
-                  {isProcessing ? 'Processing...' : 'Process Interview'}
-                </button>
-                {isProcessing && (
-                  <div style={{ marginTop: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    onClick={handleProcessInterview}
+                    disabled={isProcessing || !interviewText.trim()}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: isProcessing || !interviewText.trim() ? '#bbb' : '#3498db',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: isProcessing || !interviewText.trim() ? 'default' : 'pointer',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.95em',
+                      fontWeight: '500',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isProcessing && interviewText.trim()) {
+                        e.target.style.backgroundColor = '#2980b9';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isProcessing && interviewText.trim()) {
+                        e.target.style.backgroundColor = '#3498db';
+                      }
+                    }}
+                  >
+                    {isProcessing ? '🤖 Processing Interview...' : '🚀 Process Interview with AI'}
+                  </button>
+
+                  
+                  {/* Show progress when processing */}
+                  {(isProcessing || processingStatus.isProcessing) && (
+                    <span style={{ 
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.9em',
+                      color: '#7f8c8d'
+                    }}>
+                      Processing {Math.round(isProcessing ? progress : processingStatus.progress)}% complete...
+                      {processingStatus.processedCount > 0 && processingStatus.totalQuestions > 0 && (
+                        <span style={{ marginLeft: '8px', color: '#3498db' }}>
+                          ({processingStatus.processedCount}/{processingStatus.totalQuestions} questions)
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                {/* Show progress bar when processing */}
+                {(isProcessing || processingStatus.isProcessing) && (
+                  <div style={{ marginTop: '12px' }}>
                     <div style={{ 
                       width: '100%', 
-                      height: '4px', 
+                      height: '6px', 
                       backgroundColor: '#eee',
-                      borderRadius: '2px',
+                      borderRadius: '3px',
                       overflow: 'hidden'
                     }}>
                       <div style={{
-                        width: `${progress}%`,
+                        width: `${isProcessing ? progress : processingStatus.progress}%`,
                         height: '100%',
                         backgroundColor: '#3498db',
-                        transition: 'width 0.3s ease'
+                        transition: 'width 0.3s ease',
+                        borderRadius: '3px'
                       }} />
                     </div>
+                    {processingStatus.isProcessing && !isProcessing && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        backgroundColor: '#fff3cd',
+                        border: '1px solid #ffeaa7',
+                        borderRadius: '4px',
+                        fontSize: '0.85em',
+                        color: '#856404',
+                        fontFamily: 'Lexend, sans-serif'
+                      }}>
+                        ⚠️ Processing was interrupted. The backend may still be processing your interview. 
+                        You can continue working while it completes in the background.
+                      </div>
+                    )}
+                  </div>
+                )}
+                {error && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '8px 12px',
+                    backgroundColor: '#fee',
+                    color: '#e74c3c',
+                    borderRadius: '4px',
+                    fontSize: '0.9em',
+                    fontFamily: 'Lexend, sans-serif'
+                  }}>
+                    {error}
                   </div>
                 )}
               </div>
@@ -1666,7 +2040,7 @@ Please provide a concise, direct answer to the question based on the interview c
                       const shouldShowToggle = !excludedQuestions.includes(questionText);
                       
                       return (
-                        <div key={questionId} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div key={`${questionId}-${JSON.stringify(localAnswers[section.name]?.[questionId])}`} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ 
                             display: 'flex', 
                             justifyContent: shouldShowToggle ? 'space-between' : 'flex-start', 
@@ -1839,6 +2213,7 @@ Please provide a concise, direct answer to the question based on the interview c
                               placeholder="Enter your answer here..."
                             />
                           )}
+
                         </div>
                       );
                     }) || []
