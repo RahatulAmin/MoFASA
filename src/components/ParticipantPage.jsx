@@ -525,7 +525,13 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       // Only set local answers if we don't already have comprehensive data
       // This prevents overwriting freshly processed data
       const hasComprehensiveData = localAnswers['Identity'] && localAnswers['Definition of Situation'];
-      if (!hasComprehensiveData) {
+      const hasParticipantData = participantAnswers['Identity'] || participantAnswers['Definition of Situation'];
+      
+      // Load participant data if we don't have comprehensive local data
+      if (!hasComprehensiveData && hasParticipantData) {
+        setLocalAnswers(participantAnswers);
+      } else if (!hasComprehensiveData && !hasParticipantData) {
+        // If no participant data either, still set empty state to ensure form renders
         setLocalAnswers(participantAnswers);
       }
     }
@@ -540,7 +546,7 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       [`${participantId}-Situation-${robotSpecificsQuestion}`]: true,
       [`${participantId}-Situation-${robotSpecificsId}`]: true
     }));
-  }, [participantId, participant?.summary, participant?.interviewText, participant?.answers, project?.scopes, processingStatus.isProcessing]);
+  }, [participantId, participant?.summary, participant?.interviewText, project?.scopes, processingStatus.isProcessing]);
 
   // Save interview text immediately when participant changes
   useEffect(() => {
@@ -562,7 +568,7 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       const loadedText = participant.interviewText || '';
       setInterviewText(loadedText);
     }
-  }, [participant]);
+  }, [participantId]);
 
   // Cleanup effect for debounce timer
   useEffect(() => {
@@ -1056,13 +1062,46 @@ Direct answer:`;
       }, 200);
 
       // Save all processed answers to database
-      await Promise.all(
-        Object.entries(processedAnswers).map(([section, answers]) =>
-          Object.entries(answers).map(([question, answer]) =>
-            updateParticipantAnswers(idx, participantId, section, question, answer)
-          )
-        ).flat()
-      );
+      try {
+        // For processed interview answers, we need to save them across all scopes
+        // to ensure they persist when navigating between scopes
+        const updatedScopes = project.scopes.map(scope => {
+          const scopeParticipants = scope.participants || [];
+          const updatedParticipants = scopeParticipants.map(p => {
+            if (p.id === participantId) {
+              const updatedAnswers = { ...p.answers };
+              
+              // Add all processed answers to this participant
+              Object.entries(processedAnswers).forEach(([section, answers]) => {
+                if (!updatedAnswers[section]) {
+                  updatedAnswers[section] = {};
+                }
+                Object.entries(answers).forEach(([question, answer]) => {
+                  updatedAnswers[section][question] = answer;
+                });
+              });
+              
+              return {
+                ...p,
+                answers: updatedAnswers
+              };
+            }
+            return p;
+          });
+          
+          return {
+            ...scope,
+            participants: updatedParticipants
+          };
+        });
+        
+        // Update the project with all scopes using updateProjectRules
+        updateProjectRules(idx, updatedScopes);
+      } catch (error) {
+        console.error('Error saving answers to database:', error);
+      }
+
+
 
       alert(`Interview processing completed! ${processedCount} questions processed and saved.`);
       setShowInterview(false);
@@ -1631,7 +1670,7 @@ Direct answer:`;
               <span style={{ fontFamily: 'Lexend, sans-serif', fontSize: '0.95em' }}>Extract Data from Interview</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ 
                 position: 'relative',
                 display: 'inline-block',
@@ -1672,7 +1711,7 @@ Direct answer:`;
                 </span>
               </label>
               <span style={{ fontFamily: 'Lexend, sans-serif', fontSize: '0.95em' }}>Generate Summary</span>
-            </div>
+            </div> */}
           </div>
 
           {/* Interview Text Area */}
@@ -2040,7 +2079,7 @@ Direct answer:`;
                       const shouldShowToggle = !excludedQuestions.includes(questionText);
                       
                       return (
-                        <div key={`${questionId}-${JSON.stringify(localAnswers[section.name]?.[questionId])}`} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div key={`${section.name}-${questionId}`} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <div style={{ 
                             display: 'flex', 
                             justifyContent: shouldShowToggle ? 'space-between' : 'flex-start', 
