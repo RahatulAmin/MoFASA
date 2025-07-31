@@ -161,6 +161,7 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
   const [selectedFactor, setSelectedFactor] = useState(null);
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState(null);
+  const [sameForAllScopes, setSameForAllScopes] = useState({}); // Track which questions should apply to all scopes per participant
   
   // Store scroll position to preserve it during re-renders
   const scrollPositionRef = useRef({ top: 0, left: 0 });
@@ -398,6 +399,13 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       isArray: Array.isArray(participantSelectedRules)
     });
     setSelectedRules(Array.isArray(participantSelectedRules) ? participantSelectedRules : []);
+    
+    // Initialize sameForAllScopes for Robot Specifics question (always enabled)
+    setSameForAllScopes(prev => ({
+      ...prev,
+      [`${participantId}-Situation-${robotSpecificsQuestion}`]: true,
+      [`${participantId}-Situation-${robotSpecificsId}`]: true
+    }));
   }, [participantId, participant?.summary, participant?.interviewText, participant?.answers, project?.scopes]);
 
   // Save interview text immediately when participant changes
@@ -879,6 +887,50 @@ Please provide a concise, direct answer to the question based on the interview c
     handleFactorClick(question, factor, setSelectedFactor, setShowFactorDetails);
   };
 
+  const handleSameForAllScopesToggle = (section, question) => {
+    const questionKey = `${participantId}-${section}-${question}`;
+    const newValue = !sameForAllScopes[questionKey];
+    
+    setSameForAllScopes(prev => ({
+      ...prev,
+      [questionKey]: newValue
+    }));
+    
+    // If turning on the toggle, apply current answer to all scopes
+    if (newValue) {
+      const currentAnswer = localAnswers[section]?.[question];
+      if (currentAnswer && currentAnswer.trim() !== '') {
+        // Update all scopes with the current answer
+        const updatedScopes = project.scopes.map(scope => {
+          const scopeParticipants = scope.participants || [];
+          const updatedParticipants = scopeParticipants.map(p => {
+            if (p.id === participantId) {
+              return {
+                ...p,
+                answers: {
+                  ...p.answers,
+                  [section]: {
+                    ...p.answers?.[section],
+                    [question]: currentAnswer
+                  }
+                }
+              };
+            }
+            return p;
+          });
+          
+          return {
+            ...scope,
+            participants: updatedParticipants
+          };
+        });
+        
+        // Update the project with all scopes
+        updateProjectRules(idx, updatedScopes);
+      }
+    }
+  };
+
   const handleConnectionClick = (label) => {
     const connectionInfo = CONNECTION_EXPLANATIONS[label];
     if (connectionInfo) {
@@ -927,12 +979,16 @@ Please provide a concise, direct answer to the question based on the interview c
     
     // Set a new timer to debounce the database update
     answerChangeTimer.current = setTimeout(() => {
-      // Check if this is the Robot Specifics question
+      // Check if this question should apply to all scopes
+      const questionKey = `${section}-${question}`;
+      const shouldApplyToAllScopes = sameForAllScopes[questionKey];
+      
+      // Check if this is the Robot Specifics question (always applies to all scopes)
       const isRobotSpecifics = question === 'What is the type of the robot? What features does it have and what can it do?' || 
                                question === 'robot_specifics';
       
-      if (isRobotSpecifics) {
-        // For Robot Specifics, update the answer across all scopes for this participant
+      if (isRobotSpecifics || shouldApplyToAllScopes) {
+        // Update the answer across all scopes for this participant
         const updatedScopes = project.scopes.map(scope => {
           const scopeParticipants = scope.participants || [];
           const updatedParticipants = scopeParticipants.map(p => {
@@ -960,7 +1016,7 @@ Please provide a concise, direct answer to the question based on the interview c
         // Update the project with all scopes
         updateProjectRules(idx, updatedScopes);
       } else {
-        // For other questions, update normally
+        // For other questions, update only the current scope
         updateParticipantAnswers(idx, participantId, section, question, value);
       }
     }, 500); // 500ms delay
@@ -1594,51 +1650,158 @@ Please provide a concise, direct answer to the question based on the interview c
                       const isDropdown = question.type === 'dropdown';
                       const questionText = question.text;
                       const questionId = isDropdown ? question.id : question.text;
+                      const questionKey = `${participantId}-${section.name}-${questionId}`;
+                      const isSameForAllScopes = sameForAllScopes[questionKey];
+                      
+                      // Define questions that should not have the toggle
+                      const excludedQuestions = [
+                        'Age range of the participant(s)',
+                        'Gender of the participant(s)',
+                        'Nationality of the participant(s)',
+                        'Occupation of the participant(s)',
+                        'Education level of the participant(s)',
+                        'What is the type of the robot? What features does it have and what can it do?'
+                      ];
+                      
+                      const shouldShowToggle = !excludedQuestions.includes(questionText);
+                      
                       return (
                         <div key={questionId} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <label style={{ 
-                            fontFamily: 'Lexend, sans-serif',
-                            fontSize: '0.95em',
-                            color: '#34495e',
-                            display: 'flex',
-                            flexDirection: 'column', // Change to column layout
-                            gap: '8px'
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: shouldShowToggle ? 'space-between' : 'flex-start', 
+                            alignItems: 'flex-start',
+                            gap: '12px'
                           }}>
-                            <span>{questionText}</span>
-                            {question.factors && (
+                            <label style={{ 
+                              fontFamily: 'Lexend, sans-serif',
+                              fontSize: '0.95em',
+                              color: '#34495e',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              flex: shouldShowToggle ? 1 : 'none'
+                            }}>
+                              <span>{questionText}</span>
+                              {question.factors && (
+                                <div style={{ 
+                                  display: 'flex', 
+                                  flexWrap: 'wrap', 
+                                  gap: '4px',
+                                  marginTop: '4px'
+                                }}>
+                                  {parseFactors(question.factors).map((factor, index) => (
+                                    <span 
+                                      key={index}
+                                      onClick={() => handleFactorClickLocal(question, factor)}
+                                      style={{
+                                        fontSize: '0.8em',
+                                        color: '#000000',
+                                        background: '#cceeff',
+                                        borderRadius: '8px',
+                                        padding: '2px 8px',
+                                        fontWeight: 400,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                      }}
+                                      onMouseOver={(e) => {
+                                        e.target.style.background = '#99ddff';
+                                      }}
+                                      onMouseOut={(e) => {
+                                        e.target.style.background = '#cceeff';
+                                      }}
+                                    >
+                                      {factor}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </label>
+                            
+                            {/* Same for all scopes toggle - only show for non-excluded questions */}
+                            {shouldShowToggle && (
                               <div style={{ 
+                                position: 'relative',
                                 display: 'flex', 
-                                flexWrap: 'wrap', 
-                                gap: '4px',
-                                marginTop: '4px' // Add some space between question and factors
+                                alignItems: 'center', 
+                                gap: '6px',
+                                minWidth: 'fit-content'
                               }}>
-                                {parseFactors(question.factors).map((factor, index) => (
-                                  <span 
-                                    key={index}
-                                    onClick={() => handleFactorClickLocal(question, factor)}
-                                    style={{
-                                      fontSize: '0.8em',
-                                      color: '#000000',
-                                      background: '#cceeff',
-                                      borderRadius: '8px',
-                                      padding: '2px 8px',
-                                      fontWeight: 400,
-                                      cursor: 'pointer',
-                                      transition: 'all 0.2s ease'
-                                    }}
-                                    onMouseOver={(e) => {
-                                      e.target.style.background = '#99ddff';
-                                    }}
-                                    onMouseOut={(e) => {
-                                      e.target.style.background = '#cceeff';
-                                    }}
-                                  >
-                                    {factor}
+                                <label style={{ 
+                                  position: 'relative',
+                                  display: 'inline-block',
+                                  width: '36px',
+                                  height: '20px',
+                                  cursor: 'pointer'
+                                }}
+                                // title="Same for all scopes"
+                                onMouseEnter={(e) => {
+                                  // Create tooltip
+                                  const tooltip = document.createElement('div');
+                                  tooltip.textContent = 'Same for all scopes';
+                                  tooltip.style.cssText = `
+                                    position: absolute;
+                                    background: rgba(0, 0, 0, 0.8);
+                                    color: white;
+                                    padding: 6px 10px;
+                                    border-radius: 4px;
+                                    font-size: 12px;
+                                    font-family: 'Lexend, sans-serif';
+                                    white-space: nowrap;
+                                    z-index: 1000;
+                                    pointer-events: none;
+                                    top: -30px;
+                                    left: 50%;
+                                    transform: translateX(-50%);
+                                    opacity: 0;
+                                    transition: opacity 0.2s ease;
+                                  `;
+                                  tooltip.id = 'toggle-tooltip';
+                                  e.currentTarget.appendChild(tooltip);
+                                  setTimeout(() => tooltip.style.opacity = '1', 10);
+                                }}
+                                onMouseLeave={(e) => {
+                                  const tooltip = e.currentTarget.querySelector('#toggle-tooltip');
+                                  if (tooltip) {
+                                    tooltip.remove();
+                                  }
+                                }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSameForAllScopes}
+                                    onChange={() => handleSameForAllScopesToggle(section.name, questionId)}
+                                    style={{ opacity: 0, width: 0, height: 0 }}
+                                  />
+                                  <span style={{
+                                    position: 'absolute',
+                                    cursor: 'pointer',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: isSameForAllScopes ? '#3498db' : '#ccc',
+                                    transition: '.4s',
+                                    borderRadius: '20px'
+                                  }}>
+                                    <span style={{
+                                      position: 'absolute',
+                                      content: '""',
+                                      height: '14px',
+                                      width: '14px',
+                                      left: '3px',
+                                      bottom: '3px',
+                                      backgroundColor: 'white',
+                                      transition: '.4s',
+                                      borderRadius: '50%',
+                                      transform: isSameForAllScopes ? 'translateX(16px)' : 'translateX(0)'
+                                    }} />
                                   </span>
-                                ))}
+                                </label>
                               </div>
                             )}
-                          </label>
+                          </div>
+                          
                           {isDropdown ? (
                             <select
                               value={localAnswers[section.name]?.[questionId] || ''}
