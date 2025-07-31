@@ -413,7 +413,7 @@ const BehavioralDiversityView = ({
             }}>
               {group}
             </h3>
-            <div  className="participant-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+            <div className="participant-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
            
               {groupParticipants.map((participant) => (
                 <div

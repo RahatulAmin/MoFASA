@@ -488,6 +488,347 @@ const Tutorial = ({ tutorialType, onComplete, isActive }) => {
        }
      ],
 
+     // Add Project Modal tutorial
+     addProjectModal: [
+       {
+         target: 'body',
+         content: (
+           <div style={{ textAlign: 'center', padding: '20px' }}>
+             <h3 style={{ 
+               margin: '0 0 16px 0', 
+               color: '#2c3e50',
+               fontSize: '1.6em',
+               fontWeight: '600'
+             }}>
+               Create New Project 📋
+             </h3>
+             <p style={{ 
+               margin: '0 0 20px 0', 
+               lineHeight: 1.6,
+               fontSize: '1.1em',
+               color: '#495057'
+             }}>
+               Let's set up your new research project. You'll need to provide basic project details 
+               and configure your questionnaire settings.
+             </p>
+           </div>
+         ),
+         disableBeacon: true,
+         placement: 'center',
+         styles: {
+           options: {
+             width: 450,
+             height: 280
+           }
+         }
+       },
+               {
+          target: '.project-name-input',
+          content: (
+            <div>
+              <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Project Name</h3>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                Start by entering a descriptive name for your project. This will help you identify 
+                your research study later.
+              </p>
+            </div>
+          ),
+          placement: 'bottom'
+        },
+               {
+          target: '.scope-input',
+          content: (
+            <div>
+              <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Project Scopes</h3>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                Define the different phases or contexts of your study. Each scope represents a 
+                different situation or condition you want to investigate. You can add up to 5 scopes.
+              </p>
+            </div>
+          ),
+          placement: 'bottom'
+        },
+               {
+          target: '.participants-input',
+          content: (
+            <div>
+              <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Number of Participants</h3>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                Specify how many participants you plan to recruit for your study. This will create 
+                participant slots that you can fill in later.
+              </p>
+            </div>
+          ),
+          placement: 'bottom'
+        },
+               {
+          target: '.robot-type-input',
+          content: (
+            <div>
+              <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Robot Type</h3>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                Describe the type of robot you're studying (e.g., "Social robot", "Service robot", 
+                "Industrial robot"). This helps categorize your research.
+              </p>
+            </div>
+          ),
+          placement: 'bottom'
+        },
+               {
+          target: '.study-type-select',
+          content: (
+            <div>
+              <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Study Type</h3>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                Choose the type of study you're conducting. This helps define the research context 
+                and methodology.
+              </p>
+            </div>
+          ),
+          placement: 'bottom'
+        },
+               {
+          target: '.next-to-questionnaire-btn',
+          content: (
+            <div>
+              <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Next Step</h3>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                Click "Next" to proceed to questionnaire configuration, where you can customize 
+                which questions to include in your study.
+              </p>
+            </div>
+          ),
+          placement: 'top'
+        }
+     ],
+
+     // Questionnaire Configuration tutorial
+     questionnaireConfiguration: [
+       {
+         target: 'body',
+         content: (
+           <div style={{ textAlign: 'center', padding: '20px' }}>
+             <h3 style={{ 
+               margin: '0 0 16px 0', 
+               color: '#2c3e50',
+               fontSize: '1.6em',
+               fontWeight: '600'
+             }}>
+               Configure Questionnaire ⚙️
+             </h3>
+             <p style={{ 
+               margin: '0 0 20px 0', 
+               lineHeight: 1.6,
+               fontSize: '1.1em',
+               color: '#495057'
+             }}>
+               Customize which questions to include in your study. You can enable or disable 
+               questions based on your research needs.
+             </p>
+           </div>
+         ),
+         disableBeacon: true,
+         placement: 'center',
+         styles: {
+           options: {
+             width: 450,
+             height: 280
+           }
+         }
+       },
+       {
+         target: '.question-section',
+         content: (
+           <div>
+             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Question Sections</h3>
+             <p style={{ margin: 0, lineHeight: 1.5 }}>
+               Questions are organized by MoFASA dimensions: Situation, Identity, Definition of 
+               Situation, Rule Selection, and Decision. Each section focuses on different aspects 
+               of human-robot interaction.
+             </p>
+           </div>
+         ),
+         placement: 'left'
+       },
+       {
+         target: 'input[type="checkbox"]',
+         content: (
+           <div>
+             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Toggle Questions</h3>
+             <p style={{ margin: 0, lineHeight: 1.5 }}>
+               Use the toggle switches to enable or disable specific questions. At least one 
+               question per section must remain enabled.
+             </p>
+           </div>
+         ),
+         placement: 'right'
+       },
+       {
+         target: '.factor-tag',
+         content: (
+           <div>
+             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>MoFASA Factors</h3>
+             <p style={{ margin: 0, lineHeight: 1.5 }}>
+               These blue tags show the MoFASA factors associated with each question. Click on 
+               them to learn more about specific factors.
+             </p>
+           </div>
+         ),
+         placement: 'left'
+       },
+               {
+          target: '.create-project-btn',
+          content: (
+            <div>
+              <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Create Project</h3>
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                Once you've configured your questionnaire, click "Create Project" to finalize 
+                your project setup and start working with participants.
+              </p>
+            </div>
+          ),
+          placement: 'top'
+        }
+     ],
+
+     // Questionnaire Settings tutorial
+     questionnaireSettings: [
+       {
+         target: 'body',
+         content: (
+           <div style={{ textAlign: 'center', padding: '20px' }}>
+             <h3 style={{ 
+               margin: '0 0 16px 0', 
+               color: '#2c3e50',
+               fontSize: '1.6em',
+               fontWeight: '600'
+             }}>
+               Questionnaire Settings ⚙️
+             </h3>
+             <p style={{ 
+               margin: '0 0 20px 0', 
+               lineHeight: 1.6,
+               fontSize: '1.1em',
+               color: '#495057'
+             }}>
+               Customize which questions to include in your study for this specific project. 
+               You can enable or disable questions based on your research needs.
+             </p>
+           </div>
+         ),
+         disableBeacon: true,
+         placement: 'center',
+         styles: {
+           options: {
+             width: 450,
+             height: 280
+           }
+         }
+       },
+       {
+         target: '.question-section',
+         content: (
+           <div>
+             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Question Sections</h3>
+             <p style={{ margin: 0, lineHeight: 1.5 }}>
+               Questions are organized by MoFASA dimensions: Situation, Identity, Definition of 
+               Situation, Rule Selection, and Decision. Each section focuses on different aspects 
+               of human-robot interaction.
+             </p>
+           </div>
+         ),
+         placement: 'left'
+       },
+       {
+         target: 'input[type="checkbox"]',
+         content: (
+           <div>
+             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Toggle Questions</h3>
+             <p style={{ margin: 0, lineHeight: 1.5 }}>
+               Use the toggle switches to enable or disable specific questions for this project. 
+               At least one question per section must remain enabled.
+             </p>
+           </div>
+         ),
+         placement: 'right'
+       },
+       {
+         target: '.factor-tag',
+         content: (
+           <div>
+             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>MoFASA Factors</h3>
+             <p style={{ margin: 0, lineHeight: 1.5 }}>
+               These blue tags show the MoFASA factors associated with each question. Click on 
+               them to learn more about specific factors.
+             </p>
+           </div>
+         ),
+         placement: 'left'
+       }
+     ],
+
+     // Edit Summary Prompt tutorial
+     editSummaryPrompt: [
+       {
+         target: 'body',
+         content: (
+           <div style={{ textAlign: 'center', padding: '20px' }}>
+             <h3 style={{ 
+               margin: '0 0 16px 0', 
+               color: '#2c3e50',
+               fontSize: '1.6em',
+               fontWeight: '600'
+             }}>
+               Edit Summary Prompt 📝
+             </h3>
+             <p style={{ 
+               margin: '0 0 20px 0', 
+               lineHeight: 1.6,
+               fontSize: '1.1em',
+               color: '#495057'
+             }}>
+               Customize the prompt used to generate participant summaries for this project. 
+               This prompt will guide the AI in creating consistent and relevant summaries.
+             </p>
+           </div>
+         ),
+         disableBeacon: true,
+         placement: 'center',
+         styles: {
+           options: {
+             width: 450,
+             height: 280
+           }
+         }
+       },
+       {
+         target: 'textarea',
+         content: (
+           <div>
+             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Prompt Template</h3>
+             <p style={{ margin: 0, lineHeight: 1.5 }}>
+               This text area contains the prompt template that will be used to generate 
+               participant summaries. You can modify it to better suit your research needs.
+             </p>
+           </div>
+         ),
+         placement: 'top'
+       },
+       {
+         target: 'button',
+         content: (
+           <div>
+             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Save Changes</h3>
+             <p style={{ margin: 0, lineHeight: 1.5 }}>
+               Click "Save Changes" to update the prompt template for this project. 
+               The new prompt will be used for all future summary generations.
+             </p>
+           </div>
+         ),
+         placement: 'top'
+       }
+     ],
+
     
   };
 

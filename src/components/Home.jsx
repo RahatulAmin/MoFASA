@@ -266,7 +266,7 @@ const Home = () => {
              case 'practice-mofasa':
           return (
             <div style={{ padding: '24px' }}>
-             <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Practice using MoFASA Tools with a sample project</h2>
+             <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>Learn how to use MoFASA Tools by analyzing a practice project</h2>
              <p style={{ color: '#7f8c8d', lineHeight: '1.6', marginBottom: '24px' }}>
                Click the button below to download the MoFASA practice study document. 
                In this document you will find a simple HRI project and 12 participant interview data. 
@@ -284,6 +284,7 @@ const Home = () => {
                <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '20px', fontSize: '14px' }}>
                  Contains: 1 HRI project with 12 participant interviews
                </p>
+               
                <button 
                  onClick={async () => {
                    try {
@@ -322,7 +323,48 @@ const Home = () => {
                    e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
                  }}
                >
-                 📄 Download MoFASA Practice Study
+                 📄 Download MoFASA Practice Study PDF Document
+               </button>
+               <button 
+                 onClick={async () => {
+                   try {
+                     const result = await window.electronAPI.downloadFile('MoFASA_practice_study_data.json');
+                     if (result.success) {
+                       console.log('File downloaded successfully to:', result.filePath);
+                     } else if (result.canceled) {
+                       console.log('Download canceled by user');
+                     } else {
+                       console.error('Download failed:', result.error);
+                       alert('Failed to download file. Please try again.');
+                     }
+                   } catch (error) {
+                     console.error('Download error:', error);
+                     alert('Failed to download file. Please try again.');
+                   }
+                 }}
+                 style={{
+                   background: 'white',
+                   color: '#667eea',
+                   marginTop: '20px',
+                   border: 'none',
+                   padding: '12px 24px',
+                   borderRadius: '8px',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   cursor: 'pointer',
+                   boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                   transition: 'all 0.3s ease'
+                 }}
+                 onMouseOver={(e) => {
+                   e.target.style.transform = 'translateY(-2px)';
+                   e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+                 }}
+                 onMouseOut={(e) => {
+                   e.target.style.transform = 'translateY(0)';
+                   e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+                 }}
+               >
+                 📄 Download MoFASA Practice Study Data File (JSON) 
                </button>
              </div>
              <div style={{ 
@@ -334,9 +376,10 @@ const Home = () => {
              }}>
                <h4 style={{ color: '#495057', marginBottom: '12px', fontSize: '16px' }}>How to use this practice study:</h4>
                <ol style={{ color: '#6c757d', lineHeight: '1.6', paddingLeft: '20px' }}>
-                 <li>Download the MoFASA practice study document</li>
-                 <li>Create a new project in MoFASA</li>
-                 <li>Follow the tutorial steps to analyze the practice data</li>
+                 <li>Download the MoFASA practice study document to view the project and the participant interview data.</li>
+                 <li>Download the MoFASA practice study JSON file to import the data into MoFASA Tools.</li>
+                 <li>Head to the Project tab and import the JSON file.</li>
+                 <li>Click the Light Bulb on the Bottom Right corner of the screen to follow the tutorial steps and analyze the practice data.</li>
                </ol>
              </div>
             </div>
@@ -359,85 +402,122 @@ const Home = () => {
             
             <div style={{ color: '#2c3e50', lineHeight: '1.6' }}>
             <p><strong>Imagine this:</strong></p>
-              <p>A delivery robot rolls into a busy university café. Three students encounter it.</p>
+              <p>A delivery robot rolls into a crowded university café during the morning rush. Three students encounter it:</p>
 
               <div style={{ textAlign: 'center', margin: '20px 0' }}>
               <img src={require('../images/home_image_2.jpg')} alt="robot entering a busy university café" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
               </div>
 
               <ul style={{ paddingLeft: '20px' }}>
-                <li><strong>Marcus</strong> smiles, waves, and starts a cheerful interaction.</li>
-                <li><strong>Emilia</strong> frowns, mutters “this is creepy,” and walks away.</li>
+                <li><strong>Marcus</strong> smiles and waves and says "Hi, Robot!"</li>
+                <li><strong>Emilia</strong> frowns, mutters “this is creepy”, and kicks it on her way out.</li>
                 <li><strong>Tony</strong> glances briefly, then returns to scrolling his phone.</li>
               </ul>
               <br />
-              <p>Same robot. Same place. Same behavior.</p>
+              <p>Same robot. Same place. Completely different behaviors.</p>
               <br />
-              <p><strong>So why did only one person engage?</strong></p>
-              <p><strong>Can we design the robot in a way that resonates with all three individuals?</strong></p>
+              <p><strong>So what's going on here?</strong></p>
               <br />
-              <p>We designed the MoFASA Framework to help HRI practitioners find solutions for situations like this. It let's practitioners uncover the deeper reasons behind why someone interacts with robots in certain ways, and how we can 
-                manage undesirable behaviors towards robots.</p>
+              <p>Why did Marcus engage positively, while Emilia reacted with hostility?</p>
+              <br />
+              <p>And more importantly - could we have designed the situation differently to prevent Emilia’s response?</p>             
+              <br />
+              <p>That is exactly what the MoFASA Framework helps you explore. It is a tool for HRI researchers and designers to break down how a person's identity, and their 
+                interpretation of the situation, influence how they behave toward robots. MoFASA goes further by showing how you can shape the situation differently to reduce 
+                undesirable interactions and encourage more thoughtful, safe, and meaningful human-robot encounters.
+                </p>
+              <br />
+              <p>Let's dive deeper into the MoFASA Framework and see how it can help you understand and improve human-robot interactions.</p>
+              <br />
+              
+              
+              
               
               <h3 style={{ marginTop: '24px' }}>🤖 What is the MoFASA Framework?</h3>
               <p><strong>MoFASA</strong>, short for <strong>Modified Factors of Social Appropriateness</strong>, is a human-centered framework designed for HRI practitioners who 
               want to understand the <em>why</em> behind human behavior in human-robot interaction. MoFASA helps you analyze the <em>social and contextual logic</em> that drives 
-              people's reactions. It is built on and extends two foundational models: <strong>FASA</strong> (Five Factors of Social Appropriateness) and <strong>LOA </strong> 
-              (Logic of Appropriateness). By combining theoretical depth with practical relevance, MoFASA offers a streamlined, HRI-focused framework for interpreting human behavior.</p>
+              people's reactions. It is built on and extends two existing models from social science: <strong>FASA</strong> (Five Factors of Social Appropriateness) developed by 
+              Wullenkord et. al. and <strong>LOA</strong> (Logic of Appropriateness) by Weber et. al. MoFASA translates these theoretical models into a streamlined, HRI-focused 
+              framework for analyzing the diversity of human behaviours toward robots.</p>
               <br />
               <p>At the heart of MoFASA are three key analytical lenses:</p>
               <ul style={{ paddingLeft: '20px' }}>
                 <li><strong>Situation</strong> - External context (location, timing, setting, etc.)</li>
-                <li><strong>Identity</strong> - Internal context (background, role, social motives, etc.)</li>
-                <li><strong>Definition of the Situation</strong> - Interpretation of the moment (framing, uncertainty, consequences, etc.)</li>
+                <li><strong>Identity</strong> - Internal context (a person's background, role, social motives, etc.)</li>
+                <li><strong>Definition of the Situation</strong> - Interpretation of the moment (the person's own framing of the situation, uncertainty, consequences, etc.)</li>
               </ul>
+              <br />
 
-              <p>Below is a diagram of the MoFASA Framework.</p>
+              <p>Below diagram illustrates the MoFASA Framework, by mapping out Emma's behavior. The researchers collected a bit more information about Emma by doing a post-interaction interview with her.</p>
                
-              <div style={{ textAlign: 'center', margin: '20px 0' }}>
-                <img src={require('../images/framework.png')} alt="MoFASA Framework" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              <div style={{ textAlign: 'center', margin: '20px 0' }}> 
+                <img src={require('../images/Emma.jpg')} alt="MoFASA Framework in use" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+              </div>
+             
+              <div style={{ margin: '20px 0' }}>  
                 
-                <div style={{ 
-                  marginTop: '20px',
-                  padding: '20px',
-                  backgroundColor: '#f8f9fa',
-                  borderRadius: '8px',
-                  border: '1px solid #e9ecef',
-                  textAlign: 'left',
-                  maxWidth: '600px',
-                  margin: '20px auto'
-                }}>
+                This illustration shows the MoFASA framework in action. The connections show you how Emma's identity and interpretation of the situation influenced her behavior.<br />
+                <br />
+                
+
+                
+                 
                   <h4 style={{ 
                     marginBottom: '12px',
                     color: '#2c3e50',
                     fontFamily: 'Lexend, sans-serif'
-                  }}>Framework Connections:</h4>
+                  }}>Framework Line Connections:</h4>
                   <div style={{ 
                     display: 'grid',
                     gap: '12px',
                     fontSize: '0.95em',
                     color: '#34495e'
                   }}>
-                    <div><strong>Connection A:</strong> The situation is perceived by the individual's identity.</div>
-                    <div><strong>Connection B:</strong> Connection B and C work together to define the situation.</div>
-                    <div><strong>Connection C:</strong> An individual's identity shapes how they define and understand the situation. (Connection B + Connection C)</div>
-                    <div><strong>Connection D:</strong> Connection D and E work together to determine which rules or norms individuals choose to follow.</div>
-                    <div><strong>Connection E:</strong> How individuals define the situation determines which rules they consider applicable. (Connection D + Connection E)</div>
-                    <div><strong>Connection F:</strong> The selected rules guide the final decision or course of action.</div>
+                    <p>The MoFASA framework is built around a question - “What would a person like me (Identity) do (Rule Selection) in a situation like this (Definition of the Situation)?” 
+                  These different sections are represented using the framework view connections:</p>
+                 
+                    
+                    <div><strong>Connection A:</strong> The situation is perceived by the individual's identity. Emma’s identity shaped how she saw the situation. 
+                    As a 1st-year introverted student with negative views of robots (influenced by movies and social media), she didn’t just see a delivery robot - 
+                    she saw a symbol of technological intrusion and job loss.</div>
+                    <div><strong>Connection B + C:</strong> Connection B and C work together to define the situation. Her identity also shaped how she made sense of the situation. 
+                    She framed the robot’s presence not as helpful or harmless, but as unnecessary and even threatening. To Emma, the robot didn’t belong in her space, and it reminded 
+                    her of automation’s negative impact.</div>
+                    
+                    <div><strong>Connection D + E:</strong> Connection D and E work together to determine which rules or norms individuals choose to follow. Based on that framing, Emma 
+                    decided which actions were even worth considering. She didn’t think of saying hi or ignoring it as reasonable. Her interpretation led her to feel justified in kicking the
+                    robot - she believed it couldn’t respond and wouldn’t matter.
+                    </div>
+                    
+                    <div><strong>Connection F:</strong> The selected rules guide the final decision or course of action.  Emma acted on that decision. In a moment of stress, with the robot 
+                    blocking her path, she kicked it — expressing frustration both at the situation and what the robot represented to her.</div>
                   </div>
-                </div>
+                
               </div>
 
-              <p>These lenses, with the help of the associated factors, help you understand why Emilia found the robot unsettling, while Tony simply tuned it out. 
-                But MoFASA goes further by offering three practical affordances to guide design and reflection:</p>
+              <p>These connections show why Emma reacted with aggression, while someone like Tony might have ignored the robot, or Marcus might have waved at it. 
+                MoFASA helps surface these different perspectives by breaking down how identity and perception shape behavior.</p>
+              <br />
+              <p>MoFASA goes further by offering three practical affordances to guide design and reflection:</p>
               <br />
               <ul style={{ paddingLeft: '20px' }}>
-                <li><strong>Personae Mapping</strong> - Understand how participants see themselves in the interaction.</li>
-                <li><strong>Behavioral Diversity</strong> - Observe the range of reactions that emerge from the same situation.</li>
-                <li><strong>Situation Design</strong> - Identify and adjust problematic dynamics, whether by redesigning the robot or modifying the environment.</li>
+                <li><strong>Personae Mapping</strong> - Understand how someone like Emma sees herself in the interaction. She views herself as a student under pressure, navigating a space that should be hers — and the robot feels like an intruder.</li>
+                <li><strong>Behavioral Diversity</strong> - Emma’s reaction is one of many. MoFASA allows designers to map a range of behaviors that could emerge in this same café scenario: curiosity, indifference, hostility, playfulness — and consider how design might influence those paths.</li>
+                <li><strong>Situation Design</strong> - This is where designers can intervene. Emma's story suggests several touchpoints for situation design:</li>
               </ul>
-
+              <br />
+              <img src={require('../images/Emma2.png')} alt="MoFASA Framework in use" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
             </div>
+            <br/>       
+            <p>By analyzing Emma's case through the MoFASA lens, you can start to see how the framework helps uncover the reasons behind different human-robot interactions - and how to potentially improve them.</p>
+            <br />
+            <p> You now have an even more clear idea about what happened at that moment with Emma, what factors influenced her behavior, and how you can potentially avoid such undesirable interactions. 
+              While Emma's case provides a single perspective, collecting data from more individuals allows us to identify patterns in undesirable behavior. With these patterns, we can begin to 
+              explore solutions at a broader, more systemic level.</p>
+            <br />
+            <p>Now that you have a basic understanding of the MoFASA Framework, let's explore MoFASA Tools and see how it can help you analyze your own Human-Robot Interaction data. </p>            
+            <br />
+            
       
             <div style={{ 
               marginTop: '32px', 
@@ -453,11 +533,11 @@ const Home = () => {
            
             }}>
               <p style={{ color: '#2c3e50', lineHeight: '1.6', marginBottom: '16px' }}>
-                <strong>Get started by exploring our interactive tutorial.</strong>
+                <strong>Get started by exploring our interactive tutorial by importing a practice project.</strong>
               </p>
               <button
                 onClick={() => {
-                  setSelectedSection('MoFASA-Tools-tutorial');
+                  setSelectedSection('practice-mofasa');
                   // Scroll to top of the right panel after a short delay to ensure content is rendered
                   setTimeout(() => {
                     const rightPanel = document.querySelector('.right-panel');
@@ -490,7 +570,7 @@ const Home = () => {
                   e.target.style.transform = 'translateY(0)';
                 }}
               >
-                Getting Started with MoFASA
+                Practice MoFASA Tools
               </button>
 
               
@@ -623,12 +703,12 @@ const Home = () => {
             What is MoFASA?
           </button>
 
-          <button
+          {/* <button
             onClick={() => setSelectedSection(selectedSection === 'MoFASA-Tools-tutorial' ? '' : 'MoFASA-Tools-tutorial')}
             className={`left-panel-button ${selectedSection === 'MoFASA-Tools-tutorial' ? 'selected' : ''}`}
           >
             Getting Started with MoFASA
-          </button>
+          </button> */}
 
           <button
             onClick={() => setSelectedSection(selectedSection === 'practice-mofasa' ? '' : 'practice-mofasa')}

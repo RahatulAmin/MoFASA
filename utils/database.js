@@ -366,13 +366,11 @@ function performMigration() {
     
     // Situation questions
     const situationQuestions = [
-      { id: 'when', text: 'When did the interaction happen?', type: 'text', factors: 'Time', order: 0 },
-      { id: 'where', text: 'Where did it take place?', type: 'text', factors: 'Place', order: 1 },
-      { id: 'agents_count', text: 'How many interacting agents (Humans and Robots) were there?', type: 'text', factors: 'Participants', order: 2 },
-      { id: 'in_group', text: 'Were they in a group?', type: 'text', factors: 'Group Size', order: 3 },
-      { id: 'roles', text: 'What were the roles of the interacting agents?', type: 'text', factors: 'Role Identities', order: 4 },
-      { id: 'intention', text: 'What was the intention of the interacting agents?', type: 'text', factors: 'Intention', order: 5 },
-      { id: 'social_motive', text: 'What was their social motive for interacting with the robot?', type: 'text', factors: 'Social Motive', order: 5 },
+      { id: 'when', text: 'When and where did the interaction happen?', type: 'text', factors: 'Time,Place', order: 0 },
+      { id: 'participant', text: 'Who are the interacting agents in the interaction, and what are their roles?', type: 'text', factors: 'Participants,Role Identities', order: 1 },
+      { id: 'in_group', text: 'How many humans were interacting with the robot?', type: 'text', factors: 'Group Size', order: 2 },
+      { id: 'social_motive', text: 'What was their social motive or intention for interacting with the robot?', type: 'text', factors: 'Social Motive,Intention', order: 3 },
+      { id: 'robot_specifics', text: 'What is the type of the robot? What features does it have and what can it do?', type: 'text', factors: 'Robot Specifics', order: 4 },
     ];
     
     // Identity questions
@@ -383,24 +381,19 @@ function performMigration() {
       { id: 'occupation', text: 'Occupation of the participant(s)', type: 'text', factors: 'Occupation', order: 3 },
       { id: 'education', text: 'Education level of the participant(s)', type: 'text', factors: 'Background', order: 4 },
       { id: 'personal_history', text: 'Do they have previous experience of interacting with robots?', type: 'text', factors: 'Personal History', order: 5 },
-      { id: 'perception', text: 'What was the participant(s) perception of the robot and their interaction with it? Is the robot disrupting, negative, supportive, positive, or neutral?', type: 'text', factors: 'Individual Specifics', order: 6 }
+      { id: 'perception', text: 'Do they have any specific preferences for the interaction? Does their personal characteristics and how they shape their social role influence the interaction?', type: 'text', factors: 'Individual Specifics', order: 6 },
+      { id: 'social_rules', text: 'Do they have any habit, follow certain social values, social norms, or regulative norms?', type: 'text', factors: 'Standards of Customary Practices', order: 7 }
     ];
     
     // Definition of Situation questions
     const definitionQuestions = [
-      { id: 'uncertainty', text: 'Were the participants uncertain about the situation?', type: 'text', factors: 'Uncertainty', order: 0 },
-      { id: 'consequences', text: 'Were the participants unsure about the consequences of their actions?', type: 'text', factors: 'Consequences', order: 1 },
-      { id: 'familiarity', text: 'How well does the interacting agents know each other?', type: 'text', factors: 'Familiarity and Relationship Aspect', order: 2 },
-      { id: 'context_perception', text: 'How did the participants perceive the context of the interaction?', type: 'text', factors: 'Context', order: 3 },
-      { id: 'power_dynamics', text: 'What does the power dynamic look like in this interaction?', type: 'text', factors: 'Power and Status', order: 4 },
-      { id: 'group_interaction', text: 'If multiple participants were involved, how did they interact with the robot? Did they communicate with each other?', type: 'text', factors: 'Context', order: 5 },
-      { id: 'social_rules', text: 'Are there any social rules or cultural norms that the participants are following?', type: 'text', factors: 'Standards of Customary Practices, Causes', order: 6 },
-      { id: 'emotional_state', text: 'Did the emotional state of the participant at that very moment influence the interaction in any way?', type: 'text', factors: 'Emotional State', order: 7 },
-      { id: 'robot_specifics', text: 'What is the robot\'s specific characteristics?', type: 'text', factors: 'Robot Specifics', order: 8 },
-      { id: 'media', text: 'How does the robot\'s presence and performance construct meaning in the interaction?', type: 'text', factors: 'Media-Based and Performative Mediation', order: 9 },
-      { id: 'communication', text: 'How does the participant communicate with the robot?', type: 'text', factors: 'Communication', order: 10 },
-      { id: 'causes', text: 'Why is the participant behaving the way they are?', type: 'text', factors: 'Causes', order: 11 },
-      { id: 'expectations', text: 'What does the participant expect from the interaction?', type: 'text', factors: 'Expectations', order: 12 },
+      { id: 'uncertainty', text: 'Are the individuals uncertain about how the situation will unfold?', type: 'text', factors: 'Uncertainty', order: 0 },
+      { id: 'familiarity', text: 'How well does the interacting agents know each other and what is the nature of their relationship (casual or formal)?', type: 'text', factors: 'Familiarity and Relationship Aspect', order: 1 },
+      { id: 'context_perception', text: 'How does the participant perceive the framing or context of the interaction?', type: 'text', factors: 'Context', order: 2 },
+      { id: 'power_dynamics', text: 'What is the power dynamics between the interacting agents?', type: 'text', factors: 'Power and Status', order: 3 },
+      { id: 'group_interaction', text: 'If multiple humans are present: How is the group dynamics? Did they communicate with each other?', type: 'text', factors: 'Context', order: 4 },
+      { id: 'emotional_state', text: 'Did the emotional state of the participant at that very moment influence the interaction in any way?', type: 'text', factors: 'Emotional State', order: 5 },
+      { id: 'media', text: 'How does the robot\'s presence and performance—through its body, media, and behavior - constructs meaning in this interaction?', type: 'text', factors: 'Media-Based and Performative Mediation', order: 6 },
     ];
     
     // Rule Selection questions

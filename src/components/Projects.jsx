@@ -34,6 +34,9 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const [showFactorDetails, setShowFactorDetails] = useState(false);
   const [selectedFactor, setSelectedFactor] = useState(null);
 
+  // Tutorial is now triggered manually via light bulb button
+  // No automatic triggering when modal opens
+
   const handleAddScope = () => {
     if (scopes.length < 5) {
       setScopes([...scopes, { scopeNumber: scopes.length + 1, scopeText: '' }]);
@@ -368,6 +371,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
     if (newProjectName.trim()) {
       setShowQuestionnaireStep(true);
       loadQuestionsForConfiguration();
+      // Note: Tutorial is now triggered manually via light bulb button
     }
   };
 
@@ -422,6 +426,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
   const handleFactorClickLocal = (question, factor) => {
     handleFactorClick(question, factor, setSelectedFactor, setShowFactorDetails);
   };
+
+  // Tutorial is handled by TutorialManager component
 
   // Handle final project creation with questionnaire settings
   const handleCreateProjectWithQuestionnaire = async () => {
@@ -593,7 +599,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
             {!showQuestionnaireStep ? (
               // Project Details Step
               <>
-                <h3 style={{ marginBottom: '20px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Add New Project</h3>
+                <div className="project-details-step">
+                  <h3 style={{ marginBottom: '20px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Add New Project</h3>
                 <div style={{ marginBottom: '15px' }}>
                   <label style={{ display: 'block', marginBottom: '5px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Project Name:</label>
                   <input
@@ -601,6 +608,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                     placeholder="Enter your project name..."
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
+                    className="project-name-input"
                     style={{
                       width: '100%',
                       padding: '8px',
@@ -615,6 +623,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                   <textarea
                     value={newProjectDescription}
                     onChange={(e) => setNewProjectDescription(e.target.value)}
+                    className="project-description-input"
                     style={{
                       width: '100%',
                       padding: '8px',
@@ -645,6 +654,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                         value={scope.scopeText}
                         onChange={(e) => handleScopeChange(index, e.target.value)}
                         placeholder="Enter scope description..."
+                        className="scope-input"
                         style={{
                           flex: 1,
                           padding: '8px',
@@ -710,6 +720,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                     type="number"
                     value={newProjectParticipants}
                     onChange={(e) => setNewProjectParticipants(e.target.value)}
+                    className="participants-input"
                     style={{
                       width: '100%',
                       padding: '8px',
@@ -725,6 +736,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                     type="text"
                     value={newProjectRobotType}
                     onChange={(e) => setNewProjectRobotType(e.target.value)}
+                    className="robot-type-input"
                     style={{
                       width: '100%',
                       padding: '8px',
@@ -739,6 +751,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                   <select
                     value={newProjectStudyType}
                     onChange={(e) => setNewProjectStudyType(e.target.value)}
+                    className="study-type-select"
                     style={{
                       width: '100%',
                       padding: '8px',
@@ -773,6 +786,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                   <button
                     onClick={handleNextToQuestionnaire}
                     disabled={!newProjectName.trim()}
+                    className="next-to-questionnaire-btn"
                     style={{
                       padding: '8px 16px',
                       backgroundColor: '#3498db',
@@ -787,11 +801,12 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                     Next
                   </button>
                 </div>
+                </div>
               </>
             ) : (
               // Questionnaire Configuration Step
               <>
-                <div style={{ marginBottom: '20px' }}>
+                <div style={{ marginBottom: '20px' }} className="questionnaire-step">
                   <h3 style={{ marginBottom: '8px', fontFamily: 'Lexend, sans-serif', color: '#2c3e50' }}>Configure Questionnaire</h3>
                   <p style={{ color: '#7f8c8d', fontSize: '0.9em', margin: 0, fontFamily: 'Lexend, sans-serif' }}>
                     Enable or disable questions for <strong>{newProjectName}</strong>. At least one question per section must remain enabled.
@@ -862,7 +877,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                         const hasValidationError = enabledQuestions.length === 0;
                       
                       return (
-                        <div key={sectionName} style={{ marginBottom: '20px' }}>
+                        <div key={sectionName} style={{ marginBottom: '20px' }} className="question-section">
                           <h4 style={{ 
                             fontSize: '1.1em', 
                             color: hasValidationError ? '#e74c3c' : '#2c3e50', 
@@ -969,6 +984,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                                             <span 
                                               key={index}
                                               onClick={() => handleFactorClickLocal(question, factor)}
+                                              className="factor-tag"
                                               style={{
                                                 fontSize: '0.7em',
                                                 color: '#000000',
@@ -1103,6 +1119,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
                     <button
                       onClick={handleCreateProjectWithQuestionnaire}
                       disabled={isCreatingProject}
+                      className="create-project-btn"
                       style={{
                         padding: '8px 16px',
                         backgroundColor: '#2ecc71',
@@ -1598,6 +1615,8 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
           factorDetails={selectedFactor}
         />
       )}
+
+      {/* Tutorial is handled by TutorialManager component */}
     </div>
   );
 };

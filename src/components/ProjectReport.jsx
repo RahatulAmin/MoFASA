@@ -1259,7 +1259,16 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                         <div style={{ fontWeight: 600, color: '#2980b9', marginBottom: 8 }}>
                           Robot Changes
                         </div>
-                        <p style={{ margin: 0, lineHeight: 1.5 }}>{data.robotChanges}</p>
+                        <div style={{ 
+                          margin: 0, 
+                          lineHeight: 1.5, 
+                          whiteSpace: 'pre-wrap',
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '0.95em',
+                          color: '#2c3e50'
+                        }}>
+                          {data.robotChanges}
+                        </div>
                       </div>
                     )}
                     {data.environmentalChanges && (
@@ -1267,7 +1276,16 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                         <div style={{ fontWeight: 600, color: '#2980b9', marginBottom: 8 }}>
                           Environmental Changes
                         </div>
-                        <p style={{ margin: 0, lineHeight: 1.5 }}>{data.environmentalChanges}</p>
+                        <div style={{ 
+                          margin: 0, 
+                          lineHeight: 1.5, 
+                          whiteSpace: 'pre-wrap',
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '0.95em',
+                          color: '#2c3e50'
+                        }}>
+                          {data.environmentalChanges}
+                        </div>
                       </div>
                     )}
                   </div>

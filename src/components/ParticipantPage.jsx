@@ -31,11 +31,11 @@ const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
 
 const QUESTIONS = {
   'Situation': [
-    'When did the interaction happen?',
-    'Where did it take place?',
-    'How many interacting agents (Humans and Robots) were there?',
-    'Were they in a group?',
-    'What were the roles of the interacting agents?',    
+    'When and where did the interaction happen?',
+    'Who are the interacting agents in the interaction, and what are their roles?',
+    'How many humans were interacting with the robot?',
+    'What was their social motive or intention for interacting with the robot?',
+    'What is the type of the robot? What features does it have and what can it do?'
   ],
   'Decision': [
     'What was their final decision or course of action?',
@@ -46,19 +46,18 @@ const QUESTIONS = {
     'Nationality of the participant(s)',
     'Occupation of the participant(s)',
     'Education level of the participant(s)',
-    'What was their social motive for interacting with the robot?', 
     'Do they have previous experience of interacting with robots?',
-    'What was the participant(s) perception of the robot and their interaction with it? Is the robot disrupting, negative, supportive, positive, or neutral?'
+    'Do they have any specific preferences for the interaction? Does their personal characteristics and how they shape their social role influence the interaction?',
+    'Do they have any habit, follow certain social values, social norms, or regulative norms?'
   ],
   'Definition of Situation': [
-    'Were the participants uncertain about the situation?',
-    'Were the participants unsure about the consequences of their actions?',
-    'How well does the interacting agents know each other?',
-    'How did the participants perceive the context of the interaction?',
-    'What does the power dynamic look like in this interaction?', 
-    'If multiple participants were involved, how did they interact with the robot? Did they communicate with each other?',
-    'Are there any social rules or cultural norms that the participants are following?',
+    'Are the individuals uncertain about how the situation will unfold?',
+    'How well does the interacting agents know each other and what is the nature of their relationship (casual or formal)?',
+    'How does the participant perceive the framing or context of the interaction?',
+    'What is the power dynamics between the interacting agents?',
+    'If multiple humans are present: How is the group dynamics? Did they communicate with each other?',
     'Did the emotional state of the participant at that very moment influence the interaction in any way?',
+    'How does the robot\'s presence and performance—through its body, media, and behavior - constructs meaning in this interaction?'
   ],
   'Rule Selection': [
     'What options did the participant(s) have to make their decision?', 
@@ -349,8 +348,46 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
     setError(null);
     setProgress(0);
     setInterviewText(participant?.interviewText || '');
+    
     // Initialize local answers with participant's current answers
-    setLocalAnswers(participant?.answers || {});
+    let participantAnswers = participant?.answers || {};
+    
+    // For Robot Specifics, check if the answer exists in any scope for this participant
+    const robotSpecificsQuestion = 'What is the type of the robot? What features does it have and what can it do?';
+    const robotSpecificsId = 'robot_specifics';
+    
+    // Check if Robot Specifics answer exists in current scope
+    let robotSpecificsAnswer = participantAnswers['Situation']?.[robotSpecificsQuestion] || 
+                              participantAnswers['Situation']?.[robotSpecificsId];
+    
+    // If not found in current scope, search in all other scopes
+    if (!robotSpecificsAnswer && project?.scopes) {
+      for (const scope of project.scopes) {
+        const scopeParticipant = scope.participants?.find(p => p.id === participantId);
+        if (scopeParticipant?.answers) {
+          const scopeRobotAnswer = scopeParticipant.answers['Situation']?.[robotSpecificsQuestion] || 
+                                  scopeParticipant.answers['Situation']?.[robotSpecificsId];
+          if (scopeRobotAnswer) {
+            robotSpecificsAnswer = scopeRobotAnswer;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Update the local answers to include Robot Specifics from any scope
+    if (robotSpecificsAnswer) {
+      participantAnswers = {
+        ...participantAnswers,
+        'Situation': {
+          ...participantAnswers['Situation'],
+          [robotSpecificsQuestion]: robotSpecificsAnswer
+        }
+      };
+    }
+    
+    setLocalAnswers(participantAnswers);
+    
     // Ensure selectedRules is always an array
     const participantSelectedRules = participant?.answers?.['Rule Selection']?.selectedRules;
     console.log('Loading selected rules:', {
@@ -361,7 +398,7 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       isArray: Array.isArray(participantSelectedRules)
     });
     setSelectedRules(Array.isArray(participantSelectedRules) ? participantSelectedRules : []);
-  }, [participantId, participant?.summary, participant?.interviewText, participant?.answers]);
+  }, [participantId, participant?.summary, participant?.interviewText, participant?.answers, project?.scopes]);
 
   // Save interview text immediately when participant changes
   useEffect(() => {
@@ -890,7 +927,42 @@ Please provide a concise, direct answer to the question based on the interview c
     
     // Set a new timer to debounce the database update
     answerChangeTimer.current = setTimeout(() => {
-      updateParticipantAnswers(idx, participantId, section, question, value);
+      // Check if this is the Robot Specifics question
+      const isRobotSpecifics = question === 'What is the type of the robot? What features does it have and what can it do?' || 
+                               question === 'robot_specifics';
+      
+      if (isRobotSpecifics) {
+        // For Robot Specifics, update the answer across all scopes for this participant
+        const updatedScopes = project.scopes.map(scope => {
+          const scopeParticipants = scope.participants || [];
+          const updatedParticipants = scopeParticipants.map(p => {
+            if (p.id === participantId) {
+              return {
+                ...p,
+                answers: {
+                  ...p.answers,
+                  [section]: {
+                    ...p.answers?.[section],
+                    [question]: value
+                  }
+                }
+              };
+            }
+            return p;
+          });
+          
+          return {
+            ...scope,
+            participants: updatedParticipants
+          };
+        });
+        
+        // Update the project with all scopes
+        updateProjectRules(idx, updatedScopes);
+      } else {
+        // For other questions, update normally
+        updateParticipantAnswers(idx, participantId, section, question, value);
+      }
     }, 500); // 500ms delay
   };
 

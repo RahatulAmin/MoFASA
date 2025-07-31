@@ -267,12 +267,12 @@ const PersonaeFramework = ({
             {/* Connection line */}
             <path
               d={connection.path}
-              stroke="url(#lineGradient)"
+              stroke="rgba(255, 255, 255, 0.8)"
               strokeWidth="1"
               fill="none"
-              opacity="2"
+              opacity="1"
               markerEnd="url(#arrowhead)"
-                style={{ pointerEvents: 'none' }}
+              style={{ pointerEvents: 'none' }}
             />
             
             {/* Start point dot */}
@@ -321,8 +321,8 @@ const PersonaeFramework = ({
                     cx={midX}
                     cy={midY}
                     r="12"
-                    fill="rgba(255, 255, 255, 0.9)"
-                    stroke="rgba(52, 152, 219, 0.8)"
+                    fill="rgba(52, 152, 219, 0.9)"
+                    stroke="rgba(255, 255, 255, 1)"
                     strokeWidth="1"
                     filter="url(#dotGlow)"
                     style={{ cursor: 'pointer', pointerEvents: 'auto', transition: 'all 0.2s ease' }}
@@ -335,9 +335,9 @@ const PersonaeFramework = ({
                     textAnchor="middle"
                     dominantBaseline="central"
                     fontSize="12"
-                    fontWeight="600"
+                    fontWeight="500"
                     fontFamily="Lexend, sans-serif"
-                    fill="#2c3e50"
+                    fill="#ffffff"
                     style={{ cursor: 'pointer', pointerEvents: 'auto', transition: 'all 0.2s ease' }}
                     onClick={() => handleConnectionClick(label)}
                   >

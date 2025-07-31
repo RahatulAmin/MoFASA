@@ -477,6 +477,25 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
 
       // Clone the content
       const clone = elementToCapture.cloneNode(true);
+      
+      // For framework view, ensure SVG elements are properly positioned
+      if (currentView === 'personae' && personaeView === 'framework') {
+        // Find and fix SVG positioning
+        const svgElements = clone.querySelectorAll('svg');
+        svgElements.forEach(svg => {
+          // Ensure SVG is positioned correctly relative to its container
+          const container = svg.closest('[style*="position: relative"]') || svg.parentElement;
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            svg.style.position = 'absolute';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+          }
+        });
+      }
+      
       wrapper.appendChild(clone);
 
       // Handle charts if in behavioral view
@@ -494,6 +513,15 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           clonedCanvas.height = originalCanvas.height;
           context.drawImage(originalCanvas, 0, 0);
         }
+      }
+
+      // Ensure SVG elements are properly rendered before capture
+      if (currentView === 'personae' && personaeView === 'framework') {
+        // Force a reflow to ensure SVG elements are positioned correctly
+        wrapper.offsetHeight;
+        
+        // Wait a bit for any dynamic positioning to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Capture the content
@@ -1124,6 +1152,62 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Project Details */}
+          <div 
+            className="project-details-section"
+            style={{
+              background: '#f8f9fa',
+              borderRadius: '8px',
+              padding: '16px',
+              border: '1px solid #e9ecef',
+              marginBottom: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Robot Type */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.85em',
+                  color: '#6c757d',
+                  fontWeight: '600',
+                  minWidth: '80px'
+                }}>
+                  Robot Type:
+                </span>
+                <span style={{
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.9em',
+                  color: '#2c3e50',
+                  fontWeight: '500'
+                }}>
+                  {project.robotType || 'Not specified'}
+                </span>
+              </div>
+              
+              {/* Study Type */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.85em',
+                  color: '#6c757d',
+                  fontWeight: '600',
+                  minWidth: '80px'
+                }}>
+                  Study Type:
+                </span>
+                <span style={{
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.9em',
+                  color: '#2c3e50',
+                  fontWeight: '500'
+                }}>
+                  {project.studyType || 'Not specified'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Project Description */}
@@ -2498,38 +2582,44 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           padding: '32px 24px',
           overflow: 'auto'
         }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            width: '100%',
-            maxWidth: '880px',
-            marginBottom: '16px'
-          }}>
-            <button
-              onClick={() => setShowHtmlReportModal(false)}
-              style={{
-                background: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                fontSize: '1.5em',
-                cursor: 'pointer',
-                color: '#7f8c8d',
-                padding: '4px 16px',
-                fontWeight: 700,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-              }}
-              onMouseOver={e => e.target.style.background = '#f8f9fa'}
-              onMouseOut={e => e.target.style.background = '#fff'}
-            >
-              ×
-            </button>
-          </div>
+          {/* Sticky Close Button positioned relative to report */}
+          <button
+            onClick={() => setShowHtmlReportModal(false)}
+            style={{
+              position: 'fixed',
+              top: '50px',
+              right: 'calc(50% - 440px - 60px)', // Position relative to report center
+              background: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: '1.5em',
+              cursor: 'pointer',
+              color: '#7f8c8d',
+              padding: '8px 16px',
+              fontWeight: 700,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              zIndex: 2001,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={e => {
+              e.target.style.background = '#f8f9fa';
+              e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+            }}
+            onMouseOut={e => {
+              e.target.style.background = '#fff';
+              e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            }}
+          >
+            ×
+          </button>
+          
           <div style={{ 
             width: '100%',
             maxWidth: '880px',
             display: 'flex',
             justifyContent: 'center',
-            minHeight: 'auto' // Allow dynamic height in modal
+            minHeight: 'auto', // Allow dynamic height in modal
+            marginTop: '20px' // Add some space for the close button
           }}>
             <ProjectReport
               projectData={project}

@@ -675,6 +675,61 @@ button:disabled {
     }
 }
 
+/* Tutorial button attention animation */
+@keyframes tutorialAttention {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+    25% {
+        transform: scale(1.15);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 5px 16px rgba(52, 152, 219, 0.4);
+    }
+    75% {
+        transform: scale(1.15);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.5);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+}
+
+.tutorial-button-animate {
+    animation: tutorialAttention 2s ease-in-out 2;
+}
+
+/* Subtle glow for available tutorials */
+.tutorial-button-available {
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4) !important;
+    background: linear-gradient(135deg, #3498db, #2980b9) !important;
+}
+
+/* Completion animation */
+@keyframes tutorialComplete {
+    0% {
+        transform: scale(1);
+        background: #3498db;
+    }
+    50% {
+        transform: scale(1.2);
+        background: #27ae60;
+    }
+    100% {
+        transform: scale(1);
+        background: #27ae60;
+    }
+}
+
+.tutorial-button-complete {
+    animation: tutorialComplete 1s ease-in-out;
+    background: #27ae60 !important;
+}
+
 /* Tutorial specific styles */
 .tutorial-highlight {
     position: relative;

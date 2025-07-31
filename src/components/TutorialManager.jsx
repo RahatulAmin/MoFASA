@@ -52,6 +52,42 @@ const TutorialManager = ({ children, currentView = null }) => {
   const getCurrentPageTutorial = () => {
     const path = location.pathname;
     
+    // Check if questionnaire settings modal is open
+    const questionnaireSettingsModal = document.querySelector('[style*="position: fixed"][style*="z-index: 1000"]')?.querySelector('h3')?.textContent?.includes('Questionnaire Settings');
+    
+    if (questionnaireSettingsModal) {
+      return 'questionnaireSettings';
+    }
+    
+    // Check if edit summary prompt modal is open
+    const editSummaryPromptModal = document.querySelector('[style*="position: fixed"][style*="z-index: 1000"]')?.querySelector('h3')?.textContent?.includes('Edit Project Prompt');
+    
+    if (editSummaryPromptModal) {
+      return 'editSummaryPrompt';
+    }
+    
+    // Check if add project modal is open by looking for the modal in DOM
+    // Use multiple selectors to be more reliable
+    const addProjectModal = document.querySelector('[style*="position: fixed"][style*="z-index: 1000"]') ||
+                           document.querySelector('[style*="background-color: rgba(0, 0, 0, 0.5)"]') ||
+                           document.querySelector('.project-details-step')?.closest('[style*="position: fixed"]') ||
+                           document.querySelector('.questionnaire-step')?.closest('[style*="position: fixed"]');
+    
+    if (addProjectModal) {
+      // Check if we're in questionnaire step by looking for the questionnaire step class
+      const questionnaireStep = addProjectModal.querySelector('.questionnaire-step');
+      const projectDetailsStep = addProjectModal.querySelector('.project-details-step');
+      
+      if (questionnaireStep) {
+        return 'questionnaireConfiguration';
+      } else if (projectDetailsStep) {
+        return 'addProjectModal';
+      } else {
+        // Fallback: if modal is open but we can't determine the step, default to add project
+        return 'addProjectModal';
+      }
+    }
+    
     // If we're on a project details page and have a current view, show view-specific tutorial
     if (path.match(/^\/projects\/\d+$/) && currentView) {
       switch (currentView) {
@@ -106,7 +142,64 @@ const TutorialManager = ({ children, currentView = null }) => {
 
   // Tutorial button component
   const TutorialButton = () => {
-    const currentPageTutorial = getCurrentPageTutorial();
+    const [currentPageTutorial, setCurrentPageTutorial] = useState(null);
+    const [shouldAnimate, setShouldAnimate] = useState(false);
+    const [showCompletion, setShowCompletion] = useState(false);
+    
+    // Use useEffect to detect tutorial with a small delay to ensure DOM is ready
+    useEffect(() => {
+      const detectTutorial = () => {
+        const detectedTutorial = getCurrentPageTutorial();
+        setCurrentPageTutorial(detectedTutorial);
+      };
+      
+      // Initial detection
+      detectTutorial();
+      
+      // Set up multiple checks to ensure we catch DOM changes
+      const timer1 = setTimeout(detectTutorial, 50);
+      const timer2 = setTimeout(detectTutorial, 200);
+      const timer3 = setTimeout(detectTutorial, 500);
+      
+      // Set up MutationObserver to watch for DOM changes
+      const observer = new MutationObserver(() => {
+        detectTutorial();
+      });
+      
+      // Start observing
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+      });
+      
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+        observer.disconnect();
+      };
+    }, [location.pathname, currentView]);
+
+    // Trigger animation when tutorial becomes available
+    useEffect(() => {
+      if (currentPageTutorial && !tutorialProgress[currentPageTutorial]?.completed) {
+        setShouldAnimate(true);
+        // Stop animation after 3 seconds
+        const timer = setTimeout(() => setShouldAnimate(false), 3000);
+        return () => clearTimeout(timer);
+      }
+    }, [currentPageTutorial, tutorialProgress]);
+
+    // Show completion animation when tutorial is completed
+    useEffect(() => {
+      if (currentPageTutorial && tutorialProgress[currentPageTutorial]?.completed) {
+        setShowCompletion(true);
+        const timer = setTimeout(() => setShowCompletion(false), 2000);
+        return () => clearTimeout(timer);
+      }
+    }, [currentPageTutorial, tutorialProgress]);
     
     const getTutorialTitle = (tutorialType) => {
       const titles = {
@@ -116,7 +209,11 @@ const TutorialManager = ({ children, currentView = null }) => {
         'participantInterview': 'Interview Guide',
         'personaeMapping': 'Personae Mapping Guide',
         'behavioralDiversity': 'Behavioral Diversity Guide',
-        'situationDesign': 'Situation Design Guide'
+        'situationDesign': 'Situation Design Guide',
+        'addProjectModal': 'Add Project Guide',
+        'questionnaireConfiguration': 'Questionnaire Configuration Guide',
+        'questionnaireSettings': 'Questionnaire Settings Guide',
+        'editSummaryPrompt': 'Edit Summary Prompt Guide'
       };
       return titles[tutorialType] || 'Tutorial';
     };
@@ -130,6 +227,7 @@ const TutorialManager = ({ children, currentView = null }) => {
     return (
       <button
         onClick={() => startTutorial(currentPageTutorial)}
+        className={`${shouldAnimate ? 'tutorial-button-animate' : ''} ${showCompletion ? 'tutorial-button-complete' : ''} ${!tutorialProgress[currentPageTutorial]?.completed ? 'tutorial-button-available' : ''}`}
         style={{
           position: 'fixed',
           bottom: '24px',
