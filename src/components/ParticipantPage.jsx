@@ -1,4 +1,4 @@
-import React, { useRef, useLayoutEffect, useState, useEffect, memo } from 'react';
+import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import FactorDetailsModal from './FactorDetailsModal';
 import { handleFactorClick, parseFactors } from '../utils/factorUtils';
@@ -102,15 +102,15 @@ const CONNECTION_EXPLANATIONS = {
 
 // Custom comparison function for memo
 const arePropsEqual = (prevProps, nextProps) => {
-  // Only re-render if the project ID or participant ID changes
+  // Only re-render if the project ID changes
+  // Note: participantId comes from useParams(), not props, so we don't compare it here
   const prevProjectId = prevProps.projects?.[parseInt(prevProps.projectId, 10)]?.id;
   const nextProjectId = nextProps.projects?.[parseInt(nextProps.projectId, 10)]?.id;
   
-  return prevProjectId === nextProjectId && 
-         prevProps.participantId === nextProps.participantId;
+  return prevProjectId === nextProjectId;
 };
 
-const ParticipantPage = memo(({ projects, updateParticipantAnswers, updateParticipantSummary, updateProjectRules }) => {
+const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipantSummary, updateProjectRules }) => {
   const { projectId, participantId } = useParams();
   const navigate = useNavigate();
   const idx = parseInt(projectId, 10);
@@ -138,6 +138,17 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
   const participants = currentScope?.participants || [];
   const participant = participants.find(p => p.id === participantId);
   const currentIndex = participants.findIndex(p => p.id === participantId);
+  
+  // Debug logging
+  console.log('Navigation Debug:', {
+    participantId,
+    currentIndex,
+    participantsLength: participants.length,
+    participantFound: !!participant,
+    participantName: participant?.name,
+    participantAnswers: participant?.answers,
+    participants: participants.map(p => ({ id: p.id, name: p.name }))
+  });
   const [summary, setSummary] = useState(participant?.summary || '');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
@@ -152,7 +163,9 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
   const [extractionConfig, setExtractionConfig] = useState({
     confidenceThreshold: 0.7,
     contextWindow: 3,
-    requireExactMatch: false
+    requireExactMatch: false,
+    useBatchProcessing: true, // New option for batch processing
+    batchSize: 5 // Number of questions to process in each batch
   });
   const [showRuleInput, setShowRuleInput] = useState(false);
   const [ruleToDelete, setRuleToDelete] = useState(null);
@@ -162,6 +175,8 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [sameForAllScopes, setSameForAllScopes] = useState({}); // Track which questions should apply to all scopes per participant
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState('');
   
   // Persist interview processing state - participant specific
   const [processingStatus, setProcessingStatus] = useState({
@@ -464,6 +479,12 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
 
   // Reset states when participant changes
   useEffect(() => {
+    console.log('Participant changed - resetting states:', {
+      participantId,
+      participantName: participant?.name,
+      participantAnswers: participant?.answers
+    });
+    
     setSummary(participant?.summary || '');
     setError(null);
     setProgress(0);
@@ -522,17 +543,19 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
         };
       }
       
-      // Only set local answers if we don't already have comprehensive data
-      // This prevents overwriting freshly processed data
-      const hasComprehensiveData = localAnswers['Identity'] && localAnswers['Definition of Situation'];
-      const hasParticipantData = participantAnswers['Identity'] || participantAnswers['Definition of Situation'];
+      // Always load participant data when switching participants
+      // This ensures the form shows the correct data for each participant
+      setLocalAnswers(participantAnswers);
       
-      // Load participant data if we don't have comprehensive local data
-      if (!hasComprehensiveData && hasParticipantData) {
-        setLocalAnswers(participantAnswers);
-      } else if (!hasComprehensiveData && !hasParticipantData) {
-        // If no participant data either, still set empty state to ensure form renders
-        setLocalAnswers(participantAnswers);
+      console.log('Loading participant data:', {
+        participantId,
+        participantAnswers,
+        participantName: participant?.name
+      });
+      
+      // Debug: Check if there are any existing answers that might be overriding
+      if (participantAnswers['Situation']) {
+        console.log('Existing Situation answers from participant:', participantAnswers['Situation']);
       }
     }
     
@@ -585,6 +608,14 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
     };
   }, []);
 
+  // Debug effect to monitor localAnswers changes
+  useEffect(() => {
+    console.log('localAnswers changed:', localAnswers);
+    if (localAnswers['Situation']) {
+      console.log('Situation answers:', localAnswers['Situation']);
+    }
+  }, [localAnswers]);
+
 
 
 
@@ -596,6 +627,13 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
     end = participants.length;
     start = Math.max(0, end - 3);
   }
+  
+  // Handle case where currentIndex is -1 (participant not found)
+  if (currentIndex === -1) {
+    start = 0;
+    end = Math.min(3, participants.length);
+  }
+  
   const visibleParticipants = participants.slice(start, end);
 
   // Add refs for the boxes
@@ -841,39 +879,27 @@ const ParticipantPage = memo(({ projects, updateParticipantAnswers, updatePartic
       });
       const availableFactors = Array.from(allFactors);
 
-      const prompt = `You are an expert in analyzing human-robot interaction using the MOFASA (Modified Factors of Social Appropriateness) framework.
+      const prompt = `You are an expert in analyzing human-robot interaction. Write a brief summary of the interaction.
 
 CRITICAL INSTRUCTIONS:
 - ONLY summarize information that is explicitly provided in the participant's responses
 - DO NOT make assumptions, inferences, or add information not directly stated
-- If a response appears to be gibberish, nonsensical, or unclear, mention it as "unclear response" rather than interpreting it
-- DO NOT fill in gaps with assumptions about typical situations
-- Be precise and factual, using only the exact information provided
+- Focus ONLY on the interaction between the human and robot, and how they reacted and interacted (or did not interact)
+- Be concise and factual, using only the exact information provided
 
-FACTOR TAGGING INSTRUCTIONS:
-- Each question-answer pair includes "[Associated factors: X, Y, Z]" - these are the EXACT factors you must use
-- When summarizing each answer, include the relevant factors in brackets immediately after the content
-- Use ONLY the factors that are explicitly associated with each question - do not use generic factor names
-- If no factors are provided for a question, do not add any factor tags for that content
-
-Your task is to write a single-paragraph summary based STRICTLY on the participant's actual responses.
+Your task is to write a brief summary based STRICTLY on the participant's actual responses.
 
 Format Requirements:
-- ONE single paragraph only
-- Include the exact [Factor] tags provided with each question after relevant phrases
-- 3-5 sentences maximum
+- Maximum 3 sentences
+- Focus on: what was the interaction between the human and the robot, and how they reacted and interacted (or did not interact)
+- Do NOT include factors, analysis, or interpretation
 - If critical information is missing or unclear, state "information not provided" rather than assuming
 - If responses are gibberish or unclear, note this explicitly
-
-${availableFactors.length > 0 ? `Available factors from the participant's responses: ${availableFactors.join(', ')}` : 'No factors available for this participant\'s responses.'}
-
-Example format using provided factors:
-"Participant ${participant.name} described their age as 25-34 [Age] and occupation as engineer [Occupation]. They decided to approach the robot cautiously [Emotional State, Consequences]. The interaction occurred in a university lab [Place, Context] with multiple people present [Group Size]."
 
 Participant Responses:
 ${allAnswers.join('\n\n')}
 
-Generate summary (remember: use ONLY the exact factors provided with each question, and only summarize information explicitly provided):`;
+Generate a brief summary (maximum 3 sentences, focus only on the human-robot interaction):`;
 
       // Set up real-time progress listener
       const progressHandler = (event, data) => {
@@ -903,25 +929,154 @@ Generate summary (remember: use ONLY the exact factors provided with each questi
     }
   };
 
+  // Optimized batch processing function
+  const processQuestionsBatch = async (questions, interviewText, config) => {
+    try {
+      // Create a single prompt for all questions to reduce API calls
+      const questionsList = questions.map((q, index) => `${index + 1}. ${q}`).join('\n');
+      
+      const prompt = `You are a data extraction specialist. Extract ACTUAL ANSWERS from the interview text.
+
+Interview Text:
+${interviewText}
+
+Questions to extract:
+${questionsList}
+
+CRITICAL INSTRUCTIONS:
+- Extract ONLY the actual information mentioned in the interview text
+- Do NOT provide question text, labels, or categories
+- Do NOT repeat the question - provide the actual answer from the interview
+- For dropdown questions (age, gender), provide ONLY the selected option value (e.g., "25-34", "Male")
+- For yes/no questions, provide ONLY the explanation/reasoning, NOT the yes/no part
+- Include specific details, examples, and context from the interview
+- Keep answers concise but informative (1-3 sentences)
+- Use the exact numbering format: 1. [answer], 2. [answer], etc.
+
+- If information is not provided for a question, respond with: "Information not provided"
+- Do NOT include question numbers, labels, or question text in the answers
+
+Examples of CORRECT answers (actual information from interview):
+1. The interaction happened in a university robotics lab on Tuesday afternoon
+2. A graduate student researcher and a collaborative robot assistant
+3. To test the robot's ability to assist with laboratory tasks
+4. One human was interacting with the robot
+5. A collaborative robot with gripper arms and computer vision capabilities
+6. 25-34 (for age dropdown)
+7. Male (for gender dropdown)
+8. High school student (for occupation)
+9. University degree (for education)
+
+Examples of INCORRECT answers (don't do this):
+1. When and where did the interaction happen?
+2. Age range of the participant(s): 25-34
+3. Gender of the participant(s): Male
+4. Occupation of the participant(s): Engineer
+5. Education level of the participant(s): University degree
+
+IMPORTANT: Look at the interview text and extract the SPECIFIC details mentioned. Do not provide generic categories or question text.
+
+Answers:`;
+
+      const response = await window.electronAPI.generateWithDeepSeek(prompt);
+      
+      console.log('LLM Batch Response:', response);
+      
+      // Parse the numbered responses
+      const lines = response.split('\n').filter(line => line.trim());
+      const answers = [];
+      
+      for (let i = 0; i < questions.length; i++) {
+        const expectedLine = `${i + 1}.`;
+        const answerLine = lines.find(line => line.trim().startsWith(expectedLine));
+        
+        if (answerLine) {
+          // Extract the answer part (remove the number and dot)
+          let answer = answerLine.substring(answerLine.indexOf('.') + 1).trim();
+          
+          // Clean up common unwanted prefixes
+          const unwantedPrefixes = [
+            '[Answer for question ',
+            '[Answer: ',
+            'Answer: ',
+            'Answer for question ',
+            'Age-Range: ',
+            'Gender: ',
+            'Nationality: ',
+            'Occupation: ',
+            'Education: ',
+            'Age range of the participant(s): ',
+            'Gender of the participant(s): ',
+            'Nationality of the participant(s): ',
+            'Occupation of the participant(s): ',
+            'Education level of the participant(s): '
+          ];
+          
+          for (const prefix of unwantedPrefixes) {
+            if (answer.toLowerCase().startsWith(prefix.toLowerCase())) {
+              answer = answer.substring(prefix.length).trim();
+            }
+          }
+          
+          // Remove any remaining brackets or labels
+          answer = answer.replace(/^\[.*?\]\s*/, '').trim();
+          
+          answers.push(answer);
+        } else {
+          answers.push('Information not provided');
+        }
+      }
+      
+      return answers;
+    } catch (error) {
+      console.error('Error processing questions batch with LLM:', error);
+      // Fallback to individual processing if batch fails
+      const answers = [];
+      for (const question of questions) {
+        try {
+          const answer = await processQuestionWithLLM(question, interviewText, config);
+          answers.push(answer);
+        } catch (err) {
+          console.error(`Error processing question "${question}":`, err);
+          answers.push('Error processing this question');
+        }
+      }
+      return answers;
+    }
+  };
+
   const processQuestionWithLLM = async (question, interviewText, config) => {
     try {
-      const prompt = `You are a data extraction specialist. Extract ONLY the direct answer from the interview text. Do not provide explanations, reasoning, or any text before the answer.
+      const prompt = `You are a data extraction specialist. Extract ACTUAL ANSWERS from the interview text.
 
 Question: "${question}"
 
 Interview Text:
 ${interviewText}
 
-CRITICAL: Respond with ONLY the direct answer. No explanations. No "Answer:" prefix. No reasoning. Just the answer.
+CRITICAL INSTRUCTIONS:
+- Extract ONLY the actual information mentioned in the interview text
+- Do NOT provide question text, labels, or categories
+- Do NOT repeat the question - provide the actual answer from the interview
+- For dropdown questions (age, gender), provide ONLY the selected option value (e.g., "25-34", "Male")
+- For yes/no questions, provide ONLY the explanation/reasoning, NOT the yes/no part
+- Include specific details, examples, and context from the interview
+- Keep answers concise but informative (1-3 sentences)
+- Do NOT include "Answer:" prefix or explanatory text before the answer
 
 If information is not provided, respond with: "Information not provided"
 
-Direct answer:`;
+Actual answer from interview:`;
 
       const response = await window.electronAPI.generateWithDeepSeek(prompt);
       
+      console.log('LLM Individual Response for question:', question, response);
+      
       // Clean up the response to remove any "Answer:" prefixes or explanations
       let cleanedResponse = response.trim();
+      
+      console.log('Original response:', response);
+      console.log('Cleaned response before processing:', cleanedResponse);
       
       // Remove common prefixes that LLM might add
       const prefixesToRemove = [
@@ -941,22 +1096,15 @@ Direct answer:`;
       
       // If the response contains multiple lines, take only the last line (usually the actual answer)
       const lines = cleanedResponse.split('\n').filter(line => line.trim());
+      console.log('Response lines:', lines);
+      
       if (lines.length > 1) {
-        // Look for the line that doesn't contain explanatory words
-        const answerLine = lines.find(line => 
-          !line.toLowerCase().includes('answer') && 
-          !line.toLowerCase().includes('based on') &&
-          !line.toLowerCase().includes('from the') &&
-          line.trim().length > 0
-        );
-        if (answerLine) {
-          cleanedResponse = answerLine.trim();
-        } else {
-          // Take the last non-empty line
-          cleanedResponse = lines[lines.length - 1].trim();
-        }
+        // Simply take the last non-empty line as the answer
+        cleanedResponse = lines[lines.length - 1].trim();
+        console.log('Using last line:', cleanedResponse);
       }
       
+      console.log('Final cleaned response:', cleanedResponse);
       return cleanedResponse;
     } catch (error) {
       console.error('Error processing question with LLM:', error);
@@ -1002,6 +1150,9 @@ Direct answer:`;
         .filter(([section]) => sectionsToProcess.includes(section))
         .reduce((total, [section, questions]) => total + questions.length, 0);
       
+      // Process questions in batches for better performance
+      const batchSize = extractionConfig.batchSize || 5; // Use configurable batch size
+      
       for (const [section, sectionQuestions] of Object.entries(questions)) {
         // Skip sections that shouldn't be processed by LLM
         if (!sectionsToProcess.includes(section)) {
@@ -1010,55 +1161,124 @@ Direct answer:`;
         
         processedAnswers[section] = {};
         
-        for (const question of sectionQuestions) {
-          const questionText = typeof question === 'string' ? question : question.text;
-          // Use the same logic as the form rendering for consistency
-          const questionId = typeof question === 'object' && question.type === 'dropdown' ? question.id : question.text;
-          
-          try {
-            const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig);
+        // Extract question texts for batch processing
+        const questionTexts = sectionQuestions.map(question => 
+          typeof question === 'string' ? question : question.text
+        );
+        
+        // Process questions based on configuration
+        // Force individual processing for Situation section to avoid issues
+        if (extractionConfig.useBatchProcessing && section !== 'Situation') {
+          // Process questions in batches
+          for (let i = 0; i < questionTexts.length; i += batchSize) {
+            const batch = questionTexts.slice(i, i + batchSize);
             
-            // Store answer with the correct question ID
-            processedAnswers[section][questionId] = answer;
+            try {
+              const batchAnswers = await processQuestionsBatch(batch, interviewText, extractionConfig);
+              
+              // Store answers with the correct question IDs
+              batch.forEach((questionText, batchIndex) => {
+                const questionIndex = i + batchIndex;
+                const question = sectionQuestions[questionIndex];
+                const questionId = typeof question === 'object' && question.type === 'dropdown' ? question.id : questionText;
+                
+                processedAnswers[section][questionId] = batchAnswers[batchIndex];
+                processedCount++;
+              });
+              
+              // Update progress
+              const newProgress = (processedCount / totalQuestions) * 100;
+              setProgress(newProgress);
+              setProcessingStatus(prev => ({
+                ...prev,
+                progress: newProgress,
+                processedCount
+              }));
+              
+            } catch (error) {
+              console.error(`Error processing batch for section "${section}":`, error);
+              
+              // Fallback to individual processing for this batch
+              for (let j = 0; j < batch.length; j++) {
+                const questionText = batch[j];
+                const questionIndex = i + j;
+                const question = sectionQuestions[questionIndex];
+                const questionId = typeof question === 'object' && question.type === 'dropdown' ? question.id : questionText;
+                
+                try {
+                  const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig);
+                  processedAnswers[section][questionId] = answer;
+                } catch (err) {
+                  console.error(`Error processing question "${questionText}":`, err);
+                  processedAnswers[section][questionId] = 'Error processing this question';
+                }
+                
+                processedCount++;
+                const newProgress = (processedCount / totalQuestions) * 100;
+                setProgress(newProgress);
+                setProcessingStatus(prev => ({
+                  ...prev,
+                  progress: newProgress,
+                  processedCount
+                }));
+              }
+            }
+          }
+        } else {
+          // Process questions individually (original method)
+          for (const question of sectionQuestions) {
+            console.log('Processing question object:', question, 'Type:', typeof question);
+            const questionText = typeof question === 'string' ? question : question.text;
+            const questionId = typeof question === 'object' && question.type === 'dropdown' ? question.id : questionText;
             
-            processedCount++;
-            
-            // Update progress
-            const newProgress = (processedCount / totalQuestions) * 100;
-            setProgress(newProgress);
-            setProcessingStatus(prev => ({
-              ...prev,
-              progress: newProgress,
-              processedCount
-            }));
-            
-          } catch (error) {
-            console.error(`Error processing question "${questionText}":`, error);
-            processedAnswers[section][questionId] = 'Error processing this question';
-            processedCount++;
-            const newProgress = (processedCount / totalQuestions) * 100;
-            setProgress(newProgress);
-            setProcessingStatus(prev => ({
-              ...prev,
-              progress: newProgress,
-              processedCount
-            }));
+            try {
+              const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig);
+              console.log(`Processing question: "${questionText}" with ID: "${questionId}" -> Answer: "${answer}"`);
+              processedAnswers[section][questionId] = answer;
+              processedCount++;
+              
+              // Update progress
+              const newProgress = (processedCount / totalQuestions) * 100;
+              setProgress(newProgress);
+              setProcessingStatus(prev => ({
+                ...prev,
+                progress: newProgress,
+                processedCount
+              }));
+              
+            } catch (error) {
+              console.error(`Error processing question "${questionText}":`, error);
+              processedAnswers[section][questionId] = 'Error processing this question';
+              processedCount++;
+              const newProgress = (processedCount / totalQuestions) * 100;
+              setProgress(newProgress);
+              setProcessingStatus(prev => ({
+                ...prev,
+                progress: newProgress,
+                processedCount
+              }));
+            }
           }
         }
       }
 
       // Update local answers immediately for better UX
+      console.log('Processed answers before setting localAnswers:', processedAnswers);
       setLocalAnswers(prev => {
         const updated = { ...prev };
         Object.entries(processedAnswers).forEach(([section, answers]) => {
           updated[section] = { ...updated[section], ...answers };
         });
+        console.log('Setting localAnswers after LLM processing:', updated);
         return updated;
       });
 
       // Force a re-render by updating the state again after a short delay
       setTimeout(() => {
-        setLocalAnswers(current => ({ ...current }));
+        setLocalAnswers(current => {
+          console.log('Forcing re-render of localAnswers:', current);
+          return { ...current };
+        });
       }, 200);
 
       // Save all processed answers to database
@@ -1103,7 +1323,8 @@ Direct answer:`;
 
 
 
-      alert(`Interview processing completed! ${processedCount} questions processed and saved.`);
+      setCompletionMessage(`Interview processing completed! ${processedCount} questions processed and saved.`);
+      setShowCompletionModal(true);
       setShowInterview(false);
       
       // Delay clearing the processing status to show completion feedback
@@ -1276,17 +1497,23 @@ Direct answer:`;
   }
 
   const handleAnswerChange = (section, question, value) => {
+    console.log('handleAnswerChange called:', { section, question, value });
+    
     // Save scroll position before making changes
     saveScrollPosition();
     
     // Update local state immediately for responsive UI
-    setLocalAnswers(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [question]: value
-      }
-    }));
+    setLocalAnswers(prev => {
+      const updated = {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [question]: value
+        }
+      };
+      console.log('Updated localAnswers:', updated);
+      return updated;
+    });
     
     // Clear any existing timer
     if (answerChangeTimer.current) {
@@ -1773,7 +2000,7 @@ Direct answer:`;
                     lineHeight: '1.5'
                   }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                   <button
                     onClick={handleProcessInterview}
                     disabled={isProcessing || !interviewText.trim()}
@@ -1802,6 +2029,56 @@ Direct answer:`;
                   >
                     {isProcessing ? '🤖 Processing Interview...' : '🚀 Process Interview with AI'}
                   </button>
+
+                  {/* Processing Configuration */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    padding: '8px 12px',
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: '4px',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <label style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '6px',
+                      fontSize: '0.85em',
+                      fontFamily: 'Lexend, sans-serif',
+                      color: '#495057'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={extractionConfig.useBatchProcessing}
+                        onChange={(e) => handleConfigChange('useBatchProcessing', e.target.checked)}
+                        style={{ margin: 0 }}
+                      />
+                      Quick Processing
+                    </label>
+                    
+                    {extractionConfig.useBatchProcessing && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '0.8em', color: '#6c757d' }}>Questions to process at once:</span>
+                        <select
+                          value={extractionConfig.batchSize}
+                          onChange={(e) => handleConfigChange('batchSize', parseInt(e.target.value))}
+                          style={{
+                            padding: '2px 6px',
+                            fontSize: '0.8em',
+                            border: '1px solid #ced4da',
+                            borderRadius: '3px',
+                            fontFamily: 'Lexend, sans-serif'
+                          }}
+                        >
+                          <option value={3}>3</option>
+                          <option value={5}>5</option>
+                          <option value={7}>7</option>
+                          <option value={10}>10</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
 
                   
                   {/* Show progress when processing */}
@@ -2626,18 +2903,20 @@ Direct answer:`;
             key={section.name}
               ref={boxRefs.current[i]}
             style={{
-              width: 420,
+              width: 'clamp(420px, calc(17vw + 200px), 720px)',
+              maxWidth: '720px',
+              minWidth: '420px',
               background: section.color,
               borderRadius: 10,
               marginBottom: 32,
               boxShadow: '0 2px 8px 0 rgba(0,0,0,0.04)',
               border: '1.5px solid #e0e0e0',
               position: 'relative',
-                padding: '18px 24px',
+              padding: '18px 24px',
               display: 'flex',
               flexDirection: 'column',
-                height: 'auto'
-              }}
+              height: 'auto'
+            }}
             >
               <div style={{ 
                 fontWeight: 700, 
@@ -2896,8 +3175,82 @@ Direct answer:`;
           factorDetails={selectedFactor}
         />
       )}
+
+      {/* Completion Modal */}
+      {showCompletionModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '32px',
+            borderRadius: '12px',
+            width: '500px',
+            maxWidth: '90%',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '16px'
+            }}>
+              ✅
+            </div>
+            <h3 style={{ 
+              marginBottom: '16px',
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1.3em',
+              color: '#2c3e50',
+              fontWeight: '600'
+            }}>
+              Processing Complete!
+            </h3>
+            <p style={{ 
+              marginBottom: '24px',
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1.1em',
+              color: '#34495e',
+              lineHeight: '1.5'
+            }}>
+              {completionMessage}
+            </p>
+            <button
+              onClick={() => setShowCompletionModal(false)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1em',
+                fontWeight: '500',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = '#2980b9';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = '#3498db';
+              }}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
-});
+}
 
 export default ParticipantPage; 

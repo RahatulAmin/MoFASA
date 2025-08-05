@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -33,9 +33,32 @@ const BehavioralDiversityView = ({
 }) => {
   const behavioralRef = useRef(null);
   const [chartType, setChartType] = useState('bar'); // 'bar' or 'pie'
+  const [undesirableRules, setUndesirableRules] = useState([]);
 
   const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
   const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
+
+  // Load undesirable rules from database whenever currentScope changes
+  useEffect(() => {
+    const loadUndesirableRules = async () => {
+      if (currentScope?.id) {
+        try {
+          console.log('Loading undesirable rules for scopeId:', currentScope.id);
+          const rules = await window.electronAPI.getUndesirableRules(currentScope.id);
+          console.log('Loaded undesirable rules:', rules);
+          setUndesirableRules(rules);
+        } catch (error) {
+          console.error('Error loading undesirable rules:', error);
+          setUndesirableRules([]);
+        }
+      } else {
+        console.log('No currentScope.id available:', currentScope);
+        setUndesirableRules([]);
+      }
+    };
+
+    loadUndesirableRules();
+  }, [currentScope?.id]); // Load when scopeId changes
 
   // Function to group participants by the selected criterion
   const getGroupedParticipants = () => {
@@ -457,20 +480,37 @@ const BehavioralDiversityView = ({
                       background: '#f8f9fa',
                       borderRadius: 4
                     }}>
-                      {(currentScope?.rules || []).map((rule, index) => {
-                        const isSelected = participant.answers?.['Rule Selection']?.selectedRules?.includes(rule);
+                                             {(currentScope?.rules || []).map((rule, index) => {
+                         const isSelected = participant.answers?.['Rule Selection']?.selectedRules?.includes(rule);
+                         const isUndesirable = undesirableRules.includes(rule);
+                        
+                        // Determine background color based on selection and desirability
+                        let backgroundColor = '#fff';
+                        let textColor = '#2c3e50';
+                        
+                        if (isSelected) {
+                          if (isUndesirable) {
+                            backgroundColor = '#e74c3c'; // Red for selected undesirable rules
+                            textColor = '#fff';
+                          } else {
+                            backgroundColor = '#3498db'; // Blue for selected desirable rules
+                            textColor = '#fff';
+                          }
+                        }
+                        
                         return (
                           <div
                             key={index}
                             style={{
                               padding: '6px 12px',
-                              background: isSelected ? '#3498db' : '#fff',
-                              color: isSelected ? '#fff' : '#2c3e50',
+                              background: backgroundColor,
+                              color: textColor,
                               border: '1px solid #dcdde1',
                               borderRadius: '4px',
                               fontSize: '0.95em',
                               fontFamily: 'Lexend, sans-serif',
-                              transition: 'all 0.2s ease'
+                              transition: 'all 0.2s ease',
+                              fontWeight: isUndesirable ? '600' : '400'
                             }}
                           >
                             {rule}

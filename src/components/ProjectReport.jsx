@@ -1143,18 +1143,43 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                           }}>
                             {getAllRules().map((rule, index) => {
                               const isSelected = participant.answers?.['Rule Selection']?.selectedRules?.includes(rule);
+                              
+                              // Find which scope this participant belongs to
+                              const participantScope = projectData.scopes.find(scope => 
+                                scope.participants?.some(p => p.id === participant.id)
+                              );
+                              
+                              // Check if this rule is undesirable for this scope
+                              const isUndesirable = participantScope?.id && 
+                                undesirableRulesMap[participantScope.id]?.includes(rule);
+                              
+                              // Determine background color based on selection and desirability
+                              let backgroundColor = '#fff';
+                              let textColor = '#2c3e50';
+                              
+                              if (isSelected) {
+                                if (isUndesirable) {
+                                  backgroundColor = '#e74c3c'; // Red for selected undesirable rules
+                                  textColor = '#fff';
+                                } else {
+                                  backgroundColor = '#3498db'; // Blue for selected desirable rules
+                                  textColor = '#fff';
+                                }
+                              }
+                              
                               return (
                                 <div
                                   key={index}
                                   style={{
                                     padding: '6px 12px',
-                                    background: isSelected ? '#3498db' : '#fff',
-                                    color: isSelected ? '#fff' : '#2c3e50',
+                                    background: backgroundColor,
+                                    color: textColor,
                                     border: '1px solid #dcdde1',
                                     borderRadius: '4px',
                                     fontSize: '0.9em',
                                     fontFamily: 'Lexend, sans-serif',
-                                    transition: 'all 0.2s ease'
+                                    transition: 'all 0.2s ease',
+                                    fontWeight: isUndesirable ? '600' : '400'
                                   }}
                                 >
                                   {rule}

@@ -1008,6 +1008,25 @@ function getAllProjects() {
       };
     });
     
+    // Get project question settings
+    const projectQuestionSettings = db.prepare(`
+      SELECT questionId, section, isEnabled 
+      FROM project_questions 
+      WHERE projectId = ?
+    `).all(project.id);
+    
+    // Organize project question settings by section
+    const organizedProjectSettings = {};
+    projectQuestionSettings.forEach(setting => {
+      if (!organizedProjectSettings[setting.section]) {
+        organizedProjectSettings[setting.section] = [];
+      }
+      organizedProjectSettings[setting.section].push({
+        questionId: setting.questionId,
+        isEnabled: setting.isEnabled
+      });
+    });
+    
     return {
       id: project.id,
       name: project.name,
@@ -1017,6 +1036,7 @@ function getAllProjects() {
       rules: project.rules ? JSON.parse(project.rules) : [],
       summaryPrompt: project.summaryPrompt,
       scopes: scopesWithData,
+      projectQuestionSettings: organizedProjectSettings,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt
     };
@@ -1055,6 +1075,7 @@ function saveAllProjects(projects) {
     db.prepare('DELETE FROM participants').run();
     db.prepare('DELETE FROM scope_rules').run();
     db.prepare('DELETE FROM scopes').run();
+    db.prepare('DELETE FROM project_questions').run();
     db.prepare('DELETE FROM projects').run();
     
     // Insert projects
@@ -1089,32 +1110,91 @@ function saveAllProjects(projects) {
     `);
     
     for (const project of projects) {
-      // Insert project with sanitized values
-      const projectInfo = insertProject.run(
-        sanitizeValue(project.name),
-        sanitizeValue(project.description),
-        sanitizeValue(project.robotType),
-        sanitizeValue(project.studyType),
-        sanitizeValue(JSON.stringify(project.rules)),
-        sanitizeValue(project.summaryPrompt),
-        sanitizeValue(project.createdAt || new Date().toISOString()),
-        sanitizeValue(project.updatedAt || new Date().toISOString())
-      );
+      // Preserve existing project ID if available, otherwise let SQLite generate a new one
+      let projectId;
+      if (project.id) {
+        // Use existing project ID
+        const projectInfo = db.prepare(`
+          INSERT INTO projects (id, name, description, robotType, studyType, rules, summaryPrompt, createdAt, updatedAt) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          project.id,
+          sanitizeValue(project.name),
+          sanitizeValue(project.description),
+          sanitizeValue(project.robotType),
+          sanitizeValue(project.studyType),
+          sanitizeValue(JSON.stringify(project.rules)),
+          sanitizeValue(project.summaryPrompt),
+          sanitizeValue(project.createdAt || new Date().toISOString()),
+          sanitizeValue(project.updatedAt || new Date().toISOString())
+        );
+        projectId = project.id;
+      } else {
+        // Generate new project ID
+        const projectInfo = insertProject.run(
+          sanitizeValue(project.name),
+          sanitizeValue(project.description),
+          sanitizeValue(project.robotType),
+          sanitizeValue(project.studyType),
+          sanitizeValue(JSON.stringify(project.rules)),
+          sanitizeValue(project.summaryPrompt),
+          sanitizeValue(project.createdAt || new Date().toISOString()),
+          sanitizeValue(project.updatedAt || new Date().toISOString())
+        );
+        projectId = projectInfo.lastInsertRowid;
+      }
       
-      const projectId = projectInfo.lastInsertRowid;
+      // Preserve project question settings if they exist
+      if (project.projectQuestionSettings) {
+        const insertProjectQuestion = db.prepare(`
+          INSERT INTO project_questions (projectId, questionId, section, isEnabled, updatedAt) 
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        
+        for (const [section, questions] of Object.entries(project.projectQuestionSettings)) {
+          for (const question of questions) {
+            insertProjectQuestion.run(
+              projectId,
+              question.questionId,
+              sanitizeValue(section),
+              sanitizeValue(question.isEnabled),
+              sanitizeValue(new Date().toISOString())
+            );
+          }
+        }
+      }
       
       // Insert scopes
       for (const scope of (project.scopes || [])) {
-        const scopeInfo = insertScope.run(
-          projectId,
-          sanitizeValue(scope.scopeNumber),
-          sanitizeValue(scope.scopeText),
-          sanitizeValue(scope.isActive),
-          sanitizeValue(scope.createdAt || new Date().toISOString()),
-          sanitizeValue(scope.updatedAt || new Date().toISOString())
-        );
-        
-        const scopeId = scopeInfo.lastInsertRowid;
+        // Preserve existing scope ID if available, otherwise let SQLite generate a new one
+        let scopeId;
+        if (scope.id) {
+          // Use existing scope ID
+          const scopeInfo = db.prepare(`
+            INSERT INTO scopes (id, projectId, scopeNumber, scopeText, isActive, createdAt, updatedAt) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            scope.id,
+            projectId,
+            sanitizeValue(scope.scopeNumber),
+            sanitizeValue(scope.scopeText),
+            sanitizeValue(scope.isActive),
+            sanitizeValue(scope.createdAt || new Date().toISOString()),
+            sanitizeValue(scope.updatedAt || new Date().toISOString())
+          );
+          scopeId = scope.id;
+        } else {
+          // Generate new scope ID
+          const scopeInfo = insertScope.run(
+            projectId,
+            sanitizeValue(scope.scopeNumber),
+            sanitizeValue(scope.scopeText),
+            sanitizeValue(scope.isActive),
+            sanitizeValue(scope.createdAt || new Date().toISOString()),
+            sanitizeValue(scope.updatedAt || new Date().toISOString())
+          );
+          scopeId = scopeInfo.lastInsertRowid;
+        }
         
         // Insert rules for this scope
         for (let i = 0; i < (scope.rules || []).length; i++) {

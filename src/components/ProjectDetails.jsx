@@ -85,6 +85,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [showBehavioralInfoModal, setShowBehavioralInfoModal] = useState(false);
   const [showHtmlReportModal, setShowHtmlReportModal] = useState(false);
   const [executiveSummary, setExecutiveSummary] = useState("");
+  const [aiSuggestions, setAiSuggestions] = useState({
+    robotChanges: '',
+    environmentalChanges: ''
+  });
 
   // Load questions from database
   React.useEffect(() => {
@@ -903,6 +907,64 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
     }, 1200);
   };
 
+  const handleAcceptRobotSuggestions = () => {
+    if (aiSuggestions.robotChanges.trim()) {
+      setRobotDraft(prev => prev + (prev ? '\n\n' : '') + aiSuggestions.robotChanges);
+      
+      // Update the current scope's situation design
+      const updatedScopes = [...project.scopes];
+      updatedScopes[selectedScope] = {
+        ...updatedScopes[selectedScope],
+        situationDesign: {
+          ...updatedScopes[selectedScope].situationDesign,
+          robotChanges: (updatedScopes[selectedScope].situationDesign?.robotChanges || '') + 
+                       (updatedScopes[selectedScope].situationDesign?.robotChanges ? '\n\n' : '') + 
+                       aiSuggestions.robotChanges
+        }
+      };
+      
+      // Update the project with the new scopes
+      const updatedProject = {
+        ...project,
+        scopes: updatedScopes
+      };
+      
+      editProject(idx, updatedProject);
+      
+      // Clear the AI suggestions
+      setAiSuggestions(prev => ({ ...prev, robotChanges: '' }));
+    }
+  };
+
+  const handleAcceptEnvironmentalSuggestions = () => {
+    if (aiSuggestions.environmentalChanges.trim()) {
+      setEnvironmentDraft(prev => prev + (prev ? '\n\n' : '') + aiSuggestions.environmentalChanges);
+      
+      // Update the current scope's situation design
+      const updatedScopes = [...project.scopes];
+      updatedScopes[selectedScope] = {
+        ...updatedScopes[selectedScope],
+        situationDesign: {
+          ...updatedScopes[selectedScope].situationDesign,
+          environmentalChanges: (updatedScopes[selectedScope].situationDesign?.environmentalChanges || '') + 
+                               (updatedScopes[selectedScope].situationDesign?.environmentalChanges ? '\n\n' : '') + 
+                               aiSuggestions.environmentalChanges
+        }
+      };
+      
+      // Update the project with the new scopes
+      const updatedProject = {
+        ...project,
+        scopes: updatedScopes
+      };
+      
+      editProject(idx, updatedProject);
+      
+      // Clear the AI suggestions
+      setAiSuggestions(prev => ({ ...prev, environmentalChanges: '' }));
+    }
+  };
+
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
       <div className="left-panel" style={{ 
@@ -1613,8 +1675,41 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         
         {/* Thin line */}
         <div style={{ borderBottom: '1px solid #dcdde1', margin: '18px 0 12px 0' }}></div>
-        {/* Three buttons */}
+        {/* Four buttons */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+          <button 
+            className="participants-button"
+            key="participants"
+            onClick={() => setCurrentView('details')}
+            style={{ 
+              padding: '8px 16px', 
+              background: currentView === 'details' ?  '#522c3f' : '#8f4d6e', 
+              color: '#fff', 
+              border: 'none', 
+              borderRadius: 4, 
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: currentView === 'details' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+              fontFamily: 'Lexend, sans-serif'
+            }}
+            onMouseOver={(e) => {
+              if (currentView !== 'details') {
+                e.target.style.background = '#522c3f';
+                e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (currentView !== 'details') {
+                e.target.style.background = '#8f4d6e';
+                e.target.style.boxShadow = 'none';
+              } else {
+                e.target.style.background = '##522c3f';
+                e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+              }
+            }}
+          >
+            Participants
+          </button>
           <button 
             className="personae-mapping-button"
             key="personae-mapping"
@@ -1874,6 +1969,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               editProject={editProject}
               idx={idx}
               questions={questions}
+              aiSuggestions={aiSuggestions}
+              setAiSuggestions={setAiSuggestions}
+              onAcceptRobotSuggestions={handleAcceptRobotSuggestions}
+              onAcceptEnvironmentalSuggestions={handleAcceptEnvironmentalSuggestions}
             />
           </>
         ) : (
@@ -2323,6 +2422,189 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                   />
                 </div>
               </div>
+              
+              {/* AI Suggestions Section */}
+              {(aiSuggestions.robotChanges.trim() || aiSuggestions.environmentalChanges.trim()) && (
+                <div className="ai-suggestions-section" style={{ width: '100%', marginTop: '24px' }}>
+                  <h3 style={{
+                    fontFamily: 'Lexend, sans-serif',
+                    fontSize: '1.2em',
+                    color: '#2c3e50',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    🤖 AI Suggestions
+                  </h3>
+                  
+                  {aiSuggestions.robotChanges.trim() && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{
+                        background: '#fff3cd',
+                        border: '1px solid #ffeaa7',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        marginBottom: '8px'
+                      }}>
+                        <h4 style={{
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '1em',
+                          color: '#856404',
+                          margin: '0 0 8px 0',
+                          fontWeight: '600'
+                        }}>
+                          Robot Changes Suggestion:
+                        </h4>
+                        <p style={{
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '0.95em',
+                          color: '#495057',
+                          margin: 0,
+                          lineHeight: '1.5',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {aiSuggestions.robotChanges}
+                        </p>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px'
+                      }}>
+                        <button
+                          onClick={handleAcceptRobotSuggestions}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#27ae60',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.9em',
+                            fontFamily: 'Lexend, sans-serif',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = '#16a085';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = '#27ae60';
+                          }}
+                        >
+                          Accept Suggestion
+                        </button>
+                        <button
+                          onClick={() => setAiSuggestions(prev => ({ ...prev, robotChanges: '' }))}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#95a5a6',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.9em',
+                            fontFamily: 'Lexend, sans-serif',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = '#7f8c8d';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = '#95a5a6';
+                          }}
+                        >
+                          Ignore Suggestion
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {aiSuggestions.environmentalChanges.trim() && (
+                    <div>
+                      <div style={{
+                        background: '#fff3cd',
+                        border: '1px solid #ffeaa7',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        marginBottom: '8px'
+                      }}>
+                        <h4 style={{
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '1em',
+                          color: '#856404',
+                          margin: '0 0 8px 0',
+                          fontWeight: '600'
+                        }}>
+                          Environmental Changes Suggestion:
+                        </h4>
+                        <p style={{
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '0.95em',
+                          color: '#495057',
+                          margin: 0,
+                          lineHeight: '1.5',
+                          whiteSpace: 'pre-wrap'
+                        }}>
+                          {aiSuggestions.environmentalChanges}
+                        </p>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px'
+                      }}>
+                        <button
+                          onClick={handleAcceptEnvironmentalSuggestions}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#27ae60',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.9em',
+                            fontFamily: 'Lexend, sans-serif',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = '#16a085';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = '#27ae60';
+                          }}
+                        >
+                          Accept Suggestion
+                        </button>
+                        <button
+                          onClick={() => setAiSuggestions(prev => ({ ...prev, environmentalChanges: '' }))}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#95a5a6',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.9em',
+                            fontFamily: 'Lexend, sans-serif',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = '#7f8c8d';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = '#95a5a6';
+                          }}
+                        >
+                          Ignore Suggestion
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
