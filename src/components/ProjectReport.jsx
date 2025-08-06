@@ -184,6 +184,7 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
   const [selectedScopes, setSelectedScopes] = useState(new Set());
   const [undesirableRulesMap, setUndesirableRulesMap] = useState({});
   const [chartType, setChartType] = useState('bar'); // 'bar' or 'pie'
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   // Load undesirable rules for all scopes
   useEffect(() => {
@@ -212,6 +213,10 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
 
   // PDF download functionality
   const handleDownloadPDF = async () => {
+    if (isGeneratingPDF) return; // Prevent multiple clicks
+    
+    setIsGeneratingPDF(true);
+    
     try {
       const element = document.querySelector('.report-content');
       if (!element) {
@@ -269,6 +274,8 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -457,17 +464,26 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
   const nextSteps = getNextSteps(projectData);
 
   return (
-    <div style={{ 
-      fontFamily: 'Lexend, sans-serif', 
-      background: '#f7f9fa', 
-      color: '#222', 
-      minHeight: '100vh',
-      display: 'flex',
-      justifyContent: 'center',
-      padding: '32px 16px',
-      width: '100%',
-      overflow: 'visible' // Ensure content is never clipped
-    }}>
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      <div style={{ 
+        fontFamily: 'Lexend, sans-serif', 
+        background: '#f7f9fa', 
+        color: '#222', 
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '32px 16px',
+        width: '100%',
+        overflow: 'visible' // Ensure content is never clipped
+      }}>
       <div className="report-content" style={{
         maxWidth: '816px', // Letter size width (8.5 inches * 96 DPI)
         width: '100%',
@@ -483,7 +499,31 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
           <h1 style={{ fontWeight: 700, fontSize: '2em', margin: 0 }}>{projectData?.name || 'Project Report'}</h1>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button onClick={handleDownloadPDF} style={buttonStyle}>Download PDF</button>
+            <button 
+              onClick={handleDownloadPDF} 
+              disabled={isGeneratingPDF}
+              style={{
+                ...buttonStyle,
+                backgroundColor: isGeneratingPDF ? '#95a5a6' : '#3498db',
+                cursor: isGeneratingPDF ? 'not-allowed' : 'pointer',
+                opacity: isGeneratingPDF ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {isGeneratingPDF && (
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid #fff',
+                  borderTop: '2px solid transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+              )}
+              {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
+            </button>
           </div>
         </div>
 
@@ -718,9 +758,9 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                                 {participant.answers?.Identity?.gender && (
                                   <span>Gender: {participant.answers.Identity.gender}</span>
                                 )}
-                                {participant.answers?.Identity?.['Nationality of the participant(s)'] && (
+                                {/* {participant.answers?.Identity?.['Nationality of the participant(s)'] && (
                                   <span>Nationality: {participant.answers.Identity['Nationality of the participant(s)']}</span>
-                                )}
+                                )} */}
                               </div>
                             </div>
                             <div style={{
@@ -740,9 +780,36 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                               backgroundColor: '#f8f9fa',
                               borderTop: '1px solid #e9ecef'
                             }}>
-                              {/* Display all answers organized by section */}
-                              {Object.entries(participant.answers || {}).map(([sectionName, sectionAnswers]) => {
-                                if (sectionName === 'Rule Selection') return null; // Skip Rule Selection section
+                              {/* Summary Section - Show First */}
+                              {participant.summary && participant.summary.trim() && (
+                                <div style={{ marginBottom: '20px' }}>
+                                  <h5 style={{
+                                    margin: '0 0 12px 0',
+                                    fontFamily: 'Lexend, sans-serif',
+                                    fontSize: '1em',
+                                    color: '#2c3e50',
+                                    fontWeight: '600',
+                                    borderBottom: '2px solid #27ae60',
+                                    paddingBottom: '4px'
+                                  }}>
+                                    Summary:
+                                  </h5>
+                                  <div style={{
+                                    fontFamily: 'Lexend, sans-serif',
+                                    fontSize: '0.9em',
+                                    color: '#27ae60',
+                                    fontStyle: 'italic',
+                                    lineHeight: '1.5'
+                                  }}>
+                                    {participant.summary}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Display answers in specific order: Situation, Identity, Definition of Situation */}
+                              {['Situation', 'Identity', 'Definition of Situation'].map((sectionName) => {
+                                const sectionAnswers = participant.answers?.[sectionName];
+                                if (!sectionAnswers) return null;
                                 
                                 return (
                                   <div key={sectionName} style={{ marginBottom: '20px' }}>
@@ -797,32 +864,67 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
                                   </div>
                                 );
                               })}
-                              
-                              {/* Summary Section */}
-                              {participant.summary && participant.summary.trim() && (
-                                <div style={{ marginBottom: '20px' }}>
-                                  <h5 style={{
-                                    margin: '0 0 12px 0',
-                                    fontFamily: 'Lexend, sans-serif',
-                                    fontSize: '1em',
-                                    color: '#2c3e50',
-                                    fontWeight: '600',
-                                    borderBottom: '2px solid #27ae60',
-                                    paddingBottom: '4px'
-                                  }}>
-                                    Summary:
-                                  </h5>
-                                  <div style={{
-                                    fontFamily: 'Lexend, sans-serif',
-                                    fontSize: '0.9em',
-                                    color: '#27ae60',
-                                    fontStyle: 'italic',
-                                    lineHeight: '1.5'
-                                  }}>
-                                    {participant.summary}
+
+                              {/* Display any remaining sections (except Rule Selection and the ones already shown) */}
+                              {Object.entries(participant.answers || {}).map(([sectionName, sectionAnswers]) => {
+                                if (sectionName === 'Rule Selection' || 
+                                    ['Situation', 'Identity', 'Definition of Situation'].includes(sectionName)) {
+                                  return null; // Skip these sections as they're already handled
+                                }
+                                
+                                return (
+                                  <div key={sectionName} style={{ marginBottom: '20px' }}>
+                                    <h5 style={{
+                                      margin: '0 0 12px 0',
+                                      fontFamily: 'Lexend, sans-serif',
+                                      fontSize: '1em',
+                                      color: '#2c3e50',
+                                      fontWeight: '600',
+                                      borderBottom: '2px solid #3498db',
+                                      paddingBottom: '4px'
+                                    }}>
+                                      {sectionName}:
+                                    </h5>
+                                    
+                                    {Object.entries(sectionAnswers || {}).map(([questionText, answer]) => {
+                                      if (!answer || answer.trim() === '') return null;
+                                      
+                                      // Try to extract factors from the question text
+                                      let factorDisplay = questionText;
+                                      try {
+                                        const factors = parseFactors(questionText);
+                                        if (factors && factors.length > 0) {
+                                          factorDisplay = factors.join(', ');
+                                        }
+                                      } catch (error) {
+                                        // If parsing fails, use the original question text
+                                        factorDisplay = questionText;
+                                      }
+                                      
+                                      return (
+                                        <div key={questionText} style={{ marginBottom: '8px' }}>
+                                          <span style={{
+                                            fontFamily: 'Lexend, sans-serif',
+                                            fontSize: '0.9em',
+                                            color: '#34495e',
+                                            fontWeight: '500'
+                                          }}>
+                                            {factorDisplay} - 
+                                          </span>
+                                          <span style={{
+                                            fontFamily: 'Lexend, sans-serif',
+                                            fontSize: '0.9em',
+                                            color: '#495057',
+                                            marginLeft: '4px'
+                                          }}>
+                                            {answer}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
-                                </div>
-                              )}
+                                );
+                              })}
                               
                               {/* No data message */}
                               {(!participant.answers || Object.keys(participant.answers).length === 0) && 
@@ -1322,7 +1424,8 @@ const ProjectReport = ({ projectData, executiveSummary, onGenerateSummary }) => 
 
 
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

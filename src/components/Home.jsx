@@ -51,9 +51,6 @@ const Home = () => {
                 <h3 style={{ color: '#34495e', marginBottom: '10px' }}>Step 4: Create Your Project and Start Analyzing</h3>
                 <p style={{ color: '#7f8c8d', lineHeight: '1.6' }}>
                   You're all set! Head to MoFASA and create a new project. You can add participants and get started with your analysis right away.
-                  Go to your project dashboard, select participants, and start filling in your analysis sections.
-                  <br />
-                  Use the AI features to generate insights, summaries, or reports. You can also download your analysis as a PDF.
                 </p>
               </div>
             </div>
@@ -345,7 +342,7 @@ const Home = () => {
                  style={{
                    background: 'white',
                    color: '#667eea',
-                   marginTop: '20px',
+                   margin: '20px',
                    border: 'none',
                    padding: '12px 24px',
                    borderRadius: '8px',

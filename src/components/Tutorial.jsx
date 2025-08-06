@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Joyride, { STATUS, EVENTS, ACTIONS } from 'react-joyride';
+import { RULE_SELECTION } from '../constants/labels';
 
 const Tutorial = ({ tutorialType, onComplete, isActive }) => {
   const [tutorialState, setTutorialState] = useState({
@@ -292,33 +293,256 @@ const Tutorial = ({ tutorialType, onComplete, isActive }) => {
        }
      ],
 
-         // Participant interview tutorial
-     participantInterview: [
-       {
-         target: '.left-panel',
-         content: (
-           <div>
-             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Interview Questions</h3>
-             <p style={{ margin: 0, lineHeight: 1.5 }}>
-               Fill out these questions based on your interview with the participant.
-             </p>
-           </div>
-         ),
-         placement: 'right'
-       },
-       {
-         target: '.right-panel',
-         content: (
-           <div>
-             <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Visual Framework</h3>
-             <p style={{ margin: 0, lineHeight: 1.5 }}>
-               This shows how the answers connect to create a participant profile.
-             </p>
-           </div>
-         ),
-         placement: 'left'
-       }
-     ],
+             // Participant interview tutorial
+    participantInterview: [
+      {
+        target: 'body',
+        content: (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <h3 style={{ 
+              margin: '0 0 16px 0', 
+              color: '#2c3e50',
+              fontSize: '1.6em',
+              fontWeight: '600'
+            }}>
+              Participant Interview Guide 📋
+            </h3>
+            <p style={{ 
+              margin: '0 0 16px 0', 
+              lineHeight: 1.6,
+              fontSize: '1em',
+              color: '#495057'
+            }}>
+              Follow these steps to complete the participant analysis workflow.
+            </p>
+            <p style={{ 
+              margin: 0, 
+              lineHeight: 1.5,
+              fontSize: '0.9em',
+              color: '#7f8c8d',
+              fontStyle: 'italic'
+            }}>
+              This tutorial will guide you through the complete process.
+            </p>
+          </div>
+        ),
+        disableBeacon: true,
+        placement: 'center',
+        styles: {
+          options: { width: 450, height: 320 }
+        }
+      },
+      {
+        target: '.left-panel',
+        content: (
+          <div>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Left Panel - Interview Workflow</h3>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              The left panel contains your interview workflow with multiple steps to complete the participant analysis.
+            </p>
+            <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.9em', color: '#7f8c8d' }}>
+              Let's go through each step in detail.
+            </p>
+          </div>
+        ),
+        placement: 'right'
+      },
+      {
+        target: '.left-panel',
+        content: (
+          <div>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 1: Extract Data from Interview</h3>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              <strong>📝 Look for the "Extract Data from Interview" section</strong> in the left panel. You may need to toggle it open first.
+            </p>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              Paste your interview transcript there and use the LLM feature to automatically extract relevant information.
+            </p>
+            <div style={{ 
+              background: '#fff3cd', 
+              border: '1px solid #ffeaa7', 
+              borderRadius: '4px', 
+              padding: '8px', 
+              margin: '8px 0',
+              fontSize: '0.9em',
+              color: '#856404'
+            }}>
+              <strong>⚠️ Important:</strong> Do not blindly use the AI extraction. Always double-check the extracted data for accuracy.
+            </div>
+          </div>
+        ),
+        placement: 'right'
+      },
+      {
+        target: '.left-panel',
+        content: (
+          <div>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 2: Fill Questionnaire</h3>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              <strong>📋 Complete the questionnaire</strong> using one of two methods:
+            </p>
+            <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px', lineHeight: 1.4 }}>
+              <li><strong>Manual:</strong> Fill out each question based on your interview notes</li>
+              <li><strong>AI-Assisted:</strong> Use the AI feature to auto-fill based on the interview text</li>
+            </ul>
+            <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.9em', color: '#7f8c8d' }}>
+              You can mix both approaches as needed for different questions.
+            </p>
+          </div>
+        ),
+        placement: 'right'
+      },
+      {
+        target: 'factor-button',
+        content: (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 3: Learn About Factors 💡</h3>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              <strong>Click on factor names or info buttons</strong> throughout the questionnaire to learn more about what each factor represents in the MoFASA framework.
+            </p>
+            <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.9em', color: '#7f8c8d' }}>
+              Understanding these factors helps you provide better answers and analysis. Look for clickable factor names and info icons (ℹ️) next to questions.
+            </p>
+          </div>
+        ),
+        placement: 'center',
+        disableBeacon: true,
+        styles: {
+          options: { width: 450, height: 280 }
+        }
+      },
+      {
+        target: '.rule-selection-section',
+        content: (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 4: {RULE_SELECTION} 🎯</h3>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              <strong>Select or add interaction rules</strong> for this participant:
+            </p>
+            <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px', lineHeight: 1.4, textAlign: 'left' }}>
+              <li><strong>Select existing rules:</strong> Choose from rules already defined for this project scope</li>
+              <li><strong>Add new rules:</strong> Create new rules based on participant behavior</li>
+            </ul>
+            <div style={{ 
+              background: '#e3f2fd', 
+              border: '1px solid #bbdefb', 
+              borderRadius: '4px', 
+              padding: '8px', 
+              margin: '8px 0',
+              fontSize: '0.9em',
+              color: '#1565c0'
+            }}>
+              <strong>ℹ️ Note:</strong> Rules are shared across all participants in the same project scope.
+            </div>
+          </div>
+        ),
+        placement: 'center',
+        disableBeacon: true,
+        styles: {
+          options: { width: 450, height: 320 }
+        }
+      },
+      {
+        target: '.left-panel',
+        content: (
+          <div>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 5: Generate Summary 📄</h3>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              <strong>Look for the "Generate Summary" section</strong> in the left panel. You may need to scroll down and toggle it open.
+            </p>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              <strong>Create a participant summary</strong> using one of two methods:
+            </p>
+            <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px', lineHeight: 1.4 }}>
+              <li><strong>Manual:</strong> Write your own summary of the participant interaction</li>
+              <li><strong>AI-Generated:</strong> Use AI to generate a summary based on the interview and answers</li>
+            </ul>
+            <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.9em', color: '#7f8c8d' }}>
+              This summary will be used in reports and analysis views.
+            </p>
+          </div>
+        ),
+        placement: 'right'
+      },
+      {
+        target: '.right-panel',
+        content: (
+          <div>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Right Panel - MoFASA Framework</h3>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              <strong>🎨 Visual Framework Representation:</strong> The boxes represent each section of the MoFASA framework.
+            </p>
+            <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px', lineHeight: 1.4 }}>
+              <li><strong>Boxes:</strong> Each section (Situation, Identity, Definition of Situation, etc.)</li>
+              <li><strong>Arrows & Lines:</strong> Show connections between framework elements</li>
+              <li><strong>Line Text:</strong> Click on text along the lines to get more detailed information</li>
+            </ul>
+            <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.9em', color: '#7f8c8d' }}>
+              This visual helps you understand how all elements connect in the research framework.
+            </p>
+          </div>
+        ),
+        placement: 'left'
+      },
+      {
+        target: 'body',
+        content: (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Interactive Framework Elements 🔗</h3>
+            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              <strong>Click on line texts and connection labels</strong> in the right panel to learn more about the connections between different framework sections.
+            </p>
+            <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.9em', color: '#7f8c8d' }}>
+              These interactions provide deeper insights into the theoretical foundations of MoFASA. Look for clickable text elements along the connecting lines in the visual framework.
+            </p>
+          </div>
+        ),
+        placement: 'center',
+        disableBeacon: true,
+        styles: {
+          options: { width: 450, height: 300 }
+        }
+      },
+      {
+        target: 'body',
+        content: (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <h3 style={{ 
+              margin: '0 0 16px 0', 
+              color: '#27ae60',
+              fontSize: '1.6em',
+              fontWeight: '600'
+            }}>
+              🎉 Tutorial Complete!
+            </h3>
+            <p style={{ 
+              margin: '0 0 16px 0', 
+              lineHeight: 1.6,
+              fontSize: '1em',
+              color: '#495057'
+            }}>
+              You now know how to complete the full participant analysis workflow.
+            </p>
+            <div style={{ 
+              background: '#d4edda', 
+              border: '1px solid #c3e6cb', 
+              borderRadius: '4px', 
+              padding: '12px', 
+              margin: '12px 0',
+              fontSize: '0.9em',
+              color: '#155724'
+            }}>
+              <strong>💡 Pro Tip:</strong> Review AI-generated content before finalizing.
+            </div>
+          </div>
+        ),
+        disableBeacon: true,
+        placement: 'center',
+        styles: {
+          options: { width: 450, height: 350 }
+        }
+      }
+    ],
 
      // Personae Mapping tutorial
      personaeMapping: [

@@ -2,22 +2,23 @@ import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import FactorDetailsModal from './FactorDetailsModal';
 import { handleFactorClick, parseFactors } from '../utils/factorUtils';
+import { RULE_SELECTION, SITUATION, IDENTITY, DEFINITION_OF_SITUATION } from '../constants/labels';
 
 const SECTIONS = [
   {
-    name: 'Situation',
+    name: SITUATION,
     color: '#f9f3f2'
   },
   {
-    name: 'Identity',
+    name: IDENTITY,
     color: '#fcfbf2'
   },
   {
-    name: 'Definition of Situation',
+    name: DEFINITION_OF_SITUATION,
     color: '#f2f6fc'
   },
   {
-    name: 'Rule Selection',
+    name: RULE_SELECTION,
     color: '#ededed'
   },
   {
@@ -2208,7 +2209,7 @@ Actual answer from interview:`
                 }}>
                   {section.name === 'Rule Selection' ? (
                     <>
-                      <div style={{ 
+                      <div className="rule-selection-section" style={{ 
                         display: 'flex',
                         flexWrap: 'wrap',
                         gap: '8px',
@@ -2409,6 +2410,7 @@ Actual answer from interview:`
                                     <span 
                                       key={index}
                                       onClick={() => handleFactorClickLocal(question, factor)}
+                                      className="factor-button"
                                       style={{
                                         fontSize: '0.8em',
                                         color: '#000000',
@@ -2565,7 +2567,7 @@ Actual answer from interview:`
           </div>
 
           {/* Generate Summary Section */}
-          <div style={{ marginBottom: 32 }}>
+          <div className="summary-section" style={{ marginBottom: 32 }}>
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
