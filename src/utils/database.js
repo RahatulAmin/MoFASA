@@ -183,24 +183,72 @@ function performMigration() {
       // Disable foreign keys before dropping
       db.exec('PRAGMA foreign_keys = OFF;');
       
-      // Drop all existing tables if they exist
-      db.exec(`
-        DROP TABLE IF EXISTS situation_design;
-        DROP TABLE IF EXISTS participant_answers;
-        DROP TABLE IF EXISTS participants;
-        DROP TABLE IF EXISTS scope_rules;
-        DROP TABLE IF EXISTS scopes;
-        DROP TABLE IF EXISTS project_questions;
-        DROP TABLE IF EXISTS questionnaire;
-        DROP TABLE IF EXISTS projects;
-        DROP TABLE IF EXISTS factors;
-        DROP TABLE IF EXISTS question_factors;
-        DROP TABLE IF EXISTS undesirable_rules;
-        DROP TABLE IF EXISTS project_participant_data;
-      `);
+      // Drop all existing tables if they exist, but preserve project_questions if it has data
+      const projectQuestionsCount = db.prepare('SELECT COUNT(*) as count FROM project_questions').get();
+      const hasProjectQuestionsData = projectQuestionsCount && projectQuestionsCount.count > 0;
       
-      // Re-enable foreign keys
-      db.exec('PRAGMA foreign_keys = ON;');
+      if (hasProjectQuestionsData) {
+        console.log('Database: Preserving existing project_questions data during migration');
+        // Create a backup of project_questions data
+        const backupData = db.prepare('SELECT * FROM project_questions').all();
+        
+        // Drop all tables except project_questions
+        db.exec(`
+          DROP TABLE IF EXISTS situation_design;
+          DROP TABLE IF EXISTS participant_answers;
+          DROP TABLE IF EXISTS participants;
+          DROP TABLE IF EXISTS scope_rules;
+          DROP TABLE IF EXISTS scopes;
+          DROP TABLE IF EXISTS questionnaire;
+          DROP TABLE IF EXISTS projects;
+          DROP TABLE IF EXISTS factors;
+          DROP TABLE IF EXISTS question_factors;
+          DROP TABLE IF EXISTS undesirable_rules;
+          DROP TABLE IF EXISTS project_participant_data;
+        `);
+        
+        // Re-enable foreign keys
+        db.exec('PRAGMA foreign_keys = ON;');
+        
+        // Restore project_questions data after tables are recreated
+        if (backupData.length > 0) {
+          const insertProjectQuestion = db.prepare(`
+            INSERT INTO project_questions (projectId, questionId, section, isEnabled, createdAt, updatedAt) 
+            VALUES (?, ?, ?, ?, ?, ?)
+          `);
+          
+          for (const row of backupData) {
+            insertProjectQuestion.run(
+              row.projectId,
+              row.questionId,
+              row.section,
+              row.isEnabled,
+              row.createdAt,
+              row.updatedAt
+            );
+          }
+          console.log('Database: Restored', backupData.length, 'project_questions entries');
+        }
+      } else {
+        // No project_questions data to preserve, drop everything
+        db.exec(`
+          DROP TABLE IF EXISTS situation_design;
+          DROP TABLE IF EXISTS participant_answers;
+          DROP TABLE IF EXISTS participants;
+          DROP TABLE IF EXISTS scope_rules;
+          DROP TABLE IF EXISTS scopes;
+          DROP TABLE IF EXISTS project_questions;
+          DROP TABLE IF EXISTS questionnaire;
+          DROP TABLE IF EXISTS projects;
+          DROP TABLE IF EXISTS factors;
+          DROP TABLE IF EXISTS question_factors;
+          DROP TABLE IF EXISTS undesirable_rules;
+          DROP TABLE IF EXISTS project_participant_data;
+        `);
+        
+        // Re-enable foreign keys
+        db.exec('PRAGMA foreign_keys = ON;');
+      }
     } else {
       console.log('Core tables exist, migration not needed');
       return;
@@ -1024,6 +1072,13 @@ function getAllProjects() {
         WHERE scopeId = ?
       `).get(scope.id);
       
+      // Get undesirable rules for this scope
+      const undesirableRules = db.prepare(`
+        SELECT rule FROM undesirable_rules 
+        WHERE scopeId = ? 
+        ORDER BY createdAt ASC
+      `).all(scope.id);
+      
       return {
         id: scope.id,
         scopeNumber: scope.scopeNumber,
@@ -1031,11 +1086,31 @@ function getAllProjects() {
         isActive: scope.isActive,
         participants: participantsWithAnswers,
         rules: rules,
+        undesirableRules: undesirableRules.map(row => row.rule),
         situationDesign: situationDesign ? {
           robotChanges: situationDesign.robotChanges,
           environmentalChanges: situationDesign.environmentalChanges
         } : null
       };
+    });
+    
+    // Get project question settings
+    const projectQuestionSettings = db.prepare(`
+      SELECT questionId, section, isEnabled 
+      FROM project_questions 
+      WHERE projectId = ?
+    `).all(project.id);
+    
+    // Organize project question settings by section
+    const organizedProjectSettings = {};
+    projectQuestionSettings.forEach(setting => {
+      if (!organizedProjectSettings[setting.section]) {
+        organizedProjectSettings[setting.section] = [];
+      }
+      organizedProjectSettings[setting.section].push({
+        questionId: setting.questionId,
+        isEnabled: setting.isEnabled
+      });
     });
     
     return {
@@ -1047,6 +1122,7 @@ function getAllProjects() {
       rules: project.rules ? JSON.parse(project.rules) : [],
       summaryPrompt: project.summaryPrompt,
       scopes: scopesWithData,
+      projectQuestionSettings: organizedProjectSettings,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt
     };
@@ -1079,13 +1155,15 @@ function saveAllProjects(projects) {
   
   // Start transaction
   const transaction = db.transaction((projects) => {
-    // Clear all existing data
+    // Clear all existing data including project_questions to ensure clean import
     db.prepare('DELETE FROM situation_design').run();
     db.prepare('DELETE FROM participant_answers').run();
     db.prepare('DELETE FROM participants').run();
     db.prepare('DELETE FROM scope_rules').run();
     db.prepare('DELETE FROM scopes').run();
     db.prepare('DELETE FROM projects').run();
+    db.prepare('DELETE FROM project_questions').run();
+    db.prepare('DELETE FROM undesirable_rules').run();
     
     // Insert projects
     const insertProject = db.prepare(`
@@ -1132,6 +1210,26 @@ function saveAllProjects(projects) {
       );
       
       const projectId = projectInfo.lastInsertRowid;
+      
+      // Preserve project question settings if they exist
+      if (project.projectQuestionSettings) {
+        const insertProjectQuestion = db.prepare(`
+          INSERT INTO project_questions (projectId, questionId, section, isEnabled, updatedAt) 
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        
+        for (const [section, questions] of Object.entries(project.projectQuestionSettings)) {
+          for (const question of questions) {
+            insertProjectQuestion.run(
+              projectId,
+              question.questionId,
+              sanitizeValue(section),
+              sanitizeValue(question.isEnabled),
+              sanitizeValue(new Date().toISOString())
+            );
+          }
+        }
+      }
       
       // Insert scopes
       for (const scope of (project.scopes || [])) {
@@ -1197,6 +1295,23 @@ function saveAllProjects(projects) {
             sanitizeValue(new Date().toISOString())
           );
         }
+        
+        // Insert undesirable rules for this scope
+        if (scope.undesirableRules && scope.undesirableRules.length > 0) {
+          const insertUndesirableRule = db.prepare(`
+            INSERT INTO undesirable_rules (scopeId, rule, createdAt, updatedAt) 
+            VALUES (?, ?, ?, ?)
+          `);
+          
+          for (const rule of scope.undesirableRules) {
+            insertUndesirableRule.run(
+              scopeId,
+              sanitizeValue(rule),
+              sanitizeValue(new Date().toISOString()),
+              sanitizeValue(new Date().toISOString())
+            );
+          }
+        }
       }
     }
   });
@@ -1227,6 +1342,181 @@ function addProject(project) {
     );
     
     return projectInfo.lastInsertRowid;
+  });
+  
+  return transaction(project);
+}
+
+// Import a single project with all its data (scopes, participants, question settings, undesirable rules)
+function importProject(project) {
+  console.log('Database: Importing project', project.name);
+  
+  // Helper function to ensure valid SQLite values
+  const sanitizeValue = (value) => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') {
+      return value;
+    }
+    if (typeof value === 'boolean') {
+      return value ? 1 : 0;
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+  
+  const transaction = db.transaction((project) => {
+    // Insert the main project
+    const insertProject = db.prepare(`
+      INSERT INTO projects (name, description, robotType, studyType, rules, summaryPrompt, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    const projectInfo = insertProject.run(
+      sanitizeValue(project.name),
+      sanitizeValue(project.description),
+      sanitizeValue(project.robotType),
+      sanitizeValue(project.studyType),
+      sanitizeValue(JSON.stringify(project.rules || [])),
+      sanitizeValue(project.summaryPrompt),
+      sanitizeValue(project.createdAt || new Date().toISOString()),
+      sanitizeValue(project.updatedAt || new Date().toISOString())
+    );
+    
+    const projectId = projectInfo.lastInsertRowid;
+    
+    // Insert project question settings if they exist
+    if (project.projectQuestionSettings) {
+      const insertProjectQuestion = db.prepare(`
+        INSERT INTO project_questions (projectId, questionId, section, isEnabled, updatedAt) 
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      
+      for (const [section, questions] of Object.entries(project.projectQuestionSettings)) {
+        for (const question of questions) {
+          insertProjectQuestion.run(
+            projectId,
+            question.questionId,
+            sanitizeValue(section),
+            sanitizeValue(question.isEnabled),
+            sanitizeValue(new Date().toISOString())
+          );
+        }
+      }
+    }
+    
+    // Insert scopes and their data
+    const insertScope = db.prepare(`
+      INSERT INTO scopes (projectId, scopeNumber, scopeText, isActive, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
+    const insertParticipant = db.prepare(`
+      INSERT INTO participants (projectId, scopeId, participantId, name, summary, interviewText, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    const insertAnswer = db.prepare(`
+      INSERT INTO participant_answers (participantId, section, question, answer, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
+    const insertSituationDesign = db.prepare(`
+      INSERT INTO situation_design (scopeId, robotChanges, environmentalChanges, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    
+    const insertScopeRule = db.prepare(`
+      INSERT INTO scope_rules (scopeId, rule, orderIndex, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    
+    const insertUndesirableRule = db.prepare(`
+      INSERT INTO undesirable_rules (scopeId, rule, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?)
+    `);
+    
+    for (const scope of (project.scopes || [])) {
+      const scopeInfo = insertScope.run(
+        projectId,
+        sanitizeValue(scope.scopeNumber),
+        sanitizeValue(scope.scopeText),
+        sanitizeValue(scope.isActive),
+        sanitizeValue(scope.createdAt || new Date().toISOString()),
+        sanitizeValue(scope.updatedAt || new Date().toISOString())
+      );
+      
+      const scopeId = scopeInfo.lastInsertRowid;
+      
+      // Insert rules for this scope
+      for (let i = 0; i < (scope.rules || []).length; i++) {
+        insertScopeRule.run(
+          scopeId,
+          sanitizeValue(scope.rules[i]),
+          i,
+          sanitizeValue(new Date().toISOString()),
+          sanitizeValue(new Date().toISOString())
+        );
+      }
+      
+      // Insert participants for this scope
+      for (const participant of (scope.participants || [])) {
+        const participantInfo = insertParticipant.run(
+          projectId,
+          scopeId,
+          sanitizeValue(participant.id),
+          sanitizeValue(participant.name),
+          sanitizeValue(participant.summary),
+          sanitizeValue(participant.interviewText),
+          sanitizeValue(participant.createdAt || new Date().toISOString()),
+          sanitizeValue(participant.updatedAt || new Date().toISOString())
+        );
+        
+        const participantDbId = participantInfo.lastInsertRowid;
+        
+        // Insert answers
+        for (const [section, questions] of Object.entries(participant.answers || {})) {
+          for (const [question, answer] of Object.entries(questions)) {
+            insertAnswer.run(
+              participantDbId,
+              sanitizeValue(section),
+              sanitizeValue(question),
+              sanitizeValue(answer),
+              sanitizeValue(new Date().toISOString()),
+              sanitizeValue(new Date().toISOString())
+            );
+          }
+        }
+      }
+      
+      // Insert situation design for this scope
+      if (scope.situationDesign) {
+        insertSituationDesign.run(
+          scopeId,
+          sanitizeValue(scope.situationDesign.robotChanges),
+          sanitizeValue(scope.situationDesign.environmentalChanges),
+          sanitizeValue(new Date().toISOString()),
+          sanitizeValue(new Date().toISOString())
+        );
+      }
+      
+      // Insert undesirable rules for this scope
+      if (scope.undesirableRules && scope.undesirableRules.length > 0) {
+        for (const rule of scope.undesirableRules) {
+          insertUndesirableRule.run(
+            scopeId,
+            sanitizeValue(rule),
+            sanitizeValue(new Date().toISOString()),
+            sanitizeValue(new Date().toISOString())
+          );
+        }
+      }
+    }
+    
+    return projectId;
   });
   
   return transaction(project);
@@ -1273,6 +1563,64 @@ function updateParticipantInterview(projectId, participantId, interviewText) {
   `);
   
   stmt.run(interviewText, new Date().toISOString(), projectId, participantId);
+}
+
+// Update participant answers without affecting project settings
+function updateParticipantAnswers(projectId, participantId, answers) {
+  console.log('Database: Updating participant answers', projectId, participantId);
+  
+  const transaction = db.transaction((projectId, participantId, answers) => {
+    // Get the participant's database ID
+    const participant = db.prepare(`
+      SELECT id FROM participants 
+      WHERE projectId = ? AND participantId = ?
+    `).get(projectId, participantId);
+    
+    if (!participant) {
+      console.error('Participant not found:', projectId, participantId);
+      return;
+    }
+    
+    const participantDbId = participant.id;
+    
+    // Delete existing answers for this participant
+    db.prepare('DELETE FROM participant_answers WHERE participantId = ?').run(participantDbId);
+    
+    // Insert new answers
+    const insertAnswer = db.prepare(`
+      INSERT INTO participant_answers (participantId, section, question, answer, createdAt, updatedAt) 
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
+    const now = new Date().toISOString();
+    for (const [section, questions] of Object.entries(answers || {})) {
+      for (const [question, answer] of Object.entries(questions)) {
+        insertAnswer.run(
+          participantDbId,
+          section,
+          question,
+          typeof answer === 'object' ? JSON.stringify(answer) : answer,
+          now,
+          now
+        );
+      }
+    }
+  });
+  
+  transaction(projectId, participantId, answers);
+}
+
+// Update participant summary without affecting project settings  
+function updateParticipantSummary(projectId, participantId, summary) {
+  console.log('Database: Updating participant summary', projectId, participantId);
+  
+  const stmt = db.prepare(`
+    UPDATE participants 
+    SET summary = ?, updatedAt = ? 
+    WHERE projectId = ? AND participantId = ?
+  `);
+  
+  stmt.run(summary, new Date().toISOString(), projectId, participantId);
 }
 
 // Get all questions from questionnaire
@@ -1649,9 +1997,12 @@ module.exports = {
   getAllProjects,
   saveAllProjects,
   addProject,
+  importProject,
   updateProject,
   deleteProject,
   updateParticipantInterview,
+  updateParticipantAnswers,
+  updateParticipantSummary,
   getAllQuestions,
   updateQuestionStatus,
   updateQuestionText,

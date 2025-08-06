@@ -24,6 +24,7 @@ const SituationDesignView = ({
   const [isLabelingMode, setIsLabelingMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const lastLoadedScopeId = useRef(null);
 
   // Load undesirable rules from database whenever currentScope changes
@@ -35,15 +36,7 @@ const SituationDesignView = ({
           console.log('Loading undesirable rules for scopeId:', currentScope.id, 'currentScope:', currentScope);
           const rules = await window.electronAPI.getUndesirableRules(currentScope.id);
           console.log('Loaded undesirable rules:', rules);
-          
-          // If we have existing rules and the new rules are empty, keep the existing ones
-          // This prevents losing selections when the scope ID changes due to project updates
-          if (undesirableRules.length > 0 && rules.length === 0) {
-            console.log('Keeping existing undesirable rules to prevent loss of selections');
-            setUndesirableRules(undesirableRules);
-          } else {
-            setUndesirableRules(rules);
-          }
+          setUndesirableRules(rules);
           
           lastLoadedScopeId.current = currentScope.id;
         } catch (error) {
@@ -57,8 +50,8 @@ const SituationDesignView = ({
       }
     };
 
-    // Only load if we haven't loaded for this scope yet
-    if (currentScope?.id && lastLoadedScopeId.current !== currentScope.id) {
+    // Load rules whenever the scope changes
+    if (currentScope?.id) {
       loadUndesirableRules();
     }
   }, [currentScope?.id]); // Load when scopeId changes
@@ -152,6 +145,8 @@ const SituationDesignView = ({
     }
 
     setIsGeneratingSuggestions(true);
+    setGenerationProgress(10); // Start progress
+    
     try {
       // Get all participants who selected undesirable rules
       const participantsWithUndesirableRules = participants.filter(p => {
@@ -164,6 +159,10 @@ const SituationDesignView = ({
         alert('No participants have selected the undesirable rules. Please ensure participants have selected some rules first.');
         return;
       }
+      
+      // Add a small delay to make progress visible
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setGenerationProgress(30); // Data collected
 
       // Get rule definitions (you may need to define these based on your rules)
       const ruleDefinitions = {
@@ -197,15 +196,16 @@ const SituationDesignView = ({
         })
         .join('\n\n');
 
-      const prompt = `You are a design analyst tasked with improving a human-robot interaction scenario. Below are participant summaries along with the undesirable interaction rules they selected (with definitions). Your job is to analyze this input and suggest design improvements.
+      const prompt = `You are a human-robot interaction design analyst. Your task is to improve the interaction scenario by analyzing participant feedback and the specific undesirable rules they selected. Each rule reflects a social or interactional breakdown that must be addressed through thoughtful design.
 
 Instructions:
-- Provide suggestions in two categories: (1) Robot Changes and (2) Environmental Changes.
-- Each suggestion must be specific, concrete, and grounded in the participant feedback and rule selection.
-- Provide maximum 3 suggestions for each category.
-- After each suggestion, include a brief reference to the relevant participant quote and rule number.
-- Do not provide vague advice. Be detailed and practical.
-- Do not include any extra explanation outside the suggestions.
+- For each suggestion, clearly state which undesirable rule it addresses and which participant it is based on.
+- Provide two types of design suggestions: (1) Robot Changes and (2) Environmental Changes.
+- Each suggestion must be specific, practical, and clearly tied to both a participant quote and an undesirable rule.
+- Include up to 3 suggestions per category.
+- Explain briefly *why* each change is needed — referencing the *participant's quote* and the *rule definition*.
+- Do NOT include vague or generic suggestions.
+- Do NOT add any introductory or concluding text beyond the suggestions.
 
 Undesirable Rules (with definitions):
 ${formattedRuleDefinitions}
@@ -213,15 +213,34 @@ ${formattedRuleDefinitions}
 Participant Summaries:
 ${formattedSummaries}
 
-Format your answer like:
+Format your output like this:
 
 Robot Changes:
-- [Concrete change]. (Based on Participant X")
+- [Suggestion]. (Addresses Rule #X: [Rule Title]. Based on Participant X: "[quote or summary snippet]")
 
 Environmental Changes:
-- [Concrete change]. (Based on Participant X")`;
+- [Suggestion]. (Addresses Rule #Y: [Rule Title]. Based on Participant Y: "[quote or summary snippet]")`;
 
-      const response = await window.electronAPI.generateWithDeepSeek(prompt);
+      setGenerationProgress(50); // Prompt prepared, starting AI generation
+      
+      // Add a small delay to show the AI generation is starting
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Start AI generation with progress simulation
+      const progressInterval = setInterval(() => {
+        setGenerationProgress(prev => {
+          if (prev >= 75) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + 5;
+        });
+      }, 200);
+      
+      const response = await window.electronAPI.generateWithLlama(prompt);
+      
+      clearInterval(progressInterval);
+      setGenerationProgress(80); // AI response received
       
       // Clean up the response by removing asterisks and formatting
       const cleanResponse = response
@@ -240,16 +259,27 @@ Environmental Changes:
       const robotChanges = sections.find(s => s.toLowerCase().includes('robot changes'))?.replace(/robot changes:?/i, '').trim() || '';
       const environmentalChanges = sections.find(s => s.toLowerCase().includes('environmental changes'))?.replace(/environmental changes:?/i, '').trim() || '';
 
+      setGenerationProgress(90); // Processing response
+      
+      // Add a small delay to show processing
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       setAiSuggestions({
         robotChanges,
         environmentalChanges
       });
+      
+      setGenerationProgress(100); // Complete
+      
+      // Add a final delay before resetting
+      await new Promise(resolve => setTimeout(resolve, 300));
 
     } catch (error) {
       console.error('Failed to generate AI suggestions:', error);
       alert('Failed to generate suggestions. Please try again.');
     } finally {
       setIsGeneratingSuggestions(false);
+      setGenerationProgress(0);
     }
   };
 
@@ -260,12 +290,6 @@ Environmental Changes:
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-          }
-          
-          @keyframes fillProgress {
-            0% { width: 0%; }
-            50% { width: 100%; }
-            100% { width: 0%; }
           }
         `}
       </style>
@@ -459,7 +483,7 @@ Environmental Changes:
                         animation: 'spin 1s linear infinite'
                       }} />
                     )}
-                    {isGeneratingSuggestions ? 'Generating...' : 'Check AI Suggestions'}
+                    {isGeneratingSuggestions ? `Generating... ${generationProgress}%` : 'Check AI Suggestions'}
                   </span>
                   {isGeneratingSuggestions && (
                     <div style={{
@@ -467,8 +491,9 @@ Environmental Changes:
                       top: 0,
                       left: 0,
                       height: '100%',
+                      width: `${generationProgress}%`,
                       background: 'linear-gradient(90deg, #27ae60 0%, #2ecc71 100%)',
-                      animation: 'fillProgress 2s ease-in-out infinite',
+                      transition: 'width 0.3s ease',
                       zIndex: 1
                     }} />
                   )}
@@ -781,9 +806,40 @@ Environmental Changes:
                                   backgroundColor: '#f8f9fa',
                                   borderTop: '1px solid #e9ecef'
                                 }}>
-                                  {/* Display all answers organized by section */}
-                                  {Object.entries(participant.answers || {}).map(([sectionName, sectionAnswers]) => {
-                                    if (sectionName === 'Rule Selection') return null; // Skip Rule Selection section
+                                  {/* Summary section - moved to top */}
+                                  <div style={{ marginBottom: '20px' }}>
+                                    <h5 style={{
+                                      margin: '0 0 12px 0',
+                                      fontFamily: 'Lexend, sans-serif',
+                                      fontSize: '1em',
+                                      color: '#2c3e50',
+                                      fontWeight: '600',
+                                      borderBottom: '2px solid #27ae60',
+                                      paddingBottom: '4px'
+                                    }}>
+                                      Summary:
+                                    </h5>
+                                    <p style={{
+                                      margin: 0,
+                                      fontFamily: 'Lexend, sans-serif',
+                                      fontSize: '0.9em',
+                                      color: '#495057',
+                                      lineHeight: 1.6,
+                                      whiteSpace: 'pre-wrap',
+                                      fontStyle: !participant.summary || participant.summary.trim() === '' ? 'italic' : 'normal'
+                                    }}>
+                                        {participant.summary && participant.summary.trim() !== '' 
+                                          ? participant.summary 
+                                          : 'No summary available for this participant.'}
+                                    </p>
+                                  </div>
+
+                                  {/* Display answers organized by section in specific order */}
+                                  {['Situation', 'Identity', 'Definition of Situation'].map(sectionName => {
+                                    const sectionAnswers = participant.answers?.[sectionName];
+                                    if (!sectionAnswers) return null;
+                                    
+                                    console.log('Section:', sectionName, 'Answers:', sectionAnswers);
                                     
                                     return (
                                       <div key={sectionName} style={{ marginBottom: '20px' }}>
@@ -802,13 +858,47 @@ Environmental Changes:
                                         {Object.entries(sectionAnswers || {}).map(([questionText, answer]) => {
                                           if (!answer || answer.trim() === '') return null;
                                           
-                                          // Find the question to get its factors
+                                          // Handle cases where questionText might be an object
+                                          const actualQuestionText = typeof questionText === 'object' ? JSON.stringify(questionText) : questionText;
+                                          
+                                          // Skip malformed entries that show as [object Object]
+                                          if (actualQuestionText === '[object Object]') {
+                                            console.log('Skipping malformed question entry:', questionText);
+                                            return null;
+                                          }
+                                          
+                                          // Find the question to get its factors and check if it's enabled
                                           const sectionQuestions = questions[sectionName] || [];
-                                          // For dropdown questions, match by id; for text questions, match by text
-                                          const question = sectionQuestions.find(q => 
-                                            q.id === questionText || q.text === questionText
-                                          );
+                                          const question = sectionQuestions.find(q => {
+                                            // Try exact matches first
+                                            if (q.id === actualQuestionText || q.text === actualQuestionText) {
+                                              return true;
+                                            }
+                                            // Try partial matches for text questions
+                                            if (q.text && actualQuestionText.includes(q.text)) {
+                                              return true;
+                                            }
+                                            if (actualQuestionText && q.text && q.text.includes(actualQuestionText)) {
+                                              return true;
+                                            }
+                                            return false;
+                                          });
+                                          
+                                          // Only show answers for enabled questions
+                                          if (!question || question.isEnabled === false) {
+                                            return null;
+                                          }
+                                          
+                                                                                      console.log('Looking for question:', actualQuestionText, 'in section:', sectionName);
+                                            console.log('Available questions in section:', sectionQuestions.map(q => ({ id: q.id, text: q.text, factors: q.factors, isEnabled: q.isEnabled })));
+                                            console.log('Questions object for this section:', questions[sectionName]);
+                                            
+                                            if (!question) {
+                                              console.log('No question found for:', actualQuestionText);
+                                            }
+                                          
                                           const factors = question?.factors;
+                                          console.log('Found factors:', factors, 'for question:', actualQuestionText);
                                           
                                           // Handle factors - parse into array and join for display
                                           let factorDisplay = 'Question';
@@ -819,10 +909,31 @@ Environmental Changes:
                                             }
                                           }
                                           
+                                          // If no factors found, show the question text as fallback
+                                          if (factorDisplay === 'Question') {
+                                            if (question?.text) {
+                                              factorDisplay = question.text.substring(0, 30) + (question.text.length > 30 ? '...' : '');
+                                            } else {
+                                              // For unmatched questions, try to extract a meaningful label from the answer
+                                              const answerText = answer.toString();
+                                              if (answerText.includes('robot') || answerText.includes('Robot')) {
+                                                factorDisplay = 'Robot Behavior';
+                                              } else if (answerText.includes('interaction') || answerText.includes('Interaction')) {
+                                                factorDisplay = 'Interaction Details';
+                                              } else if (answerText.includes('social') || answerText.includes('Social')) {
+                                                factorDisplay = 'Social Norms';
+                                              } else if (answerText.includes('uncertainty') || answerText.includes('Uncertainty')) {
+                                                factorDisplay = 'Uncertainty';
+                                              } else {
+                                                factorDisplay = 'Additional Information';
+                                              }
+                                            }
+                                          }
+                                          
                                           console.log('Final factorDisplay for render:', factorDisplay);
                                           
                                           return (
-                                            <div key={questionText} style={{ marginBottom: '8px' }}>
+                                            <div key={actualQuestionText} style={{ marginBottom: '8px' }}>
                                               <span style={{
                                                 fontFamily: 'Lexend, sans-serif',
                                                 fontSize: '0.9em',
@@ -845,34 +956,6 @@ Environmental Changes:
                                       </div>
                                     );
                                   })}
-                                  
-                                  {/* Summary section */}
-                                  <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e9ecef' }}>
-                                  <h5 style={{
-                                    margin: '0 0 12px 0',
-                                    fontFamily: 'Lexend, sans-serif',
-                                      fontSize: '1em',
-                                    color: '#2c3e50',
-                                      fontWeight: '600',
-                                      borderBottom: '2px solid #27ae60',
-                                      paddingBottom: '4px'
-                                  }}>
-                                    Summary:
-                                  </h5>
-                                  <p style={{
-                                    margin: 0,
-                                    fontFamily: 'Lexend, sans-serif',
-                                    fontSize: '0.9em',
-                                    color: '#495057',
-                                    lineHeight: 1.6,
-                                      whiteSpace: 'pre-wrap',
-                                      fontStyle: !participant.summary || participant.summary.trim() === '' ? 'italic' : 'normal'
-                                  }}>
-                                      {participant.summary && participant.summary.trim() !== '' 
-                                        ? participant.summary 
-                                        : 'No summary available for this participant.'}
-                                  </p>
-                                  </div>
                                 </div>
                               )}
                             </div>

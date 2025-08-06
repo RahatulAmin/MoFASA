@@ -2,16 +2,21 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   getProjects: () => ipcRenderer.invoke('get-projects'),
   saveProjects: (projects) => ipcRenderer.invoke('save-projects', projects),
+  importProject: (project) => ipcRenderer.invoke('import-project', project),
   updateParticipantInterview: (projectId, participantId, interviewText) => 
     ipcRenderer.invoke('update-participant-interview', projectId, participantId, interviewText),
+  updateParticipantAnswers: (projectId, participantId, answers) => 
+    ipcRenderer.invoke('update-participant-answers', projectId, participantId, answers),
+  updateParticipantSummary: (projectId, participantId, summary) => 
+    ipcRenderer.invoke('update-participant-summary', projectId, participantId, summary),
   // File download API
   downloadFile: (fileName) => ipcRenderer.invoke('download-file', fileName),
-  // DeepSeek LLM functionality
-      generateWithDeepSeek: (prompt) => ipcRenderer.invoke('generate-with-deepseek', prompt),
-    generateWithDeepSeekStream: (prompt) => ipcRenderer.invoke('generate-with-deepseek-stream', prompt),
+  // Llama3 LLM functionality
+      generateWithLlama: (prompt) => ipcRenderer.invoke('generate-with-llama', prompt),
+    generateWithLlamaStream: (prompt) => ipcRenderer.invoke('generate-with-llama-stream', prompt),
     onGenerationProgress: (callback) => ipcRenderer.on('generation-progress', callback),
     removeGenerationProgressListener: (callback) => ipcRenderer.removeListener('generation-progress', callback),
-  getDeepSeekStatus: () => ipcRenderer.invoke('get-deepseek-status'),
+  getLlamaStatus: () => ipcRenderer.invoke('get-llama-status'),
   // Settings API
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),

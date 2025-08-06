@@ -6,7 +6,7 @@ const Settings = ({ projects }) => {
   const [activeTab, setActiveTab] = useState('projects'); // 'projects', 'tech', or 'factors'
   const [settings, setSettings] = useState({
     llmUrl: 'http://127.0.0.1:11434',
-    modelName: 'deepseek-coder',
+    modelName: 'llama3:8b',
     maxTokens: 2048
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -515,7 +515,7 @@ Guidelines:
               fontSize: '1em',
               fontFamily: 'Lexend, sans-serif'
             }}
-            placeholder="Enter model name (e.g., deepseek-coder)"
+            placeholder="Enter model name (e.g., llama3:8b)"
           />
         </div>
 

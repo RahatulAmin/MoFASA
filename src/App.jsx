@@ -24,12 +24,13 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState(null);
 
+  const loadProjects = async () => {
+    const userProjects = await getProjects();
+    setProjects(userProjects);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const loadProjects = async () => {
-      const userProjects = await getProjects();
-      setProjects(userProjects);
-      setIsLoading(false);
-    };
     loadProjects();
     // Hide splash screen after 1 second
     // Change the number below to control duration:
@@ -60,6 +61,7 @@ const App = () => {
       ...projectData,
       updatedAt: new Date().toISOString()
     };
+
     setProjects(newProjects);
     await saveProjects(newProjects);
     
@@ -104,13 +106,15 @@ const App = () => {
     );
     
     setProjects(newProjects);
-    await saveProjects(newProjects);
+    // Do NOT save to database immediately - this causes project question settings to be reset
+    // await saveProjects(newProjects);
     
     // Do NOT reload projects from the database here to preserve scope-level rules
     // The database stores rules at project level, but we want to keep scope-level rules in memory
   };
 
   const updateParticipantAnswers = async (projectIdx, participantId, section, question, value) => {
+
     const newProjects = projects.map((p, i) => {
       if (i !== projectIdx) return p;
       
@@ -184,8 +188,53 @@ const App = () => {
       };
     });
     setProjects(newProjects);
-    await saveProjects(newProjects);
-    // Do NOT reload projects from the database here!
+    // Do NOT save to database on every keystroke - this causes project question settings to be reset
+    // The ParticipantPage component should handle saving when appropriate (e.g., on blur, navigation, etc.)
+    // await saveProjects(newProjects);
+  };
+
+  const saveParticipantData = async (projectIdx, participantId) => {
+    console.log('App: saveParticipantData called - saving participant answers only (not affecting project settings)');
+    
+    if (projectIdx === undefined || !participantId || !projects[projectIdx]) {
+      console.log('App: Missing required data for saveParticipantData');
+      return;
+    }
+    
+    const project = projects[projectIdx];
+    const actualProjectId = project.id;
+    const selectedScopeIndex = (() => {
+      try {
+        const stored = localStorage.getItem(`project_${projectIdx}_selected_scope`);
+        return stored ? parseInt(stored, 10) : 0;
+      } catch (error) {
+        return 0;
+      }
+    })();
+    
+    const currentScope = project?.scopes?.[selectedScopeIndex];
+    const participant = currentScope?.participants?.find(p => p.id === participantId);
+    
+    if (!participant) {
+      console.log('App: Participant not found for saveParticipantData');
+      return;
+    }
+    
+    try {
+      // Save participant answers using targeted database function
+      if (participant.answers) {
+        await window.electronAPI.updateParticipantAnswers(actualProjectId, participantId, participant.answers);
+      }
+      
+      // Save participant summary using targeted database function
+      if (participant.summary) {
+        await window.electronAPI.updateParticipantSummary(actualProjectId, participantId, participant.summary);
+      }
+      
+      console.log('App: Successfully saved participant data without affecting project settings');
+    } catch (error) {
+      console.error('App: Error saving participant data:', error);
+    }
   };
 
   const updateParticipantSummary = async (projectIdx, participantId, summary) => {
@@ -225,7 +274,8 @@ const App = () => {
       };
     });
     setProjects(newProjects);
-    await saveProjects(newProjects);
+    // Do NOT save to database immediately - this causes project question settings to be reset
+    // await saveProjects(newProjects);
     // Do NOT reload projects from the database here!
   };
 
@@ -320,6 +370,7 @@ const App = () => {
                     addProject={addProject}
                     editProject={editProject}
                     deleteProject={deleteProject}
+                    refreshProjects={loadProjects}
                   />
                 } />
                 <Route path="/projects/:projectId" element={
@@ -337,6 +388,7 @@ const App = () => {
                     updateParticipantAnswers={updateParticipantAnswers}
                     updateParticipantSummary={updateParticipantSummary}
                     updateProjectRules={updateProjectRules}
+                    saveParticipantData={saveParticipantData}
                   />
                 } />
                 <Route path="/settings" element={<Settings projects={projects} />} />

@@ -110,7 +110,7 @@ const arePropsEqual = (prevProps, nextProps) => {
   return prevProjectId === nextProjectId;
 };
 
-const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipantSummary, updateProjectRules }) => {
+const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipantSummary, updateProjectRules, saveParticipantData }) => {
   const { projectId, participantId } = useParams();
   const navigate = useNavigate();
   const idx = parseInt(projectId, 10);
@@ -358,27 +358,29 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     const loadQuestions = async () => {
       try {
         setQuestionsLoading(true);
-        const questionsData = await window.electronAPI.getEnabledProjectQuestions(actualProjectId);
+        const questionsData = await window.electronAPI.getProjectQuestions(actualProjectId);
         
-        // Format them for the component
+        // Format them for the component and filter out disabled questions
         const formattedQuestions = {};
         Object.keys(questionsData).forEach(section => {
-          formattedQuestions[section] = questionsData[section].map(q => {
-            if (q.questionType === 'dropdown') {
-              return {
-                id: q.questionId,
-                text: q.questionText,
-                type: 'dropdown',
-                options: q.options,
-                factors: q.factors
-              };
-            } else {
-              return {
-                text: q.questionText,
-                factors: q.factors
-              };
-            }
-          });
+          formattedQuestions[section] = questionsData[section]
+            .filter(q => q.isEnabled) // Only include enabled questions
+            .map(q => {
+              if (q.questionType === 'dropdown') {
+                return {
+                  id: q.questionId,
+                  text: q.questionText,
+                  type: 'dropdown',
+                  options: q.options,
+                  factors: q.factors
+                };
+              } else {
+                return {
+                  text: q.questionText,
+                  factors: q.factors
+                };
+              }
+            });
         });
         
         setQuestions(formattedQuestions);
@@ -437,27 +439,29 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       if (!questionsLoadedRef.current && !questionsLoading && Object.keys(questions).length === 0) {
         try {
           setQuestionsLoading(true);
-          const questionsData = await window.electronAPI.getEnabledProjectQuestions(actualProjectId);
+          const questionsData = await window.electronAPI.getProjectQuestions(actualProjectId);
           
-          // Format them for the component
+          // Format them for the component and filter out disabled questions
           const formattedQuestions = {};
           Object.keys(questionsData).forEach(section => {
-            formattedQuestions[section] = questionsData[section].map(q => {
-              if (q.questionType === 'dropdown') {
-                return {
-                  id: q.questionId,
-                  text: q.questionText,
-                  type: 'dropdown',
-                  options: q.options,
-                  factors: q.factors
-                };
-              } else {
-                return {
-                  text: q.questionText,
-                  factors: q.factors
-                };
-              }
-            });
+            formattedQuestions[section] = questionsData[section]
+              .filter(q => q.isEnabled) // Only include enabled questions
+              .map(q => {
+                if (q.questionType === 'dropdown') {
+                  return {
+                    id: q.questionId,
+                    text: q.questionText,
+                    type: 'dropdown',
+                    options: q.options,
+                    factors: q.factors
+                  };
+                } else {
+                  return {
+                    text: q.questionText,
+                    factors: q.factors
+                  };
+                }
+              });
           });
           
           setQuestions(formattedQuestions);
@@ -592,6 +596,16 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       setInterviewText(loadedText);
     }
   }, [participantId]);
+
+  // Save participant data when navigating away or component unmounts
+  useEffect(() => {
+    return () => {
+      if (saveParticipantData && idx !== undefined && participantId) {
+        console.log('ParticipantPage: Saving participant data on cleanup');
+        saveParticipantData(idx, participantId);
+      }
+    };
+  }, [participantId, saveParticipantData, idx]);
 
   // Cleanup effect for debounce timer
   useEffect(() => {
@@ -886,6 +900,8 @@ CRITICAL INSTRUCTIONS:
 - DO NOT make assumptions, inferences, or add information not directly stated
 - Focus ONLY on the interaction between the human and robot, and how they reacted and interacted (or did not interact)
 - Be concise and factual, using only the exact information provided
+- DO NOT include any introductory text like "Here is a brief summary" or "This is a summary"
+- Start directly with the summary content
 
 Your task is to write a brief summary based STRICTLY on the participant's actual responses.
 
@@ -895,11 +911,12 @@ Format Requirements:
 - Do NOT include factors, analysis, or interpretation
 - If critical information is missing or unclear, state "information not provided" rather than assuming
 - If responses are gibberish or unclear, note this explicitly
+- Start the summary directly without any introductory phrases
 
 Participant Responses:
 ${allAnswers.join('\n\n')}
 
-Generate a brief summary (maximum 3 sentences, focus only on the human-robot interaction):`;
+Write a brief summary (maximum 3 sentences, focus only on the human-robot interaction, start directly with the content):`;
 
       // Set up real-time progress listener
       const progressHandler = (event, data) => {
@@ -909,7 +926,7 @@ Generate a brief summary (maximum 3 sentences, focus only on the human-robot int
       window.electronAPI.onGenerationProgress(progressHandler);
 
       try {
-        const generatedSummary = await window.electronAPI.generateWithDeepSeekStream(prompt);
+        const generatedSummary = await window.electronAPI.generateWithLlamaStream(prompt);
         setSummary(generatedSummary);
         
         // Update the participant's summary using the new function
@@ -930,55 +947,43 @@ Generate a brief summary (maximum 3 sentences, focus only on the human-robot int
   };
 
   // Optimized batch processing function
-  const processQuestionsBatch = async (questions, interviewText, config) => {
+  const processQuestionsBatch = async (questions, interviewText, config, projectDescription = '') => {
     try {
       // Create a single prompt for all questions to reduce API calls
       const questionsList = questions.map((q, index) => `${index + 1}. ${q}`).join('\n');
       
-      const prompt = `You are a data extraction specialist. Extract ACTUAL ANSWERS from the interview text.
+             const prompt = `You are a data extraction specialist. Extract specific, detailed answers from the interview text.
 
 Interview Text:
 ${interviewText}
 
-Questions to extract:
+Project Description:
+${projectDescription}
+
+Questions to extract (answer each one in order):
 ${questionsList}
 
 CRITICAL INSTRUCTIONS:
 - Extract ONLY the actual information mentioned in the interview text
+- Do NOT repeat the questions - provide the actual answers
 - Do NOT provide question text, labels, or categories
-- Do NOT repeat the question - provide the actual answer from the interview
 - For dropdown questions (age, gender), provide ONLY the selected option value (e.g., "25-34", "Male")
 - For yes/no questions, provide ONLY the explanation/reasoning, NOT the yes/no part
 - Include specific details, examples, and context from the interview
 - Keep answers concise but informative (1-3 sentences)
-- Use the exact numbering format: 1. [answer], 2. [answer], etc.
-
 - If information is not provided for a question, respond with: "Information not provided"
-- Do NOT include question numbers, labels, or question text in the answers
+- Do NOT provide participant quotes as answers
+- Do NOT answer questions that weren't asked
 
-Examples of CORRECT answers (actual information from interview):
-1. The interaction happened in a university robotics lab on Tuesday afternoon
-2. A graduate student researcher and a collaborative robot assistant
-3. To test the robot's ability to assist with laboratory tasks
-4. One human was interacting with the robot
-5. A collaborative robot with gripper arms and computer vision capabilities
-6. 25-34 (for age dropdown)
-7. Male (for gender dropdown)
-8. High school student (for occupation)
-9. University degree (for education)
+IMPORTANT: Look at the interview text and extract the SPECIFIC details mentioned. Do not repeat the questions - provide the actual answers.
 
-Examples of INCORRECT answers (don't do this):
-1. When and where did the interaction happen?
-2. Age range of the participant(s): 25-34
-3. Gender of the participant(s): Male
-4. Occupation of the participant(s): Engineer
-5. Education level of the participant(s): University degree
+Provide your answers in this exact format:
+1. [answer for first question]
+2. [answer for second question]
+3. [answer for third question]
+...`
 
-IMPORTANT: Look at the interview text and extract the SPECIFIC details mentioned. Do not provide generic categories or question text.
-
-Answers:`;
-
-      const response = await window.electronAPI.generateWithDeepSeek(prompt);
+      const response = await window.electronAPI.generateWithLlama(prompt);
       
       console.log('LLM Batch Response:', response);
       
@@ -1034,7 +1039,7 @@ Answers:`;
       const answers = [];
       for (const question of questions) {
         try {
-          const answer = await processQuestionWithLLM(question, interviewText, config);
+          const answer = await processQuestionWithLLM(question, interviewText, config, project?.description || '');
           answers.push(answer);
         } catch (err) {
           console.error(`Error processing question "${question}":`, err);
@@ -1045,30 +1050,35 @@ Answers:`;
     }
   };
 
-  const processQuestionWithLLM = async (question, interviewText, config) => {
+  const processQuestionWithLLM = async (question, interviewText, config, projectDescription = '') => {
     try {
-      const prompt = `You are a data extraction specialist. Extract ACTUAL ANSWERS from the interview text.
+            const prompt = `You are a data extraction specialist. Extract specific, detailed answers from the interview text.
 
 Question: "${question}"
 
 Interview Text:
 ${interviewText}
 
+Project Description:
+${projectDescription}
+
 CRITICAL INSTRUCTIONS:
 - Extract ONLY the actual information mentioned in the interview text
+- Do NOT repeat the question - provide the actual answer
 - Do NOT provide question text, labels, or categories
-- Do NOT repeat the question - provide the actual answer from the interview
 - For dropdown questions (age, gender), provide ONLY the selected option value (e.g., "25-34", "Male")
 - For yes/no questions, provide ONLY the explanation/reasoning, NOT the yes/no part
 - Include specific details, examples, and context from the interview
 - Keep answers concise but informative (1-3 sentences)
-- Do NOT include "Answer:" prefix or explanatory text before the answer
+- If information is not provided, respond with: "Information not provided"
+- Do NOT provide participant quotes as answers
+- Do NOT answer questions that weren't asked
 
-If information is not provided, respond with: "Information not provided"
+IMPORTANT: Look at the interview text and extract the SPECIFIC details mentioned. Do not repeat the question - provide the actual answer.
 
-Actual answer from interview:`;
+Actual answer from interview:`
 
-      const response = await window.electronAPI.generateWithDeepSeek(prompt);
+      const response = await window.electronAPI.generateWithLlama(prompt);
       
       console.log('LLM Individual Response for question:', question, response);
       
@@ -1174,7 +1184,7 @@ Actual answer from interview:`;
             const batch = questionTexts.slice(i, i + batchSize);
             
             try {
-              const batchAnswers = await processQuestionsBatch(batch, interviewText, extractionConfig);
+              const batchAnswers = await processQuestionsBatch(batch, interviewText, extractionConfig, project?.description || '');
               
               // Store answers with the correct question IDs
               batch.forEach((questionText, batchIndex) => {
@@ -1206,7 +1216,7 @@ Actual answer from interview:`;
                 const questionId = typeof question === 'object' && question.type === 'dropdown' ? question.id : questionText;
                 
                 try {
-                  const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig);
+                  const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig, project?.description || '');
                   processedAnswers[section][questionId] = answer;
                 } catch (err) {
                   console.error(`Error processing question "${questionText}":`, err);
@@ -1232,7 +1242,7 @@ Actual answer from interview:`;
             const questionId = typeof question === 'object' && question.type === 'dropdown' ? question.id : questionText;
             
             try {
-              const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig);
+              const answer = await processQuestionWithLLM(questionText, interviewText, extractionConfig, project?.description || '');
               console.log(`Processing question: "${questionText}" with ID: "${questionId}" -> Answer: "${answer}"`);
               processedAnswers[section][questionId] = answer;
               processedCount++;
@@ -1969,6 +1979,21 @@ Actual answer from interview:`;
                 }}>
                   Paste the participant's interview text below. The AI will automatically extract answers to all questions based on the interview content.
                 </p>
+                <div style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#fff3cd',
+                  border: '1px solid #ffeaa7',
+                  borderRadius: '6px',
+                  marginBottom: '16px',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.9em',
+                  color: '#856404',
+                  lineHeight: '1.4'
+                }}>
+                  <strong>⚠️ Important Disclaimer:</strong> The LLM extraction is an AI-assisted tool and may make mistakes. 
+                  Please review all extracted answers carefully and verify their accuracy against the original interview text. 
+                  Do not blindly trust the AI-generated responses.
+                </div>
                 <textarea
                   value={interviewText}
                   onChange={(e) => {
@@ -2059,7 +2084,7 @@ Actual answer from interview:`;
                     
                     {extractionConfig.useBatchProcessing && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '0.8em', color: '#6c757d' }}>Questions to process at once:</span>
+                        <span style={{ marginLeft: '15px', fontSize: '0.8em', color: '#6c757d' }}>Questions to process at once:</span>
                         <select
                           value={extractionConfig.batchSize}
                           onChange={(e) => handleConfigChange('batchSize', parseInt(e.target.value))}
@@ -2590,7 +2615,7 @@ Actual answer from interview:`;
                 margin: 0,
                 color: '#2c3e50'
               }}>
-                Write/Generate a Summary (Optional)
+                Write/Generate a Summary
               </h3>
             </div>
             

@@ -6,7 +6,7 @@ import { encryptData, decryptData } from '../utils/crypto';
 import FactorDetailsModal from './FactorDetailsModal';
 import { handleFactorClick, parseFactors } from '../utils/factorUtils';
 
-const Projects = ({ addProject, projects, editProject, deleteProject }) => {
+const Projects = ({ addProject, projects, editProject, deleteProject, refreshProjects }) => {
   const navigate = useNavigate();
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -231,6 +231,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
       const projectData = {
         ...project,
         rules: project.rules || [],
+        projectQuestionSettings: project.projectQuestionSettings || {},
         exportDate: new Date().toISOString(),
         exportVersion: '1.0'
       };
@@ -317,7 +318,7 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
     reader.readAsText(file);
   };
 
-  const handleImportConfirm = () => {
+  const handleImportConfirm = async () => {
     if (!importProjectName.trim()) {
       setImportError('Project name cannot be empty');
       return;
@@ -336,8 +337,14 @@ const Projects = ({ addProject, projects, editProject, deleteProject }) => {
       name: importProjectName.trim()
     };
 
-    // Add the renamed project
-    addProject(renamedProjectData);
+    // Import the project using the dedicated import function
+    await window.electronAPI.importProject(renamedProjectData);
+    
+    // Refresh the projects list to show the newly imported project
+    if (refreshProjects) {
+      await refreshProjects();
+    }
+    
     setImportDialogOpen(false);
     setImportedProjectData(null);
     setImportProjectName('');

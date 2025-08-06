@@ -368,7 +368,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
 
       Please provide concise, actionable suggestions in these two categories. Each suggestion should be directly tied to insights from the participant summaries.`;
 
-      const response = await window.electronAPI.generateWithDeepSeek(prompt);
+      const response = await window.electronAPI.generateWithLlama(prompt);
       
       // Clear the progress interval
       clearInterval(progressInterval);

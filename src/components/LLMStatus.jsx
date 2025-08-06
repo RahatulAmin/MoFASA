@@ -6,9 +6,10 @@ const LLMStatus = memo(() => {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const result = await window.electronAPI.getDeepSeekStatus();
+        const result = await window.electronAPI.getLlamaStatus();
         setStatus(result.status);
       } catch (error) {
+        console.error('LLM Status check error:', error);
         setStatus('disconnected');
       }
     };

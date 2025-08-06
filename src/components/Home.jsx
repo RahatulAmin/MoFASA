@@ -27,9 +27,9 @@ const Home = () => {
                   <br />
                   Then, type the command below to install a recommended model:
                   <br />
-                  <code style={{ fontFamily: 'monospace', color: '#3498db', fontSize: '1.2em', fontWeight: 'bold' }}>ollama run deepseek-r1:8b</code>
+                  <code style={{ fontFamily: 'monospace', color: '#3498db', fontSize: '1.2em', fontWeight: 'bold' }}>ollama run llama3:8b</code>
                   <br />
-                  This will download and launch the <strong>DeepSeek R1:8B</strong> AI model on your machine.
+                  This will download and launch the <strong>Llama3:8B</strong> AI model on your machine.
                 </p>
               </div>
 
@@ -39,7 +39,7 @@ const Home = () => {
                   Next, open a web browser and go to: <br />
                   <a href="http://127.0.0.1:11434/api/tags" target="_blank" rel="noopener noreferrer" style={{ color: '#3498db' }}>http://127.0.0.1:11434/api/tags</a>
                   <br />
-                  You'll see a list of installed models. Copy the exact name of the model (e.g., <code>deepseek-r1:8b</code>).
+                  You'll see a list of installed models. Copy the exact name of the model (e.g., <code>llama3:8b</code>).
                   <br />
                   Now go to the <strong>Settings</strong> page in MoFASA and paste that model name into the LLM field.
                   <br />
@@ -377,9 +377,9 @@ const Home = () => {
                <h4 style={{ color: '#495057', marginBottom: '12px', fontSize: '16px' }}>How to use this practice study:</h4>
                <ol style={{ color: '#6c757d', lineHeight: '1.6', paddingLeft: '20px' }}>
                  <li>Download the MoFASA practice study document to view the project and the participant interview data.</li>
-                 <li>Download the MoFASA practice study JSON file to import the data into MoFASA Tools.</li>
+                 <li>Download the MoFASA practice study data file (JSON) to import the data into MoFASA Tools.</li>
                  <li>Head to the Project tab and import the JSON file.</li>
-                 <li>Click the Light Bulb on the Bottom Right corner of the screen to follow the tutorial steps and analyze the practice data.</li>
+                 <li>Click the Light Bulb on the Bottom Right corner of the screen to follow the tutorial steps and analyze the practice data.</li> 
                </ol>
              </div>
             </div>

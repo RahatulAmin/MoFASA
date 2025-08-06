@@ -7,7 +7,7 @@ const database = require('./src/utils/database');
 // Default settings
 const defaultSettings = {
   llmUrl: 'http://127.0.0.1:11434',
-  modelName: 'deepseek-r1:8b',
+  modelName: 'llama3:8b',
   maxTokens: 2048,
   temperature: 0.7,
   topP: 0.9,
@@ -76,8 +76,15 @@ app.on('window-all-closed', () => {
 
 ipcMain.handle('get-projects', async () => database.getAllProjects());
 ipcMain.handle('save-projects', async (_e, projects) => database.saveAllProjects(projects));
+ipcMain.handle('import-project', async (_e, project) => database.importProject(project));
 ipcMain.handle('update-participant-interview', async (_e, projectId, participantId, interviewText) => {
   database.updateParticipantInterview(projectId, participantId, interviewText);
+});
+ipcMain.handle('update-participant-answers', async (_e, projectId, participantId, answers) => {
+  database.updateParticipantAnswers(projectId, participantId, answers);
+});
+ipcMain.handle('update-participant-summary', async (_e, projectId, participantId, summary) => {
+  database.updateParticipantSummary(projectId, participantId, summary);
 });
 
 // File download handler
@@ -148,7 +155,7 @@ ipcMain.handle('save-settings', async (_e, newSettings) => {
   }
 });
 
-ipcMain.handle('generate-with-deepseek', async (_e, prompt) => {
+ipcMain.handle('generate-with-llama', async (_e, prompt) => {
   const settings = loadSettings();
   try {
     const response = await axios.post(`${settings.llmUrl}/api/generate`, {
@@ -178,7 +185,7 @@ ipcMain.handle('generate-with-deepseek', async (_e, prompt) => {
   }
 });
 
-ipcMain.handle('generate-with-deepseek-stream', async (event, prompt) => {
+ipcMain.handle('generate-with-llama-stream', async (event, prompt) => {
   const settings = loadSettings();
   return new Promise((resolve, reject) => {
     try {
@@ -260,7 +267,7 @@ ipcMain.handle('generate-with-deepseek-stream', async (event, prompt) => {
   });
 });
 
-ipcMain.handle('get-deepseek-status', async () => {
+ipcMain.handle('get-llama-status', async () => {
   const settings = loadSettings();
   try {
     const { data } = await axios.get(`${settings.llmUrl}/api/tags`, {
