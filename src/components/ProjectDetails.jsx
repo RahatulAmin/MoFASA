@@ -2251,39 +2251,141 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
                     );
                   }
 
+                  // Function to filter participants based on left panel filters
+                  const getFilteredParticipantsForSummary = () => {
+                    if (selectedAgeRanges.length === 0 && selectedGenders.length === 0) {
+                      return participantsWithSummaries;
+                    }
+
+                    return participantsWithSummaries.filter(p => {
+                      const ageMatch = selectedAgeRanges.length === 0 || 
+                        (p.answers?.Identity?.age && selectedAgeRanges.includes(p.answers.Identity.age));
+                      const genderMatch = selectedGenders.length === 0 || 
+                        (p.answers?.Identity?.gender && selectedGenders.includes(p.answers.Identity.gender));
+                      return ageMatch && genderMatch;
+                    });
+                  };
+
+                  // Function to group participants by the selected criterion (same logic as framework view)
+                  const getGroupedParticipantsForSummary = () => {
+                    const filteredParticipants = getFilteredParticipantsForSummary();
+                    
+                    if (!sortBy) {
+                      // Return all participants in a single group when no sorting is selected
+                      return { 'All Participants': filteredParticipants };
+                    }
+
+                    if (sortBy === 'age') {
+                      const groups = {
+                        ...AGE_RANGES.reduce((acc, range) => ({ ...acc, [range]: [] }), {}),
+                        'Unspecified Age Range': []
+                      };
+
+                      filteredParticipants.forEach(p => {
+                        const ageRange = p.answers?.Identity?.age;
+                        if (ageRange && AGE_RANGES.includes(ageRange)) {
+                          groups[ageRange].push(p);
+                        } else {
+                          groups['Unspecified Age Range'].push(p);
+                        }
+                      });
+
+                      // Remove empty groups
+                      return Object.fromEntries(
+                        Object.entries(groups).filter(([_, participants]) => participants.length > 0)
+                      );
+                    } else {
+                      const groups = {
+                        ...GENDER_OPTIONS.reduce((acc, gender) => ({ ...acc, [gender]: [] }), {}),
+                        'Unspecified Gender': []
+                      };
+
+                      filteredParticipants.forEach(p => {
+                        const gender = p.answers?.Identity?.gender;
+                        if (gender && GENDER_OPTIONS.includes(gender)) {
+                          groups[gender].push(p);
+                        } else {
+                          groups['Unspecified Gender'].push(p);
+                        }
+                      });
+
+                      // Remove empty groups
+                      return Object.fromEntries(
+                        Object.entries(groups).filter(([_, participants]) => participants.length > 0)
+                      );
+                    }
+                  };
+
                   return (
                     <div style={{ padding: '20px' }}>
+                      {/* Grouped participants */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                        {participantsWithSummaries.map((participant) => (
-                          <div
-                            key={participant.id}
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.1)',
-                              borderRadius: '8px',
-                              padding: '20px',
-                              border: '1px solid rgba(255, 255, 255, 0.2)',
-                              backdropFilter: 'blur(10px)'
-                            }}
-                          >
-                            <h3 style={{
-                              margin: '0 0 15px 0',
-                              fontFamily: 'Lexend, sans-serif',
-                              fontSize: '1.2em',
-                              color: '#fff',
-                              borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
-                              paddingBottom: '10px'
-                            }}>
-                              {participant.name}
-                            </h3>
-                            <p style={{
-                              fontFamily: 'Lexend, sans-serif',
-                              fontSize: '0.95em',
-                              color: 'rgba(255, 255, 255, 0.9)',
-                              lineHeight: '1.6',
-                              margin: 0
-                            }}>
-                              {participant.summary}
-                            </p>
+                        {Object.entries(getGroupedParticipantsForSummary()).map(([group, groupParticipants]) => (
+                          <div key={group}>
+                            {sortBy && (
+                              <h3 style={{ 
+                                fontFamily: 'Lexend, sans-serif',
+                                fontSize: '1.1em',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                marginBottom: 15,
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+                                paddingBottom: '5px'
+                              }}>
+                                {group}
+                              </h3>
+                            )}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+                              {groupParticipants.map((participant) => (
+                                <div
+                                  key={participant.id}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '8px',
+                                    padding: '20px',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    backdropFilter: 'blur(10px)'
+                                  }}
+                                >
+                                  <div style={{
+                                    margin: '0 0 15px 0',
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+                                    paddingBottom: '10px'
+                                  }}>
+                                    <h4 style={{
+                                      margin: '0 0 5px 0',
+                                      fontFamily: 'Lexend, sans-serif',
+                                      fontSize: '1.1em',
+                                      color: '#fff'
+                                    }}>
+                                      {participant.name}
+                                    </h4>
+                                    <div style={{
+                                      display: 'flex',
+                                      gap: '12px',
+                                      fontSize: '0.85em',
+                                      color: 'rgba(255, 255, 255, 0.7)',
+                                      fontFamily: 'Lexend, sans-serif'
+                                    }}>
+                                      {participant.answers?.Identity?.age && (
+                                        <span>Age: {participant.answers.Identity.age}</span>
+                                      )}
+                                      {participant.answers?.Identity?.gender && (
+                                        <span>Gender: {participant.answers.Identity.gender}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p style={{
+                                    fontFamily: 'Lexend, sans-serif',
+                                    fontSize: '0.95em',
+                                    color: 'rgba(255, 255, 255, 0.9)',
+                                    lineHeight: '1.6',
+                                    margin: 0
+                                  }}>
+                                    {participant.summary}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>
