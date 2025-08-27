@@ -1969,9 +1969,9 @@ Actual answer from interview:`
                   marginBottom: '12px',
                   fontWeight: '600'
                 }}>
-                  📝 Interview Data Extraction
+                  📝 Interview Data Extraction (Beta Version)
                 </h4>
-                <p style={{ 
+                {/* <p style={{ 
                   fontFamily: 'Lexend, sans-serif',
                   fontSize: '0.9em',
                   color: '#7f8c8d',
@@ -1979,7 +1979,7 @@ Actual answer from interview:`
                   lineHeight: '1.4'
                 }}>
                   Paste the participant's interview text below. The AI will automatically extract answers to all questions based on the interview content.
-                </p>
+                </p> */}
                 <div style={{
                   padding: '12px 16px',
                   backgroundColor: '#fff3cd',

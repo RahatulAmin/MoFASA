@@ -62,8 +62,47 @@ const Home = () => {
           <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', lineHeight: '1.7', color: '#2c3e50' }}>
             <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>📘 Welcome to the MoFASA Tools Tutorial</h2>
 
+            {/* Video Tutorial Section */}
+            <div style={{ 
+              background: '#fff',
+              borderRadius: '8px',
+              padding: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: '1px solid #e9ecef',
+              marginBottom: '32px'
+            }}>
+              <h3 style={{ 
+                color: '#34495e', 
+                marginBottom: '16px',
+                fontSize: '1.1em',
+                fontWeight: '600'
+              }}>
+                🎥 Video Tutorial
+              </h3>
+              <p style={{ 
+                color: '#7f8c8d', 
+                lineHeight: '1.6', 
+                marginBottom: '16px',
+                fontSize: '0.95em'
+              }}>
+                Watch our comprehensive video tutorial to learn how to use MoFASA Tools effectively.
+              </p>
+              
+              <video 
+                controls
+                style={{
+                  width: '100%',
+                  borderRadius: '6px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                <source src={require('../video/MoFASA Tools Tutorial.mp4')} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+
             <p style={{ marginBottom: '20px', color: '#7f8c8d' }}>
-              This short guide will walk you through how to use the MoFASA Tools desktop app to set up a project, input participant data, and analyze your findings.
+              Below we have a written version of the tutorial. This short guide will walk you through how to use the MoFASA Tools desktop app to set up a project, input participant data, and analyze your findings.
               You don't need to know anything technical — just follow along and take your time.
             </p>
 
@@ -530,11 +569,11 @@ const Home = () => {
            
             }}>
               <p style={{ color: '#2c3e50', lineHeight: '1.6', marginBottom: '16px' }}>
-                <strong>Get started by exploring our interactive tutorial by importing a practice project.</strong>
+                <strong>Get started by exploring our interactive tutorial.</strong>
               </p>
               <button
                 onClick={() => {
-                  setSelectedSection('practice-mofasa');
+                  setSelectedSection('MoFASA-Tools-tutorial');
                   // Scroll to top of the right panel after a short delay to ensure content is rendered
                   setTimeout(() => {
                     const rightPanel = document.querySelector('.right-panel');
@@ -567,7 +606,7 @@ const Home = () => {
                   e.target.style.transform = 'translateY(0)';
                 }}
               >
-                Practice MoFASA Tools
+                MoFASA Tools Tutorial
               </button>
 
               
@@ -700,12 +739,26 @@ const Home = () => {
             What is MoFASA?
           </button>
 
-          {/* <button
-            onClick={() => setSelectedSection(selectedSection === 'MoFASA-Tools-tutorial' ? '' : 'MoFASA-Tools-tutorial')}
+          <button
+            onClick={() => {
+              setSelectedSection(selectedSection === 'MoFASA-Tools-tutorial' ? '' : 'MoFASA-Tools-tutorial');
+              // Scroll to top of the right panel after a short delay to ensure content is rendered
+              if (selectedSection !== 'MoFASA-Tools-tutorial') {
+                setTimeout(() => {
+                  const rightPanel = document.querySelector('.right-panel');
+                  if (rightPanel) {
+                    rightPanel.scrollTo({
+                      top: 0,
+                      behavior: 'smooth'
+                    });
+                  }
+                }, 100);
+              }
+            }}
             className={`left-panel-button ${selectedSection === 'MoFASA-Tools-tutorial' ? 'selected' : ''}`}
           >
-            Getting Started with MoFASA
-          </button> */}
+            MoFASA Tools Tutorial
+          </button>
 
           <button
             onClick={() => setSelectedSection(selectedSection === 'practice-mofasa' ? '' : 'practice-mofasa')}
@@ -743,68 +796,7 @@ const Home = () => {
         {/* Thin line */}
         <div style={{ borderBottom: '1px solid #dcdde1', margin: '24px 0 16px 0' }}></div>
 
-        {/* Projects Section */}
-        <div style={{ marginBottom: '20px' }}>
-          <h3 style={{ 
-            color: '#2c3e50', 
-            marginBottom: '16px', 
-            fontSize: '1.2em',
-            fontWeight: '600',
-            fontFamily: 'Lexend, sans-serif'
-          }}>
-            Projects
-          </h3>
-          
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-            gap: '12px',
-            marginBottom: '16px',
-          }}>
-            <button
-              onClick={() => {
-                // Navigate to projects page
-                window.location.hash = '#/projects';
-              }}
-              style={{
-                padding: '16px 12px',
-                backgroundColor: '#f8f9fa',
-                color: '#7f8c8d',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '500',
-                fontSize: '0.9em',
-                fontFamily: 'Lexend, sans-serif',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(151, 151, 151, 0.2)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '8px',
-                minHeight: '80px',
-                justifyContent: 'center'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.backgroundColor = '#e6e6e6';
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 4px 8px rgba(151, 151, 151, 0.3)';
-                e.target.style.color = '#000000';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.backgroundColor = '#f8f9fa';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 2px 4px rgba(151, 151, 151, 0.2)';
-                e.target.style.color = '#7f8c8d';
-              }}
-            >
-              <span style={{fontSize: '1.5em', margin: 0, padding: 0, pointerEvents: 'none'}}>📁</span>
-              Open Project 
-            </button>
 
-            
-          </div>
-        </div>
       </div>
       <div className="right-panel" style={{ flex: 1, borderLeft: '1px solid #e9ecef', overflowY: 'auto' }}>
         {renderRightContent()}

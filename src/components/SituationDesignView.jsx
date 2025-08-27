@@ -56,11 +56,48 @@ const SituationDesignView = ({
     }
   }, [currentScope?.id]); // Load when scopeId changes
 
-  // Reset UI state when component is first rendered (when navigating back to situation design view)
+  // Persist selected rules in localStorage to survive re-renders
   useEffect(() => {
-    setSelectedRules(new Set());
-    setIsLabelingMode(false);
-  }, []); // Only run once when component mounts
+    if (currentScope?.id && selectedRules.size > 0) {
+      const storageKey = `selectedRules_${currentScope.id}`;
+      const rulesArray = Array.from(selectedRules);
+      localStorage.setItem(storageKey, JSON.stringify(rulesArray));
+      console.log('SituationDesignView: Saved selected rules to localStorage', {
+        scopeId: currentScope.id,
+        rules: rulesArray,
+        storageKey
+      });
+    }
+  }, [selectedRules, currentScope?.id]);
+
+  // Load selected rules from localStorage when component mounts or scope changes
+  useEffect(() => {
+    if (currentScope?.id) {
+      const storageKey = `selectedRules_${currentScope.id}`;
+      const savedRules = localStorage.getItem(storageKey);
+      if (savedRules) {
+        try {
+          const parsedRules = JSON.parse(savedRules);
+          setSelectedRules(new Set(parsedRules));
+          console.log('Loaded saved selected rules:', parsedRules);
+        } catch (error) {
+          console.error('Error parsing saved rules:', error);
+        }
+      } else {
+        // If no saved rules found, clear the selection
+        setSelectedRules(new Set());
+      }
+    }
+  }, [currentScope?.id]);
+
+  // Debug: Log when currentScope changes
+  useEffect(() => {
+    console.log('SituationDesignView: currentScope changed', {
+      scopeId: currentScope?.id,
+      scopeNumber: currentScope?.scopeNumber,
+      selectedRulesSize: selectedRules.size
+    });
+  }, [currentScope?.id, currentScope?.scopeNumber]);
 
   const toggleParticipantExpansion = (participantId) => {
     setExpandedParticipants(prev => {
@@ -452,9 +489,9 @@ Environmental Changes:
                   disabled={isGeneratingSuggestions}
                   style={{
                     padding: '6px 12px',
-                    background: isGeneratingSuggestions ? '#95a5a6' : '#e74c3c',
-                    color: '#fff',
-                    border: 'none',
+                    background: isGeneratingSuggestions ? '#95a5a6' : '#f5f5f5',
+                    color: isGeneratingSuggestions ? '#fff' : '#999',
+                    border: '1px solid #ddd',
                     borderRadius: '4px',
                     cursor: isGeneratingSuggestions ? 'not-allowed' : 'pointer',
                     fontSize: '0.85em',
@@ -464,6 +501,18 @@ Environmental Changes:
                     opacity: isGeneratingSuggestions ? 0.6 : 1,
                     position: 'relative',
                     overflow: 'hidden'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isGeneratingSuggestions) {
+                      e.target.style.background = '#e8e8e8';
+                      e.target.style.color = '#666';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isGeneratingSuggestions) {
+                      e.target.style.background = '#f5f5f5';
+                      e.target.style.color = '#999';
+                    }
                   }}
                 >
                   <span style={{

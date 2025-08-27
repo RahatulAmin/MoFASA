@@ -30,6 +30,10 @@ module.exports = {
       {
         test: /\.pdf$/i,
         type: 'asset/resource',
+      },
+      {
+        test: /\.(mp4|webm|ogg|mov|avi)$/i,
+        type: 'asset/resource',
       }
     ]
   },
