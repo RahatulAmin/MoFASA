@@ -484,7 +484,8 @@ Environmental Changes:
                 }}>
                   Undesirable Rules
                 </h4>
-                <button
+
+                {/* <button
                   onClick={generateAISuggestions}
                   disabled={isGeneratingSuggestions}
                   style={{
@@ -546,7 +547,7 @@ Environmental Changes:
                       zIndex: 1
                     }} />
                   )}
-                </button>
+                </button> */}
               </div>
               <div style={{ 
                 display: 'flex', 

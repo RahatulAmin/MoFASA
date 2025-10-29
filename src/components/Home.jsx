@@ -63,7 +63,7 @@ const Home = () => {
             <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>📘 Welcome to the MoFASA Tools Tutorial</h2>
 
             {/* Video Tutorial Section */}
-            <div style={{ 
+            {/* <div style={{ 
               background: '#fff',
               borderRadius: '8px',
               padding: '20px',
@@ -99,7 +99,7 @@ const Home = () => {
                 <source src={require('../video/MoFASA Tools Tutorial.mp4')} type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
-            </div>
+            </div> */}
 
             <p style={{ marginBottom: '20px', color: '#7f8c8d' }}>
               Below we have a written version of the tutorial. This short guide will walk you through how to use the MoFASA Tools desktop app to set up a project, input participant data, and analyze your findings.

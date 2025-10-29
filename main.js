@@ -17,6 +17,28 @@ const defaultSettings = {
 
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
 
+// Helper function to find files in packaged app
+function findFileInPackagedApp(fileName) {
+  const possiblePaths = [
+    // Files included as extraResource in forge.config.js
+    path.join(process.resourcesPath, fileName),
+    path.join(process.resourcesPath, 'src', fileName),
+    // Files in app.asar.unpacked (for unpacked resources)
+    path.join(process.resourcesPath, 'app.asar.unpacked', 'src', fileName),
+    // Files in the main app directory
+    path.join(__dirname, 'src', fileName),
+    // Alternative resource paths
+    path.join(process.resourcesPath, '..', 'src', fileName),
+    path.join(process.resourcesPath, '..', 'app', 'src', fileName),
+    // Try relative to the executable
+    path.join(process.execPath, '..', 'resources', fileName),
+    path.join(process.execPath, '..', 'resources', 'src', fileName),
+    path.join(process.execPath, '..', 'resources', 'app.asar.unpacked', 'src', fileName)
+  ];
+  
+  return possiblePaths.find(p => fs.existsSync(p));
+}
+
 function loadSettings() {
   try {
     if (!fs.existsSync(SETTINGS_FILE)) {
@@ -61,11 +83,22 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  createWindow();
+  try {
+    // Initialize database and ensure tables exist
+    console.log('Initializing database...');
+    await database.initializeDatabase();
+    console.log('Database initialized successfully');
+    
+    createWindow();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    // Still create window even if database fails
+    createWindow();
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -98,23 +131,53 @@ ipcMain.handle('download-file', async (event, fileName) => {
       // In development, use the src directory
       sourcePath = path.join(__dirname, 'src', fileName);
     } else {
-      // In production, use the extraResources path
-      sourcePath = path.join(process.resourcesPath, fileName);
+      // In production, use the helper function to find the file
+      sourcePath = findFileInPackagedApp(fileName);
+      
+      if (!sourcePath) {
+        console.error('File not found in packaged app:', fileName);
+        console.error('Current working directory:', process.cwd());
+        console.error('__dirname:', __dirname);
+        console.error('process.resourcesPath:', process.resourcesPath);
+        console.error('process.execPath:', process.execPath);
+        console.error('app.isPackaged:', app.isPackaged);
+        throw new Error(`File not found in packaged app: ${fileName}`);
+      }
     }
+    
+    console.log(`Download: Using source path: ${sourcePath}`);
+    console.log(`Download: File exists check: ${fs.existsSync(sourcePath)}`);
     
     // Check if file exists
     if (!fs.existsSync(sourcePath)) {
       throw new Error(`File not found: ${sourcePath}`);
     }
     
-    // Show save dialog
+    // Show save dialog with appropriate filters based on file type
+    const fileExt = path.extname(fileName).toLowerCase();
+    let filters = [{ name: 'All Files', extensions: ['*'] }];
+    
+    if (fileExt === '.pdf') {
+      filters = [
+        { name: 'PDF Files', extensions: ['pdf'] },
+        { name: 'All Files', extensions: ['*'] }
+      ];
+    } else if (fileExt === '.json') {
+      filters = [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ];
+    } else if (fileExt === '.mp4') {
+      filters = [
+        { name: 'Video Files', extensions: ['mp4'] },
+        { name: 'All Files', extensions: ['*'] }
+      ];
+    }
+    
     const result = await dialog.showSaveDialog({
       title: 'Save File',
       defaultPath: fileName,
-      filters: [
-        { name: 'PDF Files', extensions: ['pdf'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
+      filters: filters
     });
     
     if (!result.canceled && result.filePath) {

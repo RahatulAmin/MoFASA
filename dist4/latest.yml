@@ -1,0 +1,8 @@
+version: 1.0.0
+files:
+  - url: MoFASA-Setup-1.0.0.exe
+    sha512: +nRGoDG2zBau9DtIU7hVmQprmndUmo45X+UEOl9BrTh4Bc9awGf3A5wj8e+XNx32gT96ibg9L+bKBNT41rE03w==
+    size: 231637477
+path: MoFASA-Setup-1.0.0.exe
+sha512: +nRGoDG2zBau9DtIU7hVmQprmndUmo45X+UEOl9BrTh4Bc9awGf3A5wj8e+XNx32gT96ibg9L+bKBNT41rE03w==
+releaseDate: '2025-10-23T17:59:16.854Z'

@@ -4,6 +4,24 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
+    extraResource: [
+      'data',
+      'src/video',
+      'src/images',
+      'src/MoFASA_practice_study.pdf',
+      'src/MoFASA_practice_study_data.json'
+    ],
+    ignore: [
+      /^\/node_modules\//,
+      /^\/dist\//,
+      /^\/dist1\//,
+      /^\/dist2\//,
+      /^\/dist3\//,
+      /^\/dist4\//,
+      /^\/out\//,
+      /^\/\.git\//,
+      /\.log$/
+    ]
   },
   rebuildConfig: {},
   makers: [

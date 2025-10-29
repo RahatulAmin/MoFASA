@@ -14,12 +14,42 @@ function getDatabasePath() {
     }
     return path.join(dataDir, 'mofasa.sqlite3');
   } else {
-    // When packaged, use unpacked resources path
-    const dataDir = path.join(process.resourcesPath, 'data');
+    // When packaged, first try the extraResources path
+    let dataDir = path.join(process.resourcesPath, 'data');
+    
+    // If that doesn't exist, try the app.asar.unpacked path
+    if (!fs.existsSync(dataDir)) {
+      dataDir = path.join(process.resourcesPath, 'app.asar.unpacked', 'data');
+    }
+    
+    // If still doesn't exist, create in userData
+    if (!fs.existsSync(dataDir)) {
+      dataDir = path.join(app.getPath('userData'), 'data');
+    }
+    
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    return path.join(dataDir, 'mofasa.sqlite3');
+    
+    const dbPath = path.join(dataDir, 'mofasa.sqlite3');
+    
+    // If database doesn't exist in the final location, try to copy from resources
+    if (!fs.existsSync(dbPath)) {
+      const possibleSourcePaths = [
+        path.join(process.resourcesPath, 'data', 'mofasa.sqlite3'),
+        path.join(process.resourcesPath, 'app.asar.unpacked', 'data', 'mofasa.sqlite3')
+      ];
+      
+      for (const sourcePath of possibleSourcePaths) {
+        if (fs.existsSync(sourcePath)) {
+          console.log(`Copying database from ${sourcePath} to ${dbPath}`);
+          fs.copyFileSync(sourcePath, dbPath);
+          break;
+        }
+      }
+    }
+    
+    return dbPath;
   }
 }
 
@@ -28,10 +58,53 @@ const dbPath = getDatabasePath();
 // Log the path for debugging
 console.log("Resolved DB Path:", dbPath);
 
-const db = new Database(dbPath);
+let db;
+
+// Initialize database function
+async function initializeDatabase() {
+  try {
+    if (!db) {
+      console.log('Creating new database connection to:', dbPath);
+      db = new Database(dbPath);
+    }
+    
+    // Ensure database connection is working
+    db.exec('SELECT 1');
+    console.log('Database connection verified');
+    
+    // Check if database needs migration
+    if (needsMigration()) {
+      console.log('Database migration needed, initializing tables...');
+      initializeTables();
+      console.log('Database migration completed');
+    } else {
+      console.log('Database is up to date');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+    console.error('Database path:', dbPath);
+    console.error('Database exists:', fs.existsSync(dbPath));
+    throw error;
+  }
+}
+
+// Initialize database connection
+try {
+  db = new Database(dbPath);
+} catch (error) {
+  console.error('Failed to create database connection:', error);
+  db = null;
+}
 
 // Function to check if migration is needed
 function needsMigration() {
+  if (!db) {
+    console.log('Database: No database connection, migration needed');
+    return true;
+  }
+  
   try {
     // Check if project_questions table exists
     const projectQuestionsTableExists = db.prepare(`
@@ -1625,30 +1698,40 @@ function updateParticipantSummary(projectId, participantId, summary) {
 
 // Get all questions from questionnaire
 function getAllQuestions() {
-  console.log('Database: Getting all questions');
+  if (!db) {
+    console.error('Database not initialized when getting all questions');
+    return {};
+  }
   
-  const questions = db.prepare(`
-    SELECT * FROM questionnaire 
-    ORDER BY section, orderIndex
-  `).all();
-  
-  // Parse options JSON for dropdown questions
-  const questionsWithParsedOptions = questions.map(question => ({
-    ...question,
-    options: question.options ? JSON.parse(question.options) : null
-  }));
-  
-  // Group questions by section
-  const groupedQuestions = {};
-  questionsWithParsedOptions.forEach(question => {
-    if (!groupedQuestions[question.section]) {
-      groupedQuestions[question.section] = [];
-    }
-    groupedQuestions[question.section].push(question);
-  });
-  
-  console.log('Database: Found questions for', Object.keys(groupedQuestions).length, 'sections');
-  return groupedQuestions;
+  try {
+    console.log('Database: Getting all questions');
+    
+    const questions = db.prepare(`
+      SELECT * FROM questionnaire 
+      ORDER BY section, orderIndex
+    `).all();
+    
+    // Parse options JSON for dropdown questions
+    const questionsWithParsedOptions = questions.map(question => ({
+      ...question,
+      options: question.options ? JSON.parse(question.options) : null
+    }));
+    
+    // Group questions by section
+    const groupedQuestions = {};
+    questionsWithParsedOptions.forEach(question => {
+      if (!groupedQuestions[question.section]) {
+        groupedQuestions[question.section] = [];
+      }
+      groupedQuestions[question.section].push(question);
+    });
+    
+    console.log('Database: Found questions for', Object.keys(groupedQuestions).length, 'sections');
+    return groupedQuestions;
+  } catch (error) {
+    console.error('Database: Error getting all questions:', error);
+    return {};
+  }
 }
 
 // Update question enabled status
@@ -2021,5 +2104,6 @@ module.exports = {
   getUndesirableRules,
   saveUndesirableRules,
   addUndesirableRule,
-  removeUndesirableRule
+  removeUndesirableRule,
+  initializeDatabase
 };

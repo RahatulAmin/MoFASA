@@ -1855,7 +1855,8 @@ Actual answer from interview:`
             </h3>
           </div>
 
-          {/* Toggle Switches */}
+          {/* EXTRACT DATA FROM INTERVIEW Toggle Switches */}
+         {/*
           <div style={{ 
             display: 'flex', 
             gap: '16px', 
@@ -1865,7 +1866,7 @@ Actual answer from interview:`
             borderRadius: '8px',
             border: '1px solid #e9ecef'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ 
                 position: 'relative',
                 display: 'inline-block',
@@ -1906,7 +1907,7 @@ Actual answer from interview:`
                 </span>
               </label>
               <span style={{ fontFamily: 'Lexend, sans-serif', fontSize: '0.95em' }}>Extract Data from Interview</span>
-            </div>
+            </div> */}
 
             {/* <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ 
@@ -1949,8 +1950,8 @@ Actual answer from interview:`
                 </span>
               </label>
               <span style={{ fontFamily: 'Lexend, sans-serif', fontSize: '0.95em' }}>Generate Summary</span>
-            </div> */}
-          </div>
+            </div> 
+          </div>*/}
 
           {/* Interview Text Area */}
           {showInterview && (
