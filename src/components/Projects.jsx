@@ -263,10 +263,19 @@ const Projects = ({ addProject, projects, editProject, deleteProject, refreshPro
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const encryptedData = JSON.parse(e.target.result);
+        const parsedData = JSON.parse(e.target.result);
         
-        // Decrypt the imported data
-        const importedData = await decryptData(encryptedData);
+        // Check if the data is encrypted (has encrypted, iv, and key properties)
+        const isEncrypted = parsedData.encrypted && parsedData.iv && parsedData.key;
+        
+        let importedData;
+        if (isEncrypted) {
+          // Decrypt the imported data
+          importedData = await decryptData(parsedData);
+        } else {
+          // Use the data directly if it's plain JSON
+          importedData = parsedData;
+        }
         
         // Validate imported data - check for both old and new format
         if (!importedData.name) {

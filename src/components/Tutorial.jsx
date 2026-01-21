@@ -347,47 +347,47 @@ const Tutorial = ({ tutorialType, onComplete, isActive }) => {
         ),
         placement: 'right'
       },
+      // {
+      //   target: '.left-panel',
+      //   content: (
+      //     <div>
+      //       <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 1: Extract Data from Interview</h3>
+      //       <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+      //         <strong>📝 Look for the "Extract Data from Interview" section</strong> in the left panel. You may need to toggle it open first.
+      //       </p>
+      //       <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+      //         Paste your interview transcript there and use the LLM feature to automatically extract relevant information.
+      //       </p>
+      //       <div style={{ 
+      //         background: '#fff3cd', 
+      //         border: '1px solid #ffeaa7', 
+      //         borderRadius: '4px', 
+      //         padding: '8px', 
+      //         margin: '8px 0',
+      //         fontSize: '0.9em',
+      //         color: '#856404'
+      //       }}>
+      //         <strong>⚠️ Important:</strong> Do not blindly use the AI extraction. Always double-check the extracted data for accuracy.
+      //       </div>
+      //     </div>
+      //   ),
+      //   placement: 'right'
+      // },
       {
         target: '.left-panel',
         content: (
           <div>
-            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 1: Extract Data from Interview</h3>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 1: Fill Questionnaire</h3>
             <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
-              <strong>📝 Look for the "Extract Data from Interview" section</strong> in the left panel. You may need to toggle it open first.
-            </p>
-            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
-              Paste your interview transcript there and use the LLM feature to automatically extract relevant information.
-            </p>
-            <div style={{ 
-              background: '#fff3cd', 
-              border: '1px solid #ffeaa7', 
-              borderRadius: '4px', 
-              padding: '8px', 
-              margin: '8px 0',
-              fontSize: '0.9em',
-              color: '#856404'
-            }}>
-              <strong>⚠️ Important:</strong> Do not blindly use the AI extraction. Always double-check the extracted data for accuracy.
-            </div>
-          </div>
-        ),
-        placement: 'right'
-      },
-      {
-        target: '.left-panel',
-        content: (
-          <div>
-            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 2: Fill Questionnaire</h3>
-            <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
-              <strong>📋 Complete the questionnaire</strong> using one of two methods:
+              <strong>📋 Complete the questionnaire</strong>:
             </p>
             <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px', lineHeight: 1.4 }}>
               <li><strong>Manual:</strong> Fill out each question based on your interview notes</li>
-              <li><strong>AI-Assisted:</strong> Use the AI feature to auto-fill based on the interview text</li>
+              {/* <li><strong>AI-Assisted:</strong> Use the AI feature to auto-fill based on the interview text</li> */}
             </ul>
-            <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.9em', color: '#7f8c8d' }}>
+            {/* <p style={{ margin: 0, lineHeight: 1.5, fontSize: '0.9em', color: '#7f8c8d' }}>
               You can mix both approaches as needed for different questions.
-            </p>
+            </p> */}
           </div>
         ),
         placement: 'right'
@@ -396,7 +396,7 @@ const Tutorial = ({ tutorialType, onComplete, isActive }) => {
         target: 'factor-button',
         content: (
           <div style={{ textAlign: 'center', padding: '20px' }}>
-            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 3: Learn About Factors 💡</h3>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 2: Learn About Factors 💡</h3>
             <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
               <strong>Click on factor names or info buttons</strong> throughout the questionnaire to learn more about what each factor represents in the MoFASA framework.
             </p>
@@ -415,7 +415,7 @@ const Tutorial = ({ tutorialType, onComplete, isActive }) => {
         target: '.rule-selection-section',
         content: (
           <div style={{ textAlign: 'center', padding: '20px' }}>
-            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 4: {RULE_SELECTION} 🎯</h3>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 3: {RULE_SELECTION} 🎯</h3>
             <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
               <strong>Select or add interaction rules</strong> for this participant:
             </p>
@@ -446,7 +446,7 @@ const Tutorial = ({ tutorialType, onComplete, isActive }) => {
         target: '.left-panel',
         content: (
           <div>
-            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 5: Generate Summary 📄</h3>
+            <h3 style={{ margin: '0 0 12px 0', color: '#2c3e50' }}>Step 4: Generate Summary 📄</h3>
             <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
               <strong>Look for the "Generate Summary" section</strong> in the left panel. You may need to scroll down and toggle it open.
             </p>
