@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { parseFactors, getFactorFromStorage } from '../utils/factorUtils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -21,6 +22,8 @@ ChartJS.register(
   Legend
 );
 
+const FACTOR_ANALYSIS_SECTIONS = ['Situation', 'Identity', 'Definition of Situation'];
+
 const BehavioralDiversityView = ({ 
   currentScope, 
   participants, 
@@ -29,14 +32,151 @@ const BehavioralDiversityView = ({
   statsSort,
   setStatsSort,
   isPdfGenerating,
-  generatePDF
+  generatePDF,
+  captureRef,
+  questions = {}
 }) => {
-  const behavioralRef = useRef(null);
   const [chartType, setChartType] = useState('bar'); // 'bar' or 'pie'
   const [undesirableRules, setUndesirableRules] = useState([]);
+  const [viewMode, setViewMode] = useState('diversity');
+  const [selectedFactor, setSelectedFactor] = useState(null);
+  const [factorSort, setFactorSort] = useState('');
 
   const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
   const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
+
+  const getQuestionAnswer = (participant, sectionName, question) => {
+    const sectionAnswers = participant.answers?.[sectionName] || {};
+    const answer = sectionAnswers[question.id] ?? sectionAnswers[question.text];
+    return typeof answer === 'string' ? answer.trim() : answer;
+  };
+
+  const getFactorQuestions = () => {
+    const factorSetMap = new Map();
+
+    FACTOR_ANALYSIS_SECTIONS.forEach(sectionName => {
+      (questions[sectionName] || []).forEach(question => {
+        const factors = parseFactors(question.factors);
+        if (factors.length === 0) return;
+
+        const name = factors.join(', ');
+        const key = `${sectionName}:${name}`;
+
+        if (!factorSetMap.has(key)) {
+          factorSetMap.set(key, {
+            key,
+            name,
+            sectionName,
+            factors,
+            details: factors.map(factor => getFactorFromStorage(factor)).filter(Boolean),
+            questions: []
+          });
+        }
+
+        factorSetMap.get(key).questions.push({
+          ...question,
+          sectionName
+        });
+      });
+    });
+
+    return Array.from(factorSetMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const factorQuestions = getFactorQuestions();
+  const factorQuestionsBySection = FACTOR_ANALYSIS_SECTIONS.map(sectionName => ({
+    sectionName,
+    factors: factorQuestions.filter(factor => factor.sectionName === sectionName)
+  })).filter(group => group.factors.length > 0);
+  const selectedFactorData = factorQuestions.find(factor => factor.key === selectedFactor) || factorQuestions[0];
+
+  useEffect(() => {
+    if (viewMode === 'factor-analysis' && !selectedFactor && factorQuestions.length > 0) {
+      setSelectedFactor(factorQuestions[0].key);
+    }
+  }, [viewMode, selectedFactor, factorQuestions]);
+
+  const getParticipantLabel = (participant) => {
+    const gender = participant.answers?.Identity?.gender || 'Unspecified';
+    const age = participant.answers?.Identity?.age || 'Unspecified';
+    return `${participant.name} (${gender}, ${age})`;
+  };
+
+  const getFactorResponses = () => {
+    if (!selectedFactorData) return [];
+
+    const responses = participants
+      .map(participant => {
+        const answers = selectedFactorData.questions
+          .map(question => ({
+            question: question.text,
+            answer: getQuestionAnswer(participant, question.sectionName, question)
+          }))
+          .filter(item => item.answer && String(item.answer).trim() !== '');
+
+        if (answers.length === 0) return null;
+
+        return {
+          participant,
+          answers
+        };
+      })
+      .filter(Boolean);
+
+    if (factorSort === 'age') {
+      return responses.sort((a, b) => {
+        const aAge = a.participant.answers?.Identity?.age || 'zz';
+        const bAge = b.participant.answers?.Identity?.age || 'zz';
+        return aAge.localeCompare(bAge) || a.participant.name.localeCompare(b.participant.name);
+      });
+    }
+
+    if (factorSort === 'gender') {
+      return responses.sort((a, b) => {
+        const aGender = a.participant.answers?.Identity?.gender || 'zz';
+        const bGender = b.participant.answers?.Identity?.gender || 'zz';
+        return aGender.localeCompare(bGender) || a.participant.name.localeCompare(b.participant.name);
+      });
+    }
+
+    return responses.sort((a, b) => a.participant.name.localeCompare(b.participant.name));
+  };
+
+  const getFactorResponseGroups = () => {
+    const responses = getFactorResponses();
+
+    if (!factorSort) {
+      return [{ title: null, responses }];
+    }
+
+    const groupOrder = factorSort === 'gender'
+      ? [...GENDER_OPTIONS, 'Unspecified']
+      : [...AGE_RANGES, 'Unspecified'];
+    const getGroupTitle = (participant) => (
+      factorSort === 'gender'
+        ? participant.answers?.Identity?.gender || 'Unspecified'
+        : participant.answers?.Identity?.age || 'Unspecified'
+    );
+
+    const groupedResponses = responses.reduce((groups, response) => {
+      const title = getGroupTitle(response.participant);
+      if (!groups[title]) groups[title] = [];
+      groups[title].push(response);
+      return groups;
+    }, {});
+
+    const orderedTitles = [
+      ...groupOrder.filter(title => groupedResponses[title]),
+      ...Object.keys(groupedResponses)
+        .filter(title => !groupOrder.includes(title))
+        .sort((a, b) => a.localeCompare(b))
+    ];
+
+    return orderedTitles.map(title => ({
+      title,
+      responses: groupedResponses[title]
+    }));
+  };
 
   // Load undesirable rules from database whenever currentScope changes
   useEffect(() => {
@@ -346,7 +486,7 @@ const BehavioralDiversityView = ({
 
   return (
     <>
-      {/* Sort options and Download button */}
+      {/* Sort options and action buttons */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -361,12 +501,18 @@ const BehavioralDiversityView = ({
             fontSize: '0.95em',
             color: '#34495e'
           }}>
-            Sort by:
+            {viewMode === 'factor-analysis' ? 'Sort responses by:' : 'Sort by:'}
           </label>
           <select
             className="sort-by-selector"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            value={viewMode === 'factor-analysis' ? factorSort : sortBy}
+            onChange={(e) => {
+              if (viewMode === 'factor-analysis') {
+                setFactorSort(e.target.value);
+              } else {
+                setSortBy(e.target.value);
+              }
+            }}
             style={{
               padding: '8px 12px',
               borderRadius: 4,
@@ -378,14 +524,43 @@ const BehavioralDiversityView = ({
               width: '200px'
             }}
           >
-            <option value="">-No Sorting-</option>
-            <option value="age">Age Range</option>
-            <option value="gender">Gender</option>
+            {viewMode === 'factor-analysis' ? (
+              <>
+                <option value="">Participant Name</option>
+                <option value="age">Age Range</option>
+                <option value="gender">Gender</option>
+              </>
+            ) : (
+              <>
+                <option value="">-No Sorting-</option>
+                <option value="age">Age Range</option>
+                <option value="gender">Gender</option>
+              </>
+            )}
           </select>
         </div>
 
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => setViewMode(viewMode === 'diversity' ? 'factor-analysis' : 'diversity')}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: viewMode === 'factor-analysis' ? '#34495e' : '#2980b9',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontFamily: 'Lexend, sans-serif',
+              fontWeight: 600
+            }}
+          >
+            {viewMode === 'factor-analysis' ? 'Back to Behavioral Diversity' : 'Factor Analysis'}
+          </button>
+
         {/* PDF Download Button */}
-        <button
+        {viewMode === 'diversity' && (
+          <button
           onClick={generatePDF}
           disabled={isPdfGenerating}
           style={{
@@ -412,13 +587,224 @@ const BehavioralDiversityView = ({
               Download as PDF
             </>
           )}
-        </button>
+          </button>
+        )}
+        </div>
       </div>
 
-              {/* Wrap the entire behavioral content in a ref with max-width */}
+      {viewMode === 'factor-analysis' ? (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(220px, 280px) minmax(0, 1fr)',
+          gap: '20px',
+          alignItems: 'start'
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '8px',
+            border: '1px solid #dcdde1',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+            padding: '16px'
+          }}>
+            <h3 style={{
+              margin: '0 0 12px 0',
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1em',
+              color: '#2c3e50'
+            }}>
+              Factors
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {factorQuestionsBySection.map(group => (
+                <div key={group.sectionName}>
+                  <h4 style={{
+                    margin: '0 0 8px 0',
+                    paddingBottom: '6px',
+                    borderBottom: '1px solid #e9ecef',
+                    fontFamily: 'Lexend, sans-serif',
+                    fontSize: '0.86em',
+                    color: '#607080',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em'
+                  }}>
+                    {group.sectionName}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {group.factors.map(factor => (
+                      <button
+                        type="button"
+                        key={factor.key}
+                        onClick={() => setSelectedFactor(factor.key)}
+                        style={{
+                          padding: '10px 12px',
+                          textAlign: 'left',
+                          borderRadius: '6px',
+                          border: selectedFactorData?.key === factor.key ? '1px solid #2980b9' : '1px solid #dcdde1',
+                          backgroundColor: selectedFactorData?.key === factor.key ? '#eaf4fb' : '#fff',
+                          color: selectedFactorData?.key === factor.key ? '#1a5276' : '#2c3e50',
+                          cursor: 'pointer',
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '0.92em',
+                          fontWeight: selectedFactorData?.key === factor.key ? 700 : 500
+                        }}
+                      >
+                        {factor.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {factorQuestions.length === 0 && (
+                <div style={{
+                  color: '#7f8c8d',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.9em',
+                  lineHeight: 1.5
+                }}>
+                  No configured factors were found for Situation, Identity, or Definition of Situation.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{
+            background: '#fff',
+            borderRadius: '8px',
+            border: '1px solid #dcdde1',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+            padding: '20px'
+          }}>
+            {selectedFactorData ? (
+              <>
+                <div style={{
+                  borderBottom: '1px solid #e9ecef',
+                  paddingBottom: '14px',
+                  marginBottom: '16px'
+                }}>
+                  <h3 style={{
+                    margin: '0 0 8px 0',
+                    fontFamily: 'Lexend, sans-serif',
+                    fontSize: '1.2em',
+                    color: '#2c3e50'
+                  }}>
+                    {selectedFactorData.name}
+                  </h3>
+                  {selectedFactorData.details.length > 0 && (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}>
+                      {selectedFactorData.details.map(detail => (
+                        <p
+                          key={detail.factor}
+                          style={{
+                            margin: 0,
+                            fontFamily: 'Lexend, sans-serif',
+                            fontSize: '0.92em',
+                            color: '#607080',
+                            lineHeight: 1.5
+                          }}
+                        >
+                          {selectedFactorData.details.length > 1 ? `${detail.factor}: ` : ''}{detail.description}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  {getFactorResponseGroups().map(group => (
+                    <div key={group.title || 'all-responses'} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {group.title && (
+                        <h4 style={{
+                          margin: 0,
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '1em',
+                          color: '#2980b9',
+                          fontWeight: 700
+                        }}>
+                          {group.title}
+                        </h4>
+                      )}
+                      {group.responses.map(({ participant, answers }) => (
+                        <div
+                          key={participant.id}
+                          style={{
+                            padding: '14px',
+                            border: '1px solid #e9ecef',
+                            borderRadius: '8px',
+                            backgroundColor: '#f8f9fa'
+                          }}
+                        >
+                          <h4 style={{
+                            margin: '0 0 10px 0',
+                            fontFamily: 'Lexend, sans-serif',
+                            fontSize: '1em',
+                            color: '#2c3e50'
+                          }}>
+                            {getParticipantLabel(participant)}
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {answers.map((item, index) => (
+                              <div key={`${participant.id}-${index}`}>
+                                {answers.length > 1 && (
+                                  <div style={{
+                                    marginBottom: '4px',
+                                    fontFamily: 'Lexend, sans-serif',
+                                    fontSize: '0.82em',
+                                    color: '#607080',
+                                    fontWeight: 600
+                                  }}>
+                                    {item.question}
+                                  </div>
+                                )}
+                                <p style={{
+                                  margin: 0,
+                                  fontFamily: 'Lexend, sans-serif',
+                                  fontSize: '0.95em',
+                                  color: '#34495e',
+                                  lineHeight: 1.55
+                                }}>
+                                  {item.answer}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  {getFactorResponses().length === 0 && (
+                    <div style={{
+                      padding: '18px',
+                      border: '1px dashed #ccd5df',
+                      borderRadius: '8px',
+                      color: '#7f8c8d',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.95em',
+                      textAlign: 'center'
+                    }}>
+                      No participants have an answer for this factor.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{
+                color: '#7f8c8d',
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.95em'
+              }}>
+                Select a factor to see participant responses.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
         <div 
           
-          ref={behavioralRef}
+          ref={captureRef}
           style={{
             width: '100%'
           }}
@@ -452,16 +838,40 @@ const BehavioralDiversityView = ({
                     boxSizing: 'border-box'
                   }}
                 >
-                  <h3 style={{ 
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: '10px',
+                    flexWrap: 'wrap',
                     margin: '0 0 15px 0',
-                    fontFamily: 'Lexend, sans-serif',
-                    fontSize: '1.1em',
-                    color: '#2c3e50',
                     borderBottom: '1px solid #eee',
                     paddingBottom: 10
                   }}>
-                    {participant.name}
-                  </h3>
+                    <h3 style={{ 
+                      margin: 0,
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '1.1em',
+                      color: '#2c3e50'
+                    }}>
+                      {participant.name}
+                    </h3>
+                    <span style={{
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.85em',
+                      color: '#6c757d',
+                      fontWeight: 500
+                    }}>
+                      Gender: {participant.answers?.Identity?.gender || 'Unspecified'}
+                    </span>
+                    <span style={{
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.85em',
+                      color: '#6c757d',
+                      fontWeight: 500
+                    }}>
+                      Age: {participant.answers?.Identity?.age || 'Unspecified'}
+                    </span>
+                  </div>
                   
                   <div style={{ marginBottom: 15 }}>
                     <h4 style={{ 
@@ -694,7 +1104,8 @@ const BehavioralDiversityView = ({
             )}
           </div>
         </div>
-      </div>
+        </div>
+      )}
     </>
   );
 };

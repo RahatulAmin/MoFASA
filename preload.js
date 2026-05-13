@@ -12,8 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File download API
   downloadFile: (fileName) => ipcRenderer.invoke('download-file', fileName),
   // Llama3 LLM functionality
-      generateWithLlama: (prompt) => ipcRenderer.invoke('generate-with-llama', prompt),
-    generateWithLlamaStream: (prompt) => ipcRenderer.invoke('generate-with-llama-stream', prompt),
+      generateWithLlama: (prompt, options) => ipcRenderer.invoke('generate-with-llama', prompt, options),
+    generateWithLlamaStream: (prompt, options) => ipcRenderer.invoke('generate-with-llama-stream', prompt, options),
     onGenerationProgress: (callback) => ipcRenderer.on('generation-progress', callback),
     removeGenerationProgressListener: (callback) => ipcRenderer.removeListener('generation-progress', callback),
   getLlamaStatus: () => ipcRenderer.invoke('get-llama-status'),

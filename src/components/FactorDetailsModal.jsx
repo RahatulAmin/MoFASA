@@ -9,6 +9,36 @@ const FactorDetailsModal = ({
     return null;
   }
 
+  const renderListSection = (title, items) => {
+    if (!Array.isArray(items) || items.length === 0) return null;
+
+    return (
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={{
+          margin: '0 0 12px 0',
+          color: '#34495e',
+          fontSize: '1.1em',
+          fontWeight: '600'
+        }}>
+          {title}
+        </h3>
+        <ul style={{
+          margin: 0,
+          paddingLeft: '20px',
+          color: '#2c3e50',
+          fontSize: '0.95em',
+          lineHeight: '1.6'
+        }}>
+          {items.map((item, index) => (
+            <li key={index} style={{ marginBottom: '8px' }}>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -82,7 +112,8 @@ const FactorDetailsModal = ({
 
         
 
-        <div style={{ marginBottom: '24px' }}>
+        {factorDetails.questionText && (
+          <div style={{ marginBottom: '24px' }}>
           <h3 style={{ 
             margin: '0 0 12px 0', 
             color: '#34495e',
@@ -103,7 +134,8 @@ const FactorDetailsModal = ({
           }}>
             {factorDetails.questionText}
           </p>
-        </div>
+          </div>
+        )}
 
         <div style={{ marginBottom: '24px' }}>
           <h3 style={{ 
@@ -112,7 +144,7 @@ const FactorDetailsModal = ({
             fontSize: '1.1em',
             fontWeight: '600'
           }}>
-            Factor Description
+            Description
           </h3>
           <p style={{ 
             margin: 0, 
@@ -124,31 +156,12 @@ const FactorDetailsModal = ({
           </p>
         </div>
 
-        <div style={{ marginBottom: '24px' }}>
-          <h3 style={{ 
-            margin: '0 0 12px 0', 
-            color: '#34495e',
-            fontSize: '1.1em',
-            fontWeight: '600'
-          }}>
-            Examples
-          </h3>
-          <ul style={{ 
-            margin: 0, 
-            paddingLeft: '20px',
-            color: '#2c3e50',
-            fontSize: '0.95em',
-            lineHeight: '1.6'
-          }}>
-            {factorDetails.examples.map((example, index) => (
-              <li key={index} style={{ marginBottom: '8px' }}>
-                {example}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {renderListSection('When to Code', factorDetails.whenToCode)}
+        {renderListSection('When Not to Code', factorDetails.whenNotToCode)}
+        {renderListSection('Examples', factorDetails.examples)}
 
-        <div style={{ marginBottom: '24px' }}>
+        {Array.isArray(factorDetails.relatedFactors) && factorDetails.relatedFactors.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
           <h3 style={{ 
             margin: '0 0 12px 0', 
             color: '#34495e',
@@ -171,7 +184,8 @@ const FactorDetailsModal = ({
               </span>
             ))}
           </div>
-        </div>
+          </div>
+        )}
 
         {/* <div style={{ marginBottom: '24px' }}>
           <h3 style={{ 

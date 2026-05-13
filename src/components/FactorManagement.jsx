@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAllFactors, getFactorsBySection } from '../utils/factorUtils';
+import { getAllFactors } from '../utils/factorUtils';
 
 const SECTIONS = [
   { name: 'Situation', color: '#f9f3f2' },
@@ -8,6 +8,40 @@ const SECTIONS = [
   { name: 'Rule Selection', color: '#ededed' },
   { name: 'Decision', color: '#f2fcf2' }
 ];
+
+const listIncludes = (items, searchTerm) => {
+  if (!Array.isArray(items)) return false;
+  return items.some(item => item.toLowerCase().includes(searchTerm.toLowerCase()));
+};
+
+const DetailList = ({ title, items }) => {
+  if (!Array.isArray(items) || items.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: '20px' }}>
+      <h4 style={{
+        margin: '0 0 8px 0',
+        color: '#2c3e50',
+        fontSize: '1em',
+        fontWeight: '600'
+      }}>
+        {title}
+      </h4>
+      <ul style={{
+        margin: 0,
+        paddingLeft: '20px',
+        color: '#495057',
+        lineHeight: '1.5'
+      }}>
+        {items.map((item, index) => (
+          <li key={index} style={{ marginBottom: '4px' }}>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
 
 const FactorManagement = () => {
   const [factors, setFactors] = useState({});
@@ -25,7 +59,11 @@ const FactorManagement = () => {
 
   const filteredFactors = Object.values(factors).filter(factor => {
     const matchesSearch = factor.factor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         factor.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         factor.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         listIncludes(factor.whenToCode, searchTerm) ||
+                         listIncludes(factor.whenNotToCode, searchTerm) ||
+                         listIncludes(factor.examples, searchTerm) ||
+                         listIncludes(factor.relatedFactors, searchTerm);
     const matchesSection = selectedSection === 'All' || factor.section === selectedSection;
     return matchesSearch && matchesSection;
   });
@@ -189,30 +227,12 @@ const FactorManagement = () => {
               </p>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ 
-                margin: '0 0 8px 0', 
-                color: '#2c3e50',
-                fontSize: '1em',
-                fontWeight: '600'
-              }}>
-                Examples
-              </h4>
-              <ul style={{ 
-                margin: 0, 
-                paddingLeft: '20px',
-                color: '#495057',
-                lineHeight: '1.5'
-              }}>
-                {selectedFactor.examples.map((example, index) => (
-                  <li key={index} style={{ marginBottom: '4px' }}>
-                    {example}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <DetailList title="When to Code" items={selectedFactor.whenToCode} />
+            <DetailList title="When Not to Code" items={selectedFactor.whenNotToCode} />
+            <DetailList title="Examples" items={selectedFactor.examples} />
 
-            <div style={{ marginBottom: '20px' }}>
+            {Array.isArray(selectedFactor.relatedFactors) && selectedFactor.relatedFactors.length > 0 && (
+              <div style={{ marginBottom: '20px' }}>
               <h4 style={{ 
                 margin: '0 0 8px 0', 
                 color: '#2c3e50',
@@ -237,7 +257,8 @@ const FactorManagement = () => {
                   </span>
                 ))}
               </div>
-            </div>
+              </div>
+            )}
 
             {selectedFactor.researchNotes && (
               <div style={{ marginBottom: '20px' }}>

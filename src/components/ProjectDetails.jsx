@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import editIcon from '../images/edit.png';
 import deleteIcon from '../images/trash.png';
 import PersonaeFramework from './PersonaeFramework';
 import PersonaeMappingView from './PersonaeMappingView';
 import BehavioralDiversityView from './BehavioralDiversityView';
+import CrossParticipantSummaryView from './CrossParticipantSummaryView';
 import SituationDesignView from './SituationDesignView';
 import FactorDetailsModal from './FactorDetailsModal';
 import InfoModal from './InfoModal';
@@ -16,6 +17,13 @@ import html2canvas from 'html2canvas';
 import { getProjects, saveProjects } from '../store';
 import ProjectReport from './ProjectReport';
 import { CurrentViewContext } from '../App';
+import {
+  ANALYTIC_TAGS_SECTION,
+  ANALYTIC_TAG_COLORS_FIELD,
+  CROSS_PARTICIPANT_SECTION,
+  SUMMARY_FIELDS,
+  getAcceptedTags
+} from '../utils/mofasaAnalysis';
 
 const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
@@ -25,6 +33,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const idx = parseInt(projectId, 10);
   const project = projects[idx];
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Get the context for updating global currentView
   const { setCurrentView: setGlobalCurrentView } = useContext(CurrentViewContext);
@@ -40,7 +49,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [participantDraft, setParticipantDraft] = useState('');
   const [nameError, setNameError] = useState('');
-  const [currentView, setCurrentView] = useState('details'); // 'details', 'personae', 'behavioral', or 'situation'
+  const [currentView, setCurrentView] = useState(location.state?.view || 'details'); // 'details', 'personae', 'behavioral', or 'situation'
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [sortBy, setSortBy] = useState("");
   const [statsSort, setStatsSort] = useState(""); // New state for stats sorting
@@ -162,6 +171,12 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   useEffect(() => {
     setSelectedParticipant(null);
   }, [projectId]);
+
+  useEffect(() => {
+    if (location.state?.view) {
+      setCurrentView(location.state.view);
+    }
+  }, [location.state?.view]);
 
   // Update global currentView when local currentView changes
   useEffect(() => {
@@ -314,7 +329,127 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   };
 
   const handleParticipantClick = (id) => {
-    navigate(`/projects/${idx}/participants/${id}`);
+    navigate(`/projects/${idx}/participants/${id}`, {
+      state: { returnView: currentView }
+    });
+  };
+
+  const updateParticipantSummaryField = async (participantId, field, value) => {
+    if (!currentScope || !SUMMARY_FIELDS.includes(field)) return;
+    await saveParticipantSummaryFields(participantId, { [field]: value });
+  };
+
+  const saveParticipantSummaryFields = async (participantId, fieldValues) => {
+    if (!currentScope) return;
+
+    const safeFieldValues = Object.fromEntries(
+      Object.entries(fieldValues || {}).filter(([field]) => SUMMARY_FIELDS.includes(field))
+    );
+    if (Object.keys(safeFieldValues).length === 0) return;
+
+    const updatedParticipants = participants.map(participant => {
+      if (participant.id !== participantId) return participant;
+
+      return {
+        ...participant,
+        answers: {
+          ...participant.answers,
+          [CROSS_PARTICIPANT_SECTION]: {
+            ...participant.answers?.[CROSS_PARTICIPANT_SECTION],
+            ...safeFieldValues
+          }
+        }
+      };
+    });
+
+    const updatedScopes = project.scopes.map((scope, scopeIndex) => (
+      scopeIndex === selectedScope
+        ? { ...scope, participants: updatedParticipants }
+        : scope
+    ));
+
+    editProject(idx, { ...project, scopes: updatedScopes });
+    setParticipants(updatedParticipants);
+
+    const updatedParticipant = updatedParticipants.find(participant => participant.id === participantId);
+    if (updatedParticipant?.answers && window.electronAPI?.updateParticipantAnswers) {
+      try {
+        await window.electronAPI.updateParticipantAnswers(project.id, participantId, updatedParticipant.answers);
+      } catch (error) {
+        console.error('Error saving participant summary table field:', error);
+      }
+    }
+  };
+
+  const clearParticipantSummaryFields = async (participantId) => {
+    if (!currentScope) return;
+
+    const updatedParticipants = participants.map(participant => {
+      if (participant.id !== participantId) return participant;
+      const answers = { ...participant.answers };
+      delete answers[CROSS_PARTICIPANT_SECTION];
+      return { ...participant, answers };
+    });
+
+    const updatedScopes = project.scopes.map((scope, scopeIndex) => (
+      scopeIndex === selectedScope
+        ? { ...scope, participants: updatedParticipants }
+        : scope
+    ));
+
+    editProject(idx, { ...project, scopes: updatedScopes });
+    setParticipants(updatedParticipants);
+
+    const updatedParticipant = updatedParticipants.find(participant => participant.id === participantId);
+    if (updatedParticipant?.answers && window.electronAPI?.updateParticipantAnswers) {
+      try {
+        await window.electronAPI.updateParticipantAnswers(project.id, participantId, updatedParticipant.answers);
+      } catch (error) {
+        console.error('Error clearing participant summary table fields:', error);
+      }
+    }
+  };
+
+  const updateParticipantTagColor = async (_participantId, tag, colorId) => {
+    if (!currentScope || !tag) return;
+
+    const updatedParticipants = participants.map(participant => {
+      if (!getAcceptedTags(participant).includes(tag)) return participant;
+
+      return {
+        ...participant,
+        answers: {
+          ...participant.answers,
+          [ANALYTIC_TAGS_SECTION]: {
+            ...participant.answers?.[ANALYTIC_TAGS_SECTION],
+            [ANALYTIC_TAG_COLORS_FIELD]: {
+              ...(participant.answers?.[ANALYTIC_TAGS_SECTION]?.[ANALYTIC_TAG_COLORS_FIELD] || {}),
+              [tag]: colorId
+            }
+          }
+        }
+      };
+    });
+
+    const updatedScopes = project.scopes.map((scope, scopeIndex) => (
+      scopeIndex === selectedScope
+        ? { ...scope, participants: updatedParticipants }
+        : scope
+    ));
+
+    editProject(idx, { ...project, scopes: updatedScopes });
+    setParticipants(updatedParticipants);
+
+    if (window.electronAPI?.updateParticipantAnswers) {
+      const participantsToSave = updatedParticipants.filter(participant => getAcceptedTags(participant).includes(tag));
+      try {
+        await Promise.all(participantsToSave.map(participant => (
+          window.electronAPI.updateParticipantAnswers(project.id, participant.id, participant.answers)
+        )));
+      } catch (error) {
+        console.error('Error saving shared participant tag color:', error);
+      }
+    }
   };
 
 
@@ -467,6 +602,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         if (personaeView === 'framework') {
           bgColor = '#2c3e50';
         }
+      }
+
+      if (!elementToCapture) {
+        throw new Error('No PDF content is available to capture.');
       }
 
       // Create a wrapper div for padding
@@ -968,10 +1107,10 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
       <div className="left-panel" style={{ 
-        width: currentView === 'behavioral' ? '100%' : '50%',
+        width: currentView === 'behavioral' || currentView === 'crossSummary' ? '100%' : '50%',
         padding: '24px', 
         overflowY: 'auto',
-        borderRight: currentView !== 'behavioral' ? '1px solid #dcdde1' : 'none',
+        borderRight: currentView !== 'behavioral' && currentView !== 'crossSummary' ? '1px solid #dcdde1' : 'none',
         transition: 'width 0.3s ease'
       }}>
         {/* Header with Back Button and Download Report Button */}
@@ -1770,6 +1909,35 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
           >
             Behavioral Diversity
           </button>
+          <button
+            key="cross-participant-summary"
+            onClick={() => setCurrentView(currentView === 'crossSummary' ? 'details' : 'crossSummary')}
+            style={{
+              padding: '8px 16px',
+              background: currentView === 'crossSummary' ? '#6c3483' : '#8e44ad',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: currentView === 'crossSummary' ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+              fontFamily: 'Lexend, sans-serif'
+            }}
+            onMouseOver={(e) => {
+              if (currentView !== 'crossSummary') {
+                e.target.style.background = '#6c3483';
+                e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (currentView !== 'crossSummary') {
+                e.target.style.background = '#8e44ad';
+                e.target.style.boxShadow = 'none';
+              }
+            }}
+          >
+            MoFASA Summary Table
+          </button>
           <button 
             className="situation-design-button"
             key="situation-design"
@@ -1855,6 +2023,8 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               setStatsSort={setStatsSort}
               isPdfGenerating={isPdfGenerating}
               generatePDF={generatePDF}
+              captureRef={behavioralRef}
+              questions={questions}
             />
           </>
         ) : currentView === 'personae' ? (
@@ -1916,6 +2086,18 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
               generatePDF={generatePDF}
             />
           </>
+        ) : currentView === 'crossSummary' ? (
+          <CrossParticipantSummaryView
+            project={project}
+            currentScope={currentScope}
+            participants={participants}
+            onAddParticipant={handleAddParticipant}
+            onOpenParticipant={handleParticipantClick}
+            onUpdateParticipantSummaryField={updateParticipantSummaryField}
+            onSaveParticipantSummaryFields={saveParticipantSummaryFields}
+            onClearParticipantSummary={clearParticipantSummaryFields}
+            onUpdateParticipantTagColor={updateParticipantTagColor}
+          />
         ) : currentView === 'situation' ? (
           <>
             {/* Situation Design Header */}
@@ -2166,7 +2348,7 @@ const ProjectDetails = ({ projects, updateProjectDescription, editProject, delet
         
       </div>
 
-      {currentView !== 'behavioral' && (
+      {currentView !== 'behavioral' && currentView !== 'crossSummary' && (
         <div className="right-panel" style={{ 
           width: '50%',
           background: currentView === 'personae' ? 'linear-gradient(180deg,rgb(55, 70, 83) 0%, #232b32 100%)' : '#fff',

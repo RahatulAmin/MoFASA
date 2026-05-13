@@ -629,7 +629,7 @@ function performMigration() {
       },
       {
         name: 'Role Identities',
-        category: 'Identity',
+        category: 'Situation',
         description: 'The formal or informal roles individuals perceive themselves as holding.',
         examples: [
           'A teacher may feel responsible for group behavior',
@@ -638,7 +638,7 @@ function performMigration() {
         ],
         relatedFactors: ['Authority', 'Norms', 'Status'],
         researchNotes: 'Perceived role shapes expectations and perceived obligations in HRI.',
-        section: 'Identity'
+        section: 'Situation'
       },
       {
         name: 'Background',
@@ -655,7 +655,7 @@ function performMigration() {
       },
       {
         name: 'Social Motive',
-        category: 'Identity',
+        category: 'Situation',
         description: 'The underlying reason for engaging with the robot or the situation.',
         examples: [
           'Curiosity to try new tech',
@@ -664,7 +664,7 @@ function performMigration() {
         ],
         relatedFactors: ['Intent', 'Goal', 'Purpose'],
         researchNotes: 'Motives influence engagement depth and perceived outcomes.',
-        section: 'Identity'
+        section: 'Situation'
       },
       {
         name: 'Personal History',

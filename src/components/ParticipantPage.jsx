@@ -1,7 +1,20 @@
 import React, { useRef, useLayoutEffect, useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import FactorDetailsModal from './FactorDetailsModal';
-import { handleFactorClick, parseFactors } from '../utils/factorUtils';
+import { handleFactorClick, parseFactors, getFactorFromStorage } from '../utils/factorUtils';
+import {
+  ANALYTIC_TAGS_SECTION,
+  ANALYTIC_TAGS_FIELD,
+  ANALYTIC_TAG_COLORS_FIELD,
+  DEFAULT_TAG_COLOR,
+  TAG_COLOR_OPTIONS,
+  getAcceptedTags,
+  getTagColors,
+  getTagColorStyle,
+  getParticipantSummary,
+  normalizeTags,
+  suggestTags
+} from '../utils/mofasaAnalysis';
 import { RULE_SELECTION, SITUATION, IDENTITY, DEFINITION_OF_SITUATION } from '../constants/labels';
 
 const SECTIONS = [
@@ -29,6 +42,102 @@ const SECTIONS = [
 
 const AGE_RANGES = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-Binary', 'Other'];
+const DEFAULT_SECTION_ORDER = SECTIONS.map(section => section.name);
+
+const normalizeSectionOrder = (sectionOrder) => {
+  const requestedOrder = Array.isArray(sectionOrder) ? sectionOrder : [];
+  const validNames = new Set(DEFAULT_SECTION_ORDER);
+  const uniqueOrderedNames = requestedOrder.filter((name, index) => (
+    validNames.has(name) && requestedOrder.indexOf(name) === index
+  ));
+  const missingNames = DEFAULT_SECTION_ORDER.filter(name => !uniqueOrderedNames.includes(name));
+
+  return [...uniqueOrderedNames, ...missingNames];
+};
+
+const normalizeTextForMatch = (value) => (
+  String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+);
+
+const splitInterviewIntoSentences = (text) => {
+  const sentenceMatches = String(text || '').match(/[^.!?\n]+(?:[.!?]+|$)|\n+/g) || [];
+  return sentenceMatches
+    .map(part => part.trim())
+    .filter(Boolean);
+};
+
+const extractJsonObject = (response) => {
+  const cleaned = String(response || '')
+    .replace(/```json/gi, '```')
+    .replace(/```/g, '')
+    .trim();
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    throw new Error('No JSON object found in LLM response');
+  }
+
+  return JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
+};
+
+const tokenizeForSuggestions = (value) => (
+  normalizeTextForMatch(value)
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(token => token.length > 2)
+);
+
+const getSuggestionTerms = (factorContextItem) => {
+  const factorDetails = getFactorFromStorage(factorContextItem.factor);
+  const sourceText = [
+    factorContextItem.factor,
+    factorDetails?.description,
+    ...(factorDetails?.examples || []),
+    ...(factorDetails?.relatedFactors || []),
+    ...(factorContextItem.questions || [])
+  ].join(' ');
+
+  return Array.from(new Set(tokenizeForSuggestions(sourceText)));
+};
+
+const buildCandidateSuggestions = (interviewText, factorContext) => {
+  const sentences = splitInterviewIntoSentences(interviewText);
+
+  return factorContext.flatMap(factorItem => {
+    const terms = getSuggestionTerms(factorItem);
+    const factorDetails = getFactorFromStorage(factorItem.factor);
+
+    return sentences
+      .map((sentence, sentenceIndex) => {
+        const sentenceTokens = new Set(tokenizeForSuggestions(sentence));
+        const matchedTerms = terms.filter(term => sentenceTokens.has(term));
+        const directFactorMatch = normalizeTextForMatch(sentence).includes(normalizeTextForMatch(factorItem.factor));
+        const score = matchedTerms.length + (directFactorMatch ? 3 : 0);
+
+        return {
+          id: `${factorItem.factor}-${sentenceIndex}`,
+          factor: factorItem.factor,
+          section: factorItem.sections?.[0] || factorDetails?.section || '',
+          question: factorItem.questions?.[0] || '',
+          sentence,
+          sentenceIndex,
+          matchedTerms,
+          score,
+          factorDescription: factorDetails?.description || '',
+          factorExamples: factorDetails?.examples || []
+        };
+      })
+      .filter(candidate => candidate.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4);
+  })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 45);
+};
 
 const QUESTIONS = {
   'Situation': [
@@ -114,8 +223,15 @@ const arePropsEqual = (prevProps, nextProps) => {
 const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipantSummary, updateProjectRules, saveParticipantData }) => {
   const { projectId, participantId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const idx = parseInt(projectId, 10);
   const project = projects && projects[idx];
+  const returnView = location.state?.returnView || 'details';
+  const navigateToParticipant = (id) => {
+    navigate(`/projects/${projectId}/participants/${id}`, {
+      state: { returnView }
+    });
+  };
   
   // Use the actual project database ID for DB calls
   const actualProjectId = project?.id;
@@ -178,6 +294,27 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const [sameForAllScopes, setSameForAllScopes] = useState({}); // Track which questions should apply to all scopes per participant
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionMessage, setCompletionMessage] = useState('');
+  const [isFrameworkPanelCollapsed, setIsFrameworkPanelCollapsed] = useState(false);
+  const [sectionOrder, setSectionOrder] = useState(() => {
+    try {
+      const storedOrder = localStorage.getItem(`participant_section_order_${actualProjectId || idx}`);
+      return normalizeSectionOrder(storedOrder ? JSON.parse(storedOrder) : DEFAULT_SECTION_ORDER);
+    } catch (error) {
+      return DEFAULT_SECTION_ORDER;
+    }
+  });
+  const [showSectionOrderModal, setShowSectionOrderModal] = useState(false);
+  const [draftSectionOrder, setDraftSectionOrder] = useState([]);
+  const [draggingSectionName, setDraggingSectionName] = useState(null);
+  const [dragOverSectionName, setDragOverSectionName] = useState(null);
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+  const [suggestionProgress, setSuggestionProgress] = useState(0);
+  const [suggestionStatus, setSuggestionStatus] = useState('');
+  const [suggestionError, setSuggestionError] = useState(null);
+  const [mofasaSuggestions, setMofasaSuggestions] = useState([]);
+  const [suggestedAnalyticTags, setSuggestedAnalyticTags] = useState([]);
+  const [customAnalyticTag, setCustomAnalyticTag] = useState('');
+  const [tagColorModalTag, setTagColorModalTag] = useState(null);
   
   // Persist interview processing state - participant specific
   const [processingStatus, setProcessingStatus] = useState({
@@ -192,10 +329,16 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   const scrollPositionRef = useRef({ top: 0, left: 0 });
   const shouldRestoreScroll = useRef(false);
   const questionsLoadedRef = useRef(false); // Track if questions are already loaded
+  const draggedSectionNameRef = useRef(null);
   
   // Persist interview text and processing state - participant specific
   const getInterviewStorageKey = () => `interview_${participantId}_${actualProjectId}`;
   const getProcessingStorageKey = () => `processing_${participantId}_${actualProjectId}`;
+  const getSectionOrderStorageKey = () => `participant_section_order_${actualProjectId || idx}`;
+
+  const orderedSections = normalizeSectionOrder(sectionOrder)
+    .map(sectionName => SECTIONS.find(section => section.name === sectionName))
+    .filter(Boolean);
   
   const saveInterviewState = (text, isProcessing = false) => {
     try {
@@ -319,6 +462,337 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       }
     }, 300); // Increased debounce to 300ms for better performance
   };
+
+  const saveSectionOrder = (nextOrder) => {
+    setSectionOrder(nextOrder);
+    try {
+      localStorage.setItem(getSectionOrderStorageKey(), JSON.stringify(nextOrder));
+    } catch (error) {
+      console.error('Error saving participant section order:', error);
+    }
+  };
+
+  const openSectionOrderModal = () => {
+    setDraftSectionOrder(normalizeSectionOrder(sectionOrder));
+    setDraggingSectionName(null);
+    setDragOverSectionName(null);
+    setShowSectionOrderModal(true);
+  };
+
+  const handleDraftSectionDrop = (targetSectionName) => {
+    const draggedSectionName = draggedSectionNameRef.current;
+    draggedSectionNameRef.current = null;
+    setDraggingSectionName(null);
+    setDragOverSectionName(null);
+
+    if (!draggedSectionName || draggedSectionName === targetSectionName) return;
+
+    const nextOrder = Array.from(normalizeSectionOrder(draftSectionOrder));
+    const sourceIndex = nextOrder.indexOf(draggedSectionName);
+    const destinationIndex = nextOrder.indexOf(targetSectionName);
+
+    if (sourceIndex === -1 || destinationIndex === -1) return;
+
+    const [movedSection] = nextOrder.splice(sourceIndex, 1);
+    nextOrder.splice(destinationIndex, 0, movedSection);
+    setDraftSectionOrder(nextOrder);
+  };
+
+  const saveDraftSectionOrder = () => {
+    saveSectionOrder(normalizeSectionOrder(draftSectionOrder));
+    setShowSectionOrderModal(false);
+  };
+
+  const buildFactorContext = () => {
+    const factorMap = new Map();
+
+    Object.entries(questions || {}).forEach(([sectionName, sectionQuestions]) => {
+      (sectionQuestions || []).forEach(question => {
+        const questionText = typeof question === 'object' ? question.text : question;
+        const factors = typeof question === 'object' ? question.factors : null;
+
+        parseFactors(factors).forEach(factor => {
+          if (!factorMap.has(factor)) {
+            factorMap.set(factor, {
+              factor,
+              sections: new Set(),
+              questions: new Set()
+            });
+          }
+
+          factorMap.get(factor).sections.add(sectionName);
+          factorMap.get(factor).questions.add(questionText);
+        });
+      });
+    });
+
+    return Array.from(factorMap.values()).map(item => ({
+      factor: item.factor,
+      sections: Array.from(item.sections),
+      questions: Array.from(item.questions)
+    }));
+  };
+
+  const handleGenerateMofasaSuggestions = async () => {
+    if (!interviewText.trim()) {
+      setSuggestionError('Please enter interview text first.');
+      return;
+    }
+
+    const factorContext = buildFactorContext();
+    if (factorContext.length === 0) {
+      setSuggestionError('No associated factors are available for the current questions.');
+      return;
+    }
+
+    setIsGeneratingSuggestions(true);
+    setSuggestionProgress(5);
+    setSuggestionStatus('Finding candidate sentences...');
+    setSuggestionError(null);
+    setMofasaSuggestions([]);
+
+    try {
+      const candidateSuggestions = buildCandidateSuggestions(interviewText, factorContext);
+
+      if (candidateSuggestions.length === 0) {
+        setSuggestionError('No candidate sentence-factor matches were found. Try adding more interview detail.');
+        setIsGeneratingSuggestions(false);
+        setSuggestionProgress(0);
+        setSuggestionStatus('');
+        return;
+      }
+
+      setSuggestionProgress(15);
+      setSuggestionStatus('Local LLM is validating candidate factors...');
+
+      const promptCandidates = candidateSuggestions.map(candidate => ({
+        id: candidate.id,
+        factor: candidate.factor,
+        section: candidate.section,
+        question: candidate.question,
+        factorDescription: candidate.factorDescription,
+        factorExamples: candidate.factorExamples,
+        sentence: candidate.sentence,
+        matchedTerms: candidate.matchedTerms
+      }));
+
+      const prompt = `You are helping validate MoFASA factor evidence in a human-robot interaction interview.
+
+Task:
+You will receive candidate sentence/factor pairs. Decide which candidates are genuinely relevant.
+
+Instructions:
+- Use ONLY the provided candidate ids.
+- Keep a candidate only when the sentence provides clear evidence for that exact factor.
+- Reject generic keyword coincidences.
+- Prefer factors whose description and examples match the sentence meaning.
+- Return at most 15 accepted candidates.
+- Return ONLY valid JSON, with no markdown.
+
+Candidate sentence/factor pairs:
+${JSON.stringify(promptCandidates, null, 2)}
+
+JSON format:
+{
+  "suggestions": [
+    {
+      "id": "Candidate id",
+      "reason": "Brief reason this sentence is relevant"
+    }
+  ]
+}`;
+
+      const candidateMap = new Map(candidateSuggestions.map(candidate => [candidate.id, candidate]));
+      const interviewSentences = splitInterviewIntoSentences(interviewText);
+      const normalizedSentenceSet = new Set(interviewSentences.map(normalizeTextForMatch));
+
+      const buildLocalFallbackSuggestions = () => (
+        candidateSuggestions.slice(0, 10).map(candidate => ({
+          factor: candidate.factor,
+          section: candidate.section,
+          question: candidate.question,
+          sentence: candidate.sentence,
+          reason: `Candidate match from terms: ${candidate.matchedTerms.slice(0, 5).join(', ')}`
+        }))
+      );
+
+      let cleanedSuggestions = [];
+      const progressHandler = (_event, data) => {
+        setSuggestionProgress(Math.max(10, data.progress || 10));
+        setSuggestionStatus(data.progress >= 100 ? 'Parsing suggestions...' : 'Local LLM is analyzing the interview...');
+      };
+
+      try {
+        window.electronAPI.onGenerationProgress(progressHandler);
+        setSuggestionStatus('Local LLM is analyzing the interview...');
+        const response = await window.electronAPI.generateWithLlamaStream(prompt);
+
+        setSuggestionProgress(95);
+        setSuggestionStatus('Matching highlighted sentences...');
+        const parsed = extractJsonObject(response);
+
+        cleanedSuggestions = (parsed.suggestions || [])
+          .map(item => {
+            const candidate = candidateMap.get(String(item?.id || '').trim());
+            if (!candidate) return null;
+
+            return {
+              factor: candidate.factor,
+              section: candidate.section,
+              question: candidate.question,
+              sentence: candidate.sentence,
+              reason: String(item.reason || '').trim() || `Matched ${candidate.matchedTerms.slice(0, 4).join(', ')}`
+            };
+          })
+          .filter(Boolean)
+          .filter(item => normalizedSentenceSet.has(normalizeTextForMatch(item.sentence)))
+          .slice(0, 15);
+      } catch (llmError) {
+        console.warn('MoFASA suggestion LLM validation failed, using local candidates:', llmError);
+        cleanedSuggestions = buildLocalFallbackSuggestions();
+        setSuggestionError('The LLM validation failed, so showing local candidate matches for review.');
+      } finally {
+        window.electronAPI.removeGenerationProgressListener(progressHandler);
+      }
+
+      if (cleanedSuggestions.length === 0) {
+        cleanedSuggestions = buildLocalFallbackSuggestions();
+        setSuggestionError('The LLM did not validate strong matches, so showing the best local candidate matches for review.');
+      }
+
+      setMofasaSuggestions(cleanedSuggestions);
+      setSuggestionProgress(100);
+      setSuggestionStatus('Suggestions ready.');
+    } catch (error) {
+      console.error('Error generating MoFASA suggestions:', error);
+      setSuggestionError('Failed to generate MoFASA suggestions. Please check if the LLM is running and try again.');
+    } finally {
+      setIsGeneratingSuggestions(false);
+      setTimeout(() => {
+        setSuggestionProgress(0);
+        setSuggestionStatus('');
+      }, 1200);
+    }
+  };
+
+  const suggestionsBySentence = mofasaSuggestions.reduce((acc, suggestion) => {
+    const key = normalizeTextForMatch(suggestion.sentence);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(suggestion);
+    return acc;
+  }, {});
+
+  const participantForAnalysis = {
+    ...participant,
+    answers: localAnswers,
+    summary
+  };
+  const acceptedAnalyticTags = getAcceptedTags(participantForAnalysis);
+  const analyticTagColors = getTagColors(participantForAnalysis);
+  const allUsedAnalyticTags = normalizeTags(
+    (project?.scopes || []).flatMap(scope => (
+      (scope.participants || []).flatMap(scopeParticipant => getAcceptedTags(scopeParticipant))
+    ))
+  );
+
+  const saveAnalyticTags = (nextTags) => {
+    const normalized = normalizeTags(nextTags);
+    const currentColors = localAnswers[ANALYTIC_TAGS_SECTION]?.[ANALYTIC_TAG_COLORS_FIELD] || {};
+    const nextTagColors = Object.fromEntries(
+      normalized.map(tag => [tag, currentColors[tag] || DEFAULT_TAG_COLOR])
+    );
+    const nextAnswers = {
+      ...localAnswers,
+      [ANALYTIC_TAGS_SECTION]: {
+        ...localAnswers[ANALYTIC_TAGS_SECTION],
+        [ANALYTIC_TAGS_FIELD]: normalized,
+        [ANALYTIC_TAG_COLORS_FIELD]: nextTagColors
+      }
+    };
+
+    setLocalAnswers(nextAnswers);
+    setSuggestedAnalyticTags(prev => prev.filter(item => !normalized.includes(item.tag)));
+    updateParticipantAnswers(idx, participantId, ANALYTIC_TAGS_SECTION, ANALYTIC_TAGS_FIELD, normalized);
+
+    if (window.electronAPI?.updateParticipantAnswers) {
+      window.electronAPI.updateParticipantAnswers(actualProjectId, participantId, nextAnswers)
+        .catch(error => console.error('Error saving analytic tags:', error));
+    }
+  };
+
+  const updateAnalyticTagColor = (tag, colorId) => {
+    const participantsWithTag = currentScope?.participants?.filter(scopeParticipant => (
+      getAcceptedTags(scopeParticipant).includes(tag)
+    )) || [];
+
+    const nextTagColors = {
+      ...analyticTagColors,
+      [tag]: colorId
+    };
+    const nextAnswers = {
+      ...localAnswers,
+      [ANALYTIC_TAGS_SECTION]: {
+        ...localAnswers[ANALYTIC_TAGS_SECTION],
+        [ANALYTIC_TAGS_FIELD]: acceptedAnalyticTags,
+        [ANALYTIC_TAG_COLORS_FIELD]: nextTagColors
+      }
+    };
+
+    setLocalAnswers(nextAnswers);
+    setTagColorModalTag(null);
+
+    participantsWithTag.forEach(scopeParticipant => {
+      const existingColors = scopeParticipant.id === participantId
+        ? analyticTagColors
+        : getTagColors(scopeParticipant);
+
+      updateParticipantAnswers(idx, scopeParticipant.id, ANALYTIC_TAGS_SECTION, ANALYTIC_TAG_COLORS_FIELD, {
+        ...existingColors,
+        [tag]: colorId
+      });
+    });
+
+    if (window.electronAPI?.updateParticipantAnswers) {
+      Promise.all(participantsWithTag.map(scopeParticipant => {
+        const existingColors = scopeParticipant.id === participantId
+          ? analyticTagColors
+          : getTagColors(scopeParticipant);
+        const participantAnswers = scopeParticipant.id === participantId
+          ? nextAnswers
+          : {
+              ...scopeParticipant.answers,
+              [ANALYTIC_TAGS_SECTION]: {
+                ...scopeParticipant.answers?.[ANALYTIC_TAGS_SECTION],
+                [ANALYTIC_TAG_COLORS_FIELD]: {
+                  ...existingColors,
+                  [tag]: colorId
+                }
+              }
+            };
+
+        return window.electronAPI.updateParticipantAnswers(actualProjectId, scopeParticipant.id, participantAnswers);
+      })).catch(error => console.error('Error saving shared analytic tag color:', error));
+    }
+  };
+
+  const handleSuggestAnalyticTags = () => {
+    const participantSummary = {
+      ...getParticipantSummary(participantForAnalysis, currentScope),
+      summary
+    };
+    setSuggestedAnalyticTags(suggestTags(participantSummary, acceptedAnalyticTags));
+  };
+
+  const acceptSuggestedAnalyticTag = (tag) => {
+    saveAnalyticTags([...acceptedAnalyticTags, tag]);
+  };
+
+  const addCustomAnalyticTag = () => {
+    const tag = customAnalyticTag.trim();
+    if (!tag) return;
+    saveAnalyticTags([...acceptedAnalyticTags, tag]);
+    setCustomAnalyticTag('');
+  };
   
   // Function to save current scroll position
   const saveScrollPosition = () => {
@@ -409,6 +883,23 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
       }, 200);
     }
   }, [questionsLoading, questionsLoadedRef.current, Object.keys(questions).length]);
+
+  useEffect(() => {
+    try {
+      const storedOrder = localStorage.getItem(getSectionOrderStorageKey());
+      setSectionOrder(normalizeSectionOrder(storedOrder ? JSON.parse(storedOrder) : DEFAULT_SECTION_ORDER));
+    } catch (error) {
+      setSectionOrder(DEFAULT_SECTION_ORDER);
+    }
+  }, [actualProjectId, idx]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      triggerConnectionRefresh();
+    }, 350);
+
+    return () => clearTimeout(timeoutId);
+  }, [isFrameworkPanelCollapsed, sectionOrder.join('|')]);
 
   // Add scroll event listener to continuously save scroll position
   useEffect(() => {
@@ -651,26 +1142,35 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
   
   const visibleParticipants = participants.slice(start, end);
 
-  // Add refs for the boxes
-  const boxRefs = useRef(SECTIONS.map(() => React.createRef()));
+  // Add refs for the visual framework boxes
+  const boxRefs = useRef({});
+  const getBoxRef = (sectionName) => {
+    if (!boxRefs.current[sectionName]) {
+      boxRefs.current[sectionName] = React.createRef();
+    }
+    return boxRefs.current[sectionName];
+  };
   const scrollContainerRef = useRef(null);
   const [connections, setConnections] = useState([]);
 
   // Define the connections structure with side specifications
-  const connectionPairs = [
-    { from: 0, to: 1, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'A' },     // Situation → Identity
-    { from: 0, to: 2, fromSide: 'right', toSide: 'left', horizontalOffset: 20, label: 'B' },     // Situation → Definition of Situation
-    { from: 1, to: 2, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'C' },     // Identity → Definition of Situation
-    { from: 1, to: 3, fromSide: 'right', toSide: 'left', horizontalOffset: 30, label: 'D' },     // Identity → Rule Selection
-    { from: 2, to: 3, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'E' },     // Definition of Situation → Rule Selection
-    { from: 3, to: 4, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'F' }      // Rule Selection → Decision
+  const semanticConnectionPairs = [
+    { from: SITUATION, to: IDENTITY, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'A' },
+    { from: SITUATION, to: DEFINITION_OF_SITUATION, fromSide: 'right', toSide: 'left', horizontalOffset: 20, label: 'B' },
+    { from: IDENTITY, to: DEFINITION_OF_SITUATION, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'C' },
+    { from: IDENTITY, to: RULE_SELECTION, fromSide: 'right', toSide: 'left', horizontalOffset: 30, label: 'D' },
+    { from: DEFINITION_OF_SITUATION, to: RULE_SELECTION, fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'E' },
+    { from: RULE_SELECTION, to: 'Decision', fromSide: 'left', toSide: 'right', horizontalOffset: 20, label: 'F' }
   ];
 
   // Calculate box positions and update connections
   useEffect(() => {
     const calculateConnections = () => {
-      const boxes = boxRefs.current.map(ref => ref.current?.getBoundingClientRect());
-      if (!boxes.every(box => box)) return [];
+      const boxes = SECTIONS.reduce((acc, section) => {
+        acc[section.name] = getBoxRef(section.name).current?.getBoundingClientRect();
+        return acc;
+      }, {});
+      if (!semanticConnectionPairs.every(pair => boxes[pair.from] && boxes[pair.to])) return [];
 
       const rightPanel = document.querySelector('.right-panel');
       if (!rightPanel) return [];
@@ -684,13 +1184,13 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
 
       // First, calculate how many connections go to each box side
       const connectionCounts = {};
-      connectionPairs.forEach(pair => {
+      semanticConnectionPairs.forEach(pair => {
         const toKey = `${pair.to}-${pair.toSide}`;
         connectionCounts[toKey] = (connectionCounts[toKey] || 0) + 1;
       });
 
       // Calculate paths with proper spacing and scroll adjustment
-      const paths = connectionPairs.map((pair, index) => {
+      const paths = semanticConnectionPairs.map((pair, index) => {
         const fromBox = boxes[pair.from];
         const toBox = boxes[pair.to];
         
@@ -703,7 +1203,7 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         // Calculate end point with proper spacing and scroll adjustment
         const toKey = `${pair.to}-${pair.toSide}`;
         const totalConnections = connectionCounts[toKey];
-        const connectionIndex = connectionPairs
+        const connectionIndex = semanticConnectionPairs
           .filter((p, i) => i < index && p.to === pair.to && p.toSide === pair.toSide)
           .length;
 
@@ -795,7 +1295,8 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     showInterview, 
     showSummary,
     currentScope?.scopeNumber, // Only scope number, not entire scope object
-    Object.keys(questions).length // Only when questions structure changes
+    Object.keys(questions).length, // Only when questions structure changes
+    isFrameworkPanelCollapsed
   ]);
 
   const generateSummary = async () => {
@@ -803,50 +1304,12 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
     
     setIsGenerating(true);
     setError(null);
-    setProgress(0);
+    setProgress(10);
     
     try {
-      // Check if at least 1 answer is provided in each section
-      const sectionsWithAnswers = SECTIONS.map(section => {
-        let hasAnswers = false;
-        
-        if (section.name === 'Rule Selection') {
-          // For Rule Selection, check if any rules are selected
-          hasAnswers = Array.isArray(selectedRules) && selectedRules.length > 0;
-        } else if (section.name === 'Decision') {
-          // For Decision, check if any rules are selected (since decisions are based on selected rules)
-          hasAnswers = Array.isArray(selectedRules) && selectedRules.length > 0;
-        } else {
-          // For other sections, check if any questions have answers
-          hasAnswers = questions[section.name]?.some(q => {
-            if (typeof q === 'object' && q.type === 'dropdown') {
-              // For dropdown questions, use the question ID as the key
-              const answer = localAnswers[section.name]?.[q.id];
-              return answer && answer.trim() !== '';
-            } else {
-              // For text questions, use the question text as the key
-              const questionText = typeof q === 'object' ? q.text : q;
-              const answer = localAnswers[section.name]?.[questionText];
-              return answer && answer.trim() !== '';
-            }
-          }) || false;
-        }
-        
-        return { section: section.name, hasAnswers };
-      });
-
-      const sectionsWithoutAnswers = sectionsWithAnswers.filter(s => !s.hasAnswers);
-      
-      if (sectionsWithoutAnswers.length > 0) {
-        const missingSections = sectionsWithoutAnswers.map(s => s.section).join(', ');
-        setError(`Please provide at least 1 answer in each section. Missing answers in: ${missingSections}`);
-        setIsGenerating(false);
-        setProgress(0);
-        return;
-      }
-
-      // Collect all answers from all sections with their associated factors
-      const allAnswers = SECTIONS.map(section => {
+      // Collect available answers only. Summary generation should work even when
+      // some sections are intentionally blank or not yet finished.
+      const allAnswers = orderedSections.map(section => {
         if (section.name === 'Rule Selection') {
           return selectedRules.length > 0 ? `Rule Selection:\nSelected rules: ${selectedRules.join(', ')}` : null;
         } else if (section.name === 'Decision') {
@@ -856,16 +1319,14 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
             if (typeof q === 'object' && q.type === 'dropdown') {
               const answer = localAnswers[section.name]?.[q.id];
               if (answer) {
-                const factorInfo = q.factors ? ` [Associated factors: ${q.factors}]` : '';
-                return `${q.text}: ${answer}${factorInfo}`;
+                return `${q.text}: ${answer}`;
               }
               return null;
             } else {
               const questionText = typeof q === 'object' ? q.text : q;
               const answer = localAnswers[section.name]?.[questionText];
               if (answer) {
-                const factorInfo = q.factors ? ` [Associated factors: ${q.factors}]` : '';
-                return `${questionText}: ${answer}${factorInfo}`;
+                return `${questionText}: ${answer}`;
               }
               return null;
             }
@@ -877,70 +1338,57 @@ const ParticipantPage = ({ projects, updateParticipantAnswers, updateParticipant
         }
       }).filter(Boolean);
 
-      // Extract all unique factors mentioned in the responses for reference
-      const allFactors = new Set();
-      SECTIONS.forEach(section => {
-        if (section.name !== 'Rule Selection' && section.name !== 'Decision') {
-          questions[section.name]?.forEach(q => {
-            if (q.factors && (
-              (typeof q === 'object' && q.type === 'dropdown' && localAnswers[section.name]?.[q.id]) ||
-              (typeof q !== 'object' && localAnswers[section.name]?.[q.text]) ||
-              (typeof q === 'object' && q.text && localAnswers[section.name]?.[q.text])
-            )) {
-              q.factors.split(',').forEach(factor => allFactors.add(factor.trim()));
-            }
-          });
-        }
-      });
-      const availableFactors = Array.from(allFactors);
+      if (allAnswers.length === 0) {
+        setError('Add at least one participant answer before generating a summary.');
+        return;
+      }
 
-      const prompt = `You are an expert in analyzing human-robot interaction. Write a brief summary of the interaction.
+      const participantResponses = allAnswers.join('\n\n').slice(0, 5000);
+      const fallbackSummary = allAnswers
+        .slice(0, 3)
+        .map(item => item.replace(/^[^:\n]+:\n/, '').replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join(' ');
 
-CRITICAL INSTRUCTIONS:
-- ONLY summarize information that is explicitly provided in the participant's responses
-- DO NOT make assumptions, inferences, or add information not directly stated
-- Focus ONLY on the interaction between the human and robot, and how they reacted and interacted (or did not interact)
-- Be concise and factual, using only the exact information provided
-- DO NOT include any introductory text like "Here is a brief summary" or "This is a summary"
-- Start directly with the summary content
+      const prompt = `Write a concise summary of this human-robot interaction using only the provided participant responses.
 
-Your task is to write a brief summary based STRICTLY on the participant's actual responses.
-
-Format Requirements:
-- Maximum 3 sentences
-- Focus on: what was the interaction between the human and the robot, and how they reacted and interacted (or did not interact)
-- Do NOT include factors, analysis, or interpretation
-- If critical information is missing or unclear, state "information not provided" rather than assuming
-- If responses are gibberish or unclear, note this explicitly
-- Start the summary directly without any introductory phrases
+Rules:
+- Maximum 3 sentences.
+- Focus on what happened between the human and robot and how the human responded.
+- Do not mention MoFASA factors or analysis.
+- Do not add information that is not provided.
+- Start directly with the summary.
 
 Participant Responses:
-${allAnswers.join('\n\n')}
+${participantResponses}
 
-Write a brief summary (maximum 3 sentences, focus only on the human-robot interaction, start directly with the content):`;
-
-      // Set up real-time progress listener
-      const progressHandler = (event, data) => {
-        setProgress(data.progress);
-      };
-      
-      window.electronAPI.onGenerationProgress(progressHandler);
-
+Summary:`;
+      setProgress(35);
       try {
-        const generatedSummary = await window.electronAPI.generateWithLlamaStream(prompt);
-        setSummary(generatedSummary);
+        const generatedSummary = await window.electronAPI.generateWithLlama(prompt, {
+          temperature: 0.2,
+          num_predict: 120
+        });
+        const cleanSummary = generatedSummary
+          .replace(/^(summary:|here is.*?:)\s*/i, '')
+          .trim();
+
+        setSummary(cleanSummary);
+        setProgress(100);
         
         // Update the participant's summary using the new function
-        updateParticipantSummary(idx, participantId, generatedSummary);
-      } finally {
-        // Clean up the progress listener
-        window.electronAPI.removeGenerationProgressListener(progressHandler);
+        updateParticipantSummary(idx, participantId, cleanSummary);
+      } catch (llmError) {
+        console.warn('LLM summary generation failed, using local fallback:', llmError);
+        const localSummary = fallbackSummary || 'Summary could not be generated from the current responses.';
+        setSummary(localSummary);
+        updateParticipantSummary(idx, participantId, localSummary);
+        setError('The LLM did not respond, so a simple local summary was created. You can edit it before saving.');
       }
 
     } catch (error) {
       console.error('Failed to generate summary:', error);
-      setError('Failed to generate summary. Please check if LLM is running and try again.');
-      setSummary('');
+      setError('Failed to generate summary. Please try again.');
     } finally {
       setIsGenerating(false);
       setProgress(0);
@@ -1580,7 +2028,7 @@ Actual answer from interview:`
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
       {/* Left Panel */}
       <div className="left-panel" style={{ 
-        width: '50%',
+        width: isFrameworkPanelCollapsed ? 'calc(100% - 32px)' : '50%',
         flex: 'none',
         position: 'relative', 
         display: 'flex', 
@@ -1607,7 +2055,7 @@ Actual answer from interview:`
         }}>
             <button
               key="back-button"
-              onClick={() => navigate(`/projects/${projectId}`)}
+              onClick={() => navigate(`/projects/${projectId}`, { state: { view: returnView } })}
               style={{
                 padding: '6px 16px',
                 backgroundColor: '#ecf0f1',
@@ -1634,7 +2082,7 @@ Actual answer from interview:`
           <button
             key="prev-button"
             onClick={() => {
-              if (start > 0) navigate(`/projects/${projectId}/participants/${participants[start - 1].id}`);
+              if (start > 0) navigateToParticipant(participants[start - 1].id);
             }}
             disabled={start === 0}
             style={{
@@ -1652,7 +2100,7 @@ Actual answer from interview:`
           {visibleParticipants.map((p, i) => (
             <span
               key={`participant-${p.id}-${i}`}
-              onClick={() => navigate(`/projects/${projectId}/participants/${p.id}`)}
+              onClick={() => navigateToParticipant(p.id)}
               style={{
                 padding: '4px 10px',
                 background: p.id === participantId ? '#2980b9' : '#eaf6ff',
@@ -1672,7 +2120,7 @@ Actual answer from interview:`
           <button
             key="next-button"
             onClick={() => {
-              if (end < participants.length) navigate(`/projects/${projectId}/participants/${participants[end].id}`);
+              if (end < participants.length) navigateToParticipant(participants[end].id);
             }}
             disabled={end >= participants.length}
             style={{
@@ -1790,7 +2238,7 @@ Actual answer from interview:`
                         console.error('Error saving selected scope:', error);
                       }
                       // Navigate to the same participant in the new scope
-                      navigate(`/projects/${idx}/participants/${participantId}`);
+                      navigateToParticipant(participantId);
                     }}
                     style={{
                       padding: '8px 16px',
@@ -1843,7 +2291,7 @@ Actual answer from interview:`
         </div>
 
         {/* Participant Name */}
-        <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <h3 style={{ 
               fontFamily: 'Lexend, sans-serif', 
               fontWeight: 600, 
@@ -1854,6 +2302,471 @@ Actual answer from interview:`
               Participant: {participant.name}
             </h3>
           </div>
+
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px',
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #e9ecef',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ marginBottom: '12px' }}>
+              <h3 style={{
+                margin: 0,
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1.1em',
+                color: '#2c3e50',
+                fontWeight: 700
+              }}>
+                Analytic Tags
+              </h3>
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {acceptedAnalyticTags.map(tag => {
+                  const tagColor = getTagColorStyle(analyticTagColors[tag]);
+                  return (
+                  <span
+                    key={tag}
+                    onClick={() => setTagColorModalTag(tag)}
+                    title="Edit tag color"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '6px 10px',
+                      borderRadius: '999px',
+                      backgroundColor: tagColor.background,
+                      color: tagColor.color,
+                      border: `1px solid ${tagColor.border}`,
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.86em',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span>{tag}</span>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        saveAnalyticTags(acceptedAnalyticTags.filter(item => item !== tag));
+                      }}
+                      aria-label={`Remove ${tag}`}
+                      title={`Remove ${tag}`}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: tagColor.color,
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        padding: 0
+                      }}
+                    >
+                      x
+                    </button>
+                  </span>
+                  );
+                })}
+                {acceptedAnalyticTags.length === 0 && (
+                  <span style={{
+                    fontFamily: 'Lexend, sans-serif',
+                    fontSize: '0.9em',
+                    color: '#7f8c8d'
+                  }}>
+                    No tags yet.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              flexWrap: 'wrap',
+              marginBottom: '14px'
+            }}>
+              <input
+                list="analytic-tag-suggestions"
+                value={customAnalyticTag}
+                onChange={(e) => setCustomAnalyticTag(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomAnalyticTag();
+                  }
+                }}
+                placeholder="Add a custom tag..."
+                style={{
+                  flex: '1 1 220px',
+                  padding: '9px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #dcdde1',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.9em'
+                }}
+              />
+              <datalist id="analytic-tag-suggestions">
+                {allUsedAnalyticTags.map(tag => (
+                  <option key={tag} value={tag} />
+                ))}
+              </datalist>
+              <button
+                type="button"
+                onClick={addCustomAnalyticTag}
+                style={{
+                  padding: '9px 14px',
+                  backgroundColor: '#2980b9',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: 600
+                }}
+              >
+                Add Tag
+              </button>
+              <button
+                type="button"
+                onClick={handleSuggestAnalyticTags}
+                style={{
+                  padding: '9px 14px',
+                  backgroundColor: '#27ae60',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: 600
+                }}
+              >
+                Suggest Tags
+              </button>
+              <button
+                type="button"
+                onClick={() => saveAnalyticTags([...acceptedAnalyticTags, ...suggestedAnalyticTags.map(item => item.tag)])}
+                disabled={suggestedAnalyticTags.length === 0}
+                style={{
+                  padding: '9px 14px',
+                  backgroundColor: suggestedAnalyticTags.length === 0 ? '#bdc3c7' : '#34495e',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: suggestedAnalyticTags.length === 0 ? 'default' : 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: 600
+                }}
+              >
+                Accept All
+              </button>
+              <button
+                type="button"
+                onClick={() => setSuggestedAnalyticTags([])}
+                style={{
+                  padding: '9px 14px',
+                  backgroundColor: '#ecf0f1',
+                  color: '#2c3e50',
+                  border: '1px solid #d0d7de',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: 600
+                }}
+              >
+                Clear Suggestions
+              </button>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {suggestedAnalyticTags.map(suggestion => (
+                  <div
+                    key={suggestion.tag}
+                    title={suggestion.sourceFields?.join(', ') || suggestion.reason}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 8px',
+                      borderRadius: '999px',
+                      border: '1px dashed #b7d8ef',
+                      backgroundColor: '#f8fbfd'
+                    }}
+                  >
+                    <span style={{
+                      color: '#2980b9',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.86em',
+                      fontWeight: 700
+                    }}>
+                      {suggestion.tag}
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => acceptSuggestedAnalyticTag(suggestion.tag)}
+                        style={{
+                          padding: '3px 7px',
+                          backgroundColor: '#27ae60',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '999px',
+                          cursor: 'pointer',
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '0.78em',
+                          fontWeight: 600
+                        }}
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSuggestedAnalyticTags(prev => prev.filter(item => item.tag !== suggestion.tag))}
+                        style={{
+                          padding: '3px 7px',
+                          backgroundColor: '#ecf0f1',
+                          color: '#2c3e50',
+                          border: '1px solid #d0d7de',
+                          borderRadius: '999px',
+                          cursor: 'pointer',
+                          fontFamily: 'Lexend, sans-serif',
+                          fontSize: '0.78em',
+                          fontWeight: 600
+                        }}
+                      >
+                        x
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {suggestedAnalyticTags.length === 0 && (
+                  <div style={{
+                    fontFamily: 'Lexend, sans-serif',
+                    fontSize: '0.9em',
+                    color: '#7f8c8d',
+                    padding: '10px 0'
+                  }}>
+                    No suggestions yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* MoFASA Sentence Suggestions 
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px',
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #e9ecef',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              marginBottom: '14px',
+              flexWrap: 'wrap'
+            }}>
+              <h3 style={{
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '1.1em',
+                color: '#2c3e50',
+                margin: 0,
+                fontWeight: 700
+              }}>
+                Interview Analysis and Suggestions
+              </h3>
+              <button
+                type="button"
+                onClick={handleGenerateMofasaSuggestions}
+                disabled={isGeneratingSuggestions || !interviewText.trim()}
+                style={{
+                  padding: '9px 16px',
+                  backgroundColor: isGeneratingSuggestions || !interviewText.trim() ? '#bbb' : '#3498db',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: isGeneratingSuggestions || !interviewText.trim() ? 'default' : 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.92em',
+                  fontWeight: 600
+                }}
+              >
+                {isGeneratingSuggestions ? 'Finding suggestions...' : 'MoFASA suggestions'}
+              </button>
+            </div>
+            <textarea
+              value={interviewText}
+              onChange={(e) => {
+                const newText = e.target.value;
+                setInterviewText(newText);
+                setMofasaSuggestions([]);
+                setSuggestionError(null);
+                if (newText.trim() !== '') {
+                  saveInterviewState(newText);
+                } else {
+                  try {
+                    localStorage.removeItem(getInterviewStorageKey());
+                  } catch (error) {
+                    console.error('Error clearing empty interview text:', error);
+                  }
+                }
+              }}
+              placeholder="Paste the participant interview text here..."
+              style={{
+                width: '100%',
+                minHeight: '160px',
+                padding: '14px',
+                borderRadius: '6px',
+                border: '1px solid #dcdde1',
+                fontSize: '0.95em',
+                fontFamily: 'Lexend, sans-serif',
+                resize: 'vertical',
+                lineHeight: 1.5,
+                marginBottom: '14px'
+              }}
+            />
+            {isGeneratingSuggestions && (
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginBottom: '8px',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.86em',
+                  color: '#607080'
+                }}>
+                  <span>{suggestionStatus || 'Analyzing interview...'}</span>
+                  <span>{Math.round(suggestionProgress)}%</span>
+                </div>
+                <div style={{
+                  width: '100%',
+                  height: '6px',
+                  backgroundColor: '#e9ecef',
+                  borderRadius: '999px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${suggestionProgress}%`,
+                    height: '100%',
+                    backgroundColor: '#3498db',
+                    borderRadius: '999px',
+                    transition: 'width 0.25s ease'
+                  }} />
+                </div>
+              </div>
+            )}
+            {suggestionError && (
+              <div style={{
+                padding: '10px 12px',
+                backgroundColor: '#fff3cd',
+                color: '#856404',
+                border: '1px solid #ffeaa7',
+                borderRadius: '6px',
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.9em',
+                marginBottom: '14px'
+              }}>
+                {suggestionError}
+              </div>
+            )}
+            {mofasaSuggestions.length > 0 && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1.2fr) minmax(260px, 0.8fr)',
+                gap: '16px'
+              }}>
+                <div style={{
+                  padding: '14px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '8px',
+                  border: '1px solid #e9ecef',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontSize: '0.95em',
+                  color: '#2c3e50',
+                  lineHeight: 1.7
+                }}>
+                  {splitInterviewIntoSentences(interviewText).map((sentence, index) => {
+                    const sentenceSuggestions = suggestionsBySentence[normalizeTextForMatch(sentence)] || [];
+                    const isHighlighted = sentenceSuggestions.length > 0;
+                    const factors = Array.from(new Set(sentenceSuggestions.map(item => item.factor))).join(', ');
+
+                    return (
+                      <span
+                        key={`${sentence}-${index}`}
+                        title={factors}
+                        style={{
+                          backgroundColor: isHighlighted ? '#fff2a8' : 'transparent',
+                          borderBottom: isHighlighted ? '2px solid #f1c40f' : 'none',
+                          borderRadius: isHighlighted ? '4px' : 0,
+                          padding: isHighlighted ? '2px 4px' : 0,
+                          marginRight: '4px',
+                          transition: 'background-color 0.2s ease'
+                        }}
+                      >
+                        {sentence}{' '}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  maxHeight: '360px',
+                  overflowY: 'auto'
+                }}>
+                  {mofasaSuggestions.map((suggestion, index) => (
+                    <div
+                      key={`${suggestion.factor}-${index}`}
+                      style={{
+                        padding: '12px',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e0e7ef',
+                        borderRadius: '8px',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+                      }}
+                    >
+                      <div style={{
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '0.92em',
+                        fontWeight: 700,
+                        color: '#2c3e50',
+                        marginBottom: '6px'
+                      }}>
+                        {suggestion.factor}
+                      </div>
+                      <div style={{
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '0.82em',
+                        color: '#607080',
+                        marginBottom: '8px'
+                      }}>
+                        {suggestion.section}
+                      </div>
+                      <div style={{
+                        fontFamily: 'Lexend, sans-serif',
+                        fontSize: '0.88em',
+                        color: '#34495e',
+                        lineHeight: 1.45
+                      }}>
+                        {suggestion.reason || suggestion.sentence}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          */}
 
           {/* EXTRACT DATA FROM INTERVIEW Toggle Switches */}
          {/*
@@ -2179,9 +3092,59 @@ Actual answer from interview:`
 
 
           {/* Question Sections */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginBottom: '16px'
+          }}>
+            <button
+              type="button"
+              onClick={openSectionOrderModal}
+              aria-label="Open section order settings"
+              title="Open section order settings"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px 12px',
+                border: '1px solid #d0d7de',
+                borderRadius: '999px',
+                backgroundColor: '#ffffff',
+                color: '#2c3e50',
+                cursor: 'pointer',
+                fontFamily: 'Lexend, sans-serif',
+                fontSize: '0.9em',
+                fontWeight: 600,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+              }}
+            >
+              <span style={{
+                position: 'relative',
+                width: '34px',
+                height: '18px',
+                borderRadius: '999px',
+                backgroundColor: '#3498db',
+                display: 'inline-block'
+              }}>
+                <span style={{
+                  position: 'absolute',
+                  top: '3px',
+                  right: '3px',
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: '#ffffff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
+                }} />
+              </span>
+              Sort sections
+            </button>
+          </div>
           <div className="questionnaire-section">
-            {SECTIONS.map(section => (
-              <div key={section.name} style={{ 
+            {orderedSections.map(section => (
+              <div
+                key={section.name}
+                style={{ 
                 marginBottom: 32,
                 padding: '24px',
                 backgroundColor: '#ffffff',
@@ -2189,19 +3152,27 @@ Actual answer from interview:`
                 boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                 border: '1px solid #e9ecef'
               }}>
-                <h3 style={{ 
-                  fontFamily: 'Lexend, sans-serif',
-                  fontSize: '1.2em',
-                  marginBottom: 20,
-                  color: '#2c3e50',
-                  padding: '8px 16px',
-                  backgroundColor: section.color,
-                  borderRadius: '8px',
-                  display: 'inline-block',
-                  fontWeight: '600'
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                  marginBottom: 20
                 }}>
-                  {section.name}
-                </h3>
+                  <h3 style={{ 
+                    fontFamily: 'Lexend, sans-serif',
+                    fontSize: '1.2em',
+                    margin: 0,
+                    color: '#2c3e50',
+                    padding: '8px 16px',
+                    backgroundColor: section.color,
+                    borderRadius: '8px',
+                    display: 'inline-block',
+                    fontWeight: '600'
+                  }}>
+                    {section.name}
+                  </h3>
+                </div>
                 <div style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
@@ -2717,12 +3688,57 @@ Actual answer from interview:`
         className="right-panel framework-panel" 
         ref={scrollContainerRef}
         style={{ 
-          flex: 1,
+          width: isFrameworkPanelCollapsed ? '32px' : '50%',
+          flex: 'none',
           background: 'linear-gradient(180deg,rgb(55, 70, 83) 0%, #232b32 100%)', 
-          overflowY: 'auto',
-          position: 'relative'
+          overflowY: isFrameworkPanelCollapsed ? 'hidden' : 'auto',
+          overflowX: 'hidden',
+          position: 'relative',
+          transition: 'width 0.3s ease'
         }}
       >
+        <button
+          type="button"
+          onClick={() => setIsFrameworkPanelCollapsed(prev => !prev)}
+          aria-label={isFrameworkPanelCollapsed ? 'Open framework panel' : 'Hide framework panel'}
+          title={isFrameworkPanelCollapsed ? 'Open framework panel' : 'Hide framework panel'}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: 0,
+            transform: 'translateY(-50%)',
+            zIndex: 500,
+            width: '24px',
+            height: '48px',
+            marginLeft: '4px',
+            border: '1px solid rgba(255, 255, 255, 0.28)',
+            borderRadius: '6px',
+            backgroundColor: 'rgba(255, 255, 255, 0.94)',
+            color: '#2c3e50',
+            cursor: 'pointer',
+            fontFamily: 'Lexend, sans-serif',
+            fontSize: '1.1em',
+            fontWeight: 700,
+            lineHeight: 1,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
+            transition: 'background-color 0.2s ease, transform 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = '#ffffff';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.94)';
+          }}
+        >
+          {isFrameworkPanelCollapsed ? '\u2039' : '\u203a'}
+        </button>
+        <div style={{
+          minWidth: 'min(50vw, calc(100vw - 294px))',
+          transform: isFrameworkPanelCollapsed ? 'translateX(100%)' : 'translateX(0)',
+          opacity: isFrameworkPanelCollapsed ? 0 : 1,
+          pointerEvents: isFrameworkPanelCollapsed ? 'none' : 'auto',
+          transition: 'transform 0.3s ease, opacity 0.2s ease'
+        }}>
         {/* Current Scope Header - now scrollable */}
         {currentScope && (
           <div style={{
@@ -2777,7 +3793,7 @@ Actual answer from interview:`
           
           {connections.map((connection, index) => {
             // Calculate the middle point of the actual path
-            const pair = connectionPairs[index];
+            const pair = semanticConnectionPairs[index];
             const startX = connection.startPoint.x;
             const startY = connection.startPoint.y;
             const endX = connection.endPoint.x;
@@ -2926,10 +3942,10 @@ Actual answer from interview:`
           zIndex: 1
         }}
         >
-        {SECTIONS.map((section, i) => (
+        {SECTIONS.map((section) => (
           <div
             key={section.name}
-              ref={boxRefs.current[i]}
+              ref={getBoxRef(section.name)}
             style={{
               width: 'clamp(420px, calc(17vw + 200px), 720px)',
               maxWidth: '720px',
@@ -3066,6 +4082,170 @@ Actual answer from interview:`
           ))}
           </div>
       </div>
+      </div>
+
+      {/* Section Order Modal */}
+      {showSectionOrderModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            width: '460px',
+            maxWidth: '92%',
+            padding: '24px',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.28)'
+          }}>
+            <h3 style={{
+              marginBottom: '8px',
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '1.25em',
+              color: '#2c3e50',
+              fontWeight: 700
+            }}>
+              Sort Sections
+            </h3>
+            <p style={{
+              marginBottom: '18px',
+              fontFamily: 'Lexend, sans-serif',
+              fontSize: '0.92em',
+              color: '#607080',
+              lineHeight: 1.5
+            }}>
+              Drag section names into the order you want, then save.
+            </p>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              marginBottom: '24px'
+            }}>
+              {normalizeSectionOrder(draftSectionOrder).map((sectionName, index) => {
+                const section = SECTIONS.find(item => item.name === sectionName);
+                const isDragging = draggingSectionName === sectionName;
+                const isDragTarget = dragOverSectionName === sectionName && draggingSectionName !== sectionName;
+
+                return (
+                  <div
+                    key={sectionName}
+                    draggable
+                    onDragStart={(e) => {
+                      draggedSectionNameRef.current = sectionName;
+                      setDraggingSectionName(sectionName);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', sectionName);
+                    }}
+                    onDragEnter={() => setDragOverSectionName(sectionName)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={() => handleDraftSectionDrop(sectionName)}
+                    onDragEnd={() => {
+                      draggedSectionNameRef.current = null;
+                      setDraggingSectionName(null);
+                      setDragOverSectionName(null);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      border: isDragTarget ? '2px solid #3498db' : '1px solid #dce3ea',
+                      backgroundColor: section?.color || '#f8f9fa',
+                      color: '#2c3e50',
+                      cursor: isDragging ? 'grabbing' : 'grab',
+                      fontFamily: 'Lexend, sans-serif',
+                      fontSize: '0.98em',
+                      fontWeight: 600,
+                      opacity: isDragging ? 0.45 : 1,
+                      transform: isDragging ? 'scale(0.98)' : isDragTarget ? 'translateY(2px) scale(1.02)' : 'scale(1)',
+                      boxShadow: isDragging
+                        ? '0 12px 24px rgba(52, 152, 219, 0.28)'
+                        : isDragTarget
+                          ? '0 8px 20px rgba(52, 152, 219, 0.18)'
+                          : '0 2px 8px rgba(0, 0, 0, 0.05)',
+                      transition: 'transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease'
+                    }}
+                  >
+                    <span style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '6px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.75)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#617182',
+                      fontSize: '0.85em',
+                      flex: '0 0 auto'
+                    }}>
+                      {index + 1}
+                    </span>
+                    <span style={{ flex: 1 }}>{sectionName}</span>
+                    <span style={{
+                      color: '#7b8a99',
+                      letterSpacing: '1px',
+                      fontWeight: 700
+                    }}>
+                      {'\u2630'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowSectionOrderModal(false)}
+                style={{
+                  padding: '9px 16px',
+                  backgroundColor: '#ecf0f1',
+                  color: '#2c3e50',
+                  border: '1px solid #d0d7de',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: 600
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveDraftSectionOrder}
+                style={{
+                  padding: '9px 16px',
+                  backgroundColor: '#3498db',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontFamily: 'Lexend, sans-serif',
+                  fontWeight: 600
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Rule Confirmation Modal */}
       {ruleToDelete && (
@@ -3273,6 +4453,92 @@ Actual answer from interview:`
               }}
             >
               Continue
+            </button>
+          </div>
+        </div>
+      )}
+
+      {tagColorModalTag && (
+        <div
+          onClick={() => setTagColorModalTag(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.35)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1100
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              width: '360px',
+              maxWidth: '90%',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
+              fontFamily: 'Lexend, sans-serif'
+            }}
+          >
+            <h3 style={{ margin: '0 0 14px 0', color: '#2c3e50', fontSize: '1.05em' }}>
+              Tag Color
+            </h3>
+            <div style={{ marginBottom: '16px' }}>
+              <span style={{
+                ...getTagColorStyle(analyticTagColors[tagColorModalTag]),
+                display: 'inline-flex',
+                padding: '6px 10px',
+                borderRadius: '999px',
+                border: `1px solid ${getTagColorStyle(analyticTagColors[tagColorModalTag]).border}`,
+                fontWeight: 700,
+                fontSize: '0.9em'
+              }}>
+                {tagColorModalTag}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '16px' }}>
+              {TAG_COLOR_OPTIONS.map(option => (
+                <button
+                  type="button"
+                  key={option.id}
+                  onClick={() => updateAnalyticTagColor(tagColorModalTag, option.id)}
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: '8px',
+                    border: analyticTagColors[tagColorModalTag] === option.id ? `2px solid ${option.color}` : `1px solid ${option.border}`,
+                    background: option.background,
+                    color: option.color,
+                    cursor: 'pointer',
+                    fontFamily: 'Lexend, sans-serif',
+                    fontWeight: 700
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setTagColorModalTag(null)}
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                border: '1px solid #d0d7de',
+                borderRadius: '6px',
+                background: '#fff',
+                color: '#2c3e50',
+                cursor: 'pointer',
+                fontFamily: 'Lexend, sans-serif',
+                fontWeight: 600
+              }}
+            >
+              Cancel
             </button>
           </div>
         </div>

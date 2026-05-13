@@ -218,16 +218,17 @@ ipcMain.handle('save-settings', async (_e, newSettings) => {
   }
 });
 
-ipcMain.handle('generate-with-llama', async (_e, prompt) => {
+ipcMain.handle('generate-with-llama', async (_e, prompt, options = {}) => {
   const settings = loadSettings();
   try {
     const response = await axios.post(`${settings.llmUrl}/api/generate`, {
       model: settings.modelName,
       prompt,
-      stream: false
+      stream: false,
+      options
     }, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 30000
+      timeout: 120000
     });
 
     const result = response.data.response;
@@ -248,7 +249,7 @@ ipcMain.handle('generate-with-llama', async (_e, prompt) => {
   }
 });
 
-ipcMain.handle('generate-with-llama-stream', async (event, prompt) => {
+ipcMain.handle('generate-with-llama-stream', async (event, prompt, options = {}) => {
   const settings = loadSettings();
   return new Promise((resolve, reject) => {
     try {
@@ -258,10 +259,11 @@ ipcMain.handle('generate-with-llama-stream', async (event, prompt) => {
       const request = axios.post(`${settings.llmUrl}/api/generate`, {
         model: settings.modelName,
         prompt,
-        stream: true
+        stream: true,
+        options
       }, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 30000,
+        timeout: 120000,
         responseType: 'stream'
       });
 
